@@ -1,0 +1,9 @@
+{
+  "name": "gt-padel-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hebrew WhatsApp availability agent for GT Padel Ganei Tikva",
+  "scripts": {"test":"node --test", "check":"node --check src/*.js && node --check netlify/functions/*.js"},
+  "engines": {"node": ">=20"}
+}
