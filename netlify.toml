@@ -11,3 +11,11 @@
   to = "/.netlify/functions/health"
   status = 200
 
+[[redirects]]
+  from = "/go/book"
+  to = "/.netlify/functions/booking-click"
+  status = 200
+[[redirects]]
+  from = "/admin"
+  to = "/.netlify/functions/admin"
+  status = 200
