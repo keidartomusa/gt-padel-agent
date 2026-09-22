@@ -11,7 +11,7 @@ const availabilityCases=[
 for(let i=0;i<availabilityCases.length;i++)await availability(`${i+1}. ${availabilityCases[i][0]}`,availabilityCases[i][1]);
 async function convo(title,steps,{store=memoryStore(),userId='u',name='דנה',availabilityFn}={}){const turns=[];for(const step of steps){turns.push({from:'user',text:step.text||`[${step.actionId}]`});const r=await handleConversation({userId,displayName:name,text:step.text||'',actionId:step.actionId,store,now,availabilityFn});turns.push({from:'bot',...view(r)});}transcripts.push({title,type:'matching',turns});return store;}
 await convo('16. הודעת פתיחה ושני כפתורים',[{text:'שלום'},{actionId:'availability'},{text:'יש מגרש מחר בערב?'}]);
-const yes=async i=>({kind:'availability',date:i.date,slots:[{courtId:'c3',courtName:'3',start:'19:00',end:'20:30',durationMinutes:i.durationMinutes,price:225}]});
+const yes=async i=>({kind:'availability',date:i.date,slots:[{courtId:'c3',courtName:'3',start:'19:00',end:'20:30',durationMinutes:i.durationMinutes,price:null}]});
 const no=async i=>({kind:'availability',date:i.date,slots:[]});
 const oneoff=[{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'מחר אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:yes'},{actionId:'flex:30'}];
 await convo('17. בקשה חד-פעמית ליחיד',oneoff,{availabilityFn:yes});

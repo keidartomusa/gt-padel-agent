@@ -8,7 +8,8 @@ export const sendReaction=(to,messageId,emoji="👍",phoneNumberId,fetchImpl=fet
 export const sendTyping=(messageId,phoneNumberId,fetchImpl=fetch)=>post(null,{status:"read",message_id:messageId,typing_indicator:{type:"text"}},phoneNumberId,fetchImpl);
 export const sendText=(to,body,phoneNumberId,fetchImpl=fetch)=>post(to,{type:"text",text:{body}},phoneNumberId,fetchImpl);
 export async function sendResponse(to,response,phoneNumberId,fetchImpl=fetch){
- if(response.messages?.length){const results=[];if(response.text)results.push(await sendText(to,response.text,phoneNumberId,fetchImpl));for(const m of response.messages)results.push(await post(to,{type:"interactive",interactive:{type:"cta_url",body:{text:m.text},action:{name:"cta_url",parameters:{display_text:m.ctaUrl.displayText.slice(0,20),url:m.ctaUrl.url}}}},phoneNumberId,fetchImpl));return{sent:results.every(x=>x.sent),results};}
+ if(response.ctaUrl)return post(to,{type:"interactive",interactive:{type:"cta_url",body:{text:response.text},action:{name:"cta_url",parameters:{display_text:response.ctaUrl.displayText.slice(0,20),url:response.ctaUrl.url}}}},phoneNumberId,fetchImpl);
+
  if(response.buttons?.length){return post(to,{type:"interactive",interactive:{type:"button",body:{text:response.text},action:{buttons:response.buttons.slice(0,3).map(x=>({type:"reply",reply:{id:x.id,title:x.title.slice(0,20)}}))}}},phoneNumberId,fetchImpl);}
  if(response.list){return post(to,{type:"interactive",interactive:{type:"list",body:{text:response.text},action:{button:response.list.button,sections:response.list.sections.map(s=>({...s,rows:s.rows.map(r=>({id:r.id,title:r.title.slice(0,24),...(r.description?{description:r.description.slice(0,72)}:{})}))}))}}},phoneNumberId,fetchImpl);}
  return sendText(to,response.text||String(response),phoneNumberId,fetchImpl);
