@@ -1,5 +1,6 @@
 import {answer} from '../src/agent.js';
 import {handleConversation} from '../src/conversation.js';
+import {routeIncoming} from '../src/webhook.js';
 import {dailySweep} from '../src/matching.js';
 import {memoryStore} from '../src/store.js';
 const now=new Date('2026-09-23T00:10:00+03:00'), transcripts=[];
@@ -28,8 +29,14 @@ const mismatch=memoryStore();await convo('27a. רמה 1-2',oneoff.map(x=>x.actio
 await convo('28. משך 120 וגמישות שעה',[{actionId:'oneoff'},{actionId:'level:3.5–4'},{text:'מחר ב17:00'},{actionId:'duration:120'},{actionId:'party:3'},{actionId:'court:yes'},{actionId:'flex:60'}],{availabilityFn:yes});
 await convo('29. אין מגרש חי - הבקשה לא מתפרסמת',[{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'מחר אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:no'},{actionId:'flex:30'}],{availabilityFn:no});
 const sweep=memoryStore();await convo('30a. מנוי ראשון לסריקה',[{actionId:'recurring'},{actionId:'level:3–3.5'},{text:'ימי חמישי אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:no'},{actionId:'flex:30'}],{store:sweep,userId:'s1',name:'שרון',availabilityFn:yes});await convo('30b. מנוי שני לסריקה',[{actionId:'recurring'},{actionId:'level:3–3.5'},{text:'ימי חמישי אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:no'},{actionId:'flex:30'}],{store:sweep,userId:'s2',name:'עדי',availabilityFn:yes});const first=await dailySweep(sweep,now),second=await dailySweep(sweep,now);transcripts.push({title:'30. סריקה יומית ומניעת כפילות',type:'matching',turns:[{from:'system',text:`סריקה ראשונה: ${first.length} התאמות; סריקה חוזרת: ${second.length} התאמות חדשות.`},{from:'bot',text:'אותה התאמה אינה נשלחת פעמיים.'}]});
-// Keep exactly 30 numbered scenarios: auxiliary setup transcripts omitted from report.
+// Extended entry/menu conversations.
+async function routed(title,steps){const store=memoryStore(),turns=[];for(const step of steps){turns.push({from:'user',text:step.text||`[${step.actionId}]`});const r=await routeIncoming({userId:`ext-${title}`,displayName:'דנה',text:step.text||'',actionId:step.actionId,store,now,availabilityFn:yes});turns.push({from:'bot',...view(r)});}transcripts.push({title,type:'entry',turns});}
+await routed('31. ברכה בלבד מציגה פתיחה',[{text:'היי'}]);
+await routed('32. שאלה ראשונה מקבלת תשובה ותפריט',[{text:'יש מגרש מחר בערב?'}]);
+await routed('33. שאלה לא מוכרת בלי פתיחה מלאה',[{text:'כמה עולה מנוי?'}]);
+await routed('34. תפריט זמין באמצע תהליך',[{actionId:'players'},{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'תפריט'}]);
+// Keep exactly 34 numbered scenarios: auxiliary setup transcripts omitted from report.
 const final=transcripts.filter(x=>/^([1-9]|1[0-9]|2[0-9]|30)\./.test(x.title)&&!/^[0-9]+[a-z]/.test(x.title.split('.')[0])).filter(x=>!/^20a|21a|22a|26a|27a|30a|30b/.test(x.title));
-if(final.length!==30)throw Error(`expected 30, got ${final.length}: ${final.map(x=>x.title).join(',')}`);
+if(final.length!==34)throw Error(`expected 34, got ${final.length}: ${final.map(x=>x.title).join(',')}`);
 await import('node:fs').then(fs=>fs.writeFileSync('/tmp/gt-30-transcripts.json',JSON.stringify(final,null,2)));
 console.log(JSON.stringify({count:final.length,titles:final.map(x=>x.title)},null,2));
