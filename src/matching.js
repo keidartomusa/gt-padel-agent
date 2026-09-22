@@ -1,0 +1,15 @@
+import { addDays, localDateParts } from "./time.js";
+const pad=n=>String(n).padStart(2,"0"), clock=m=>`${pad(Math.floor(m/60))}:${pad(m%60)}`;
+export const LEVELS=["1–2","2–2.5","2.5–3","3–3.5","3.5–4","4+"];
+export const DURATIONS=[60,90,120];
+export const welcome=()=>({text:"*ברוכים הבאים ל־GT PADEL* 🎾\n\nאני כאן כדי לעזור לכם להגיע למגרש ולמשחק שמתאים לכם.\n\n*1. למצוא מגרש פנוי*\nבדיקת זמינות חיה לפי יום, שעה ומשך - וקישור ישיר להזמנה.\n\n*2. למצוא שחקנים למשחק*\nחיפוש משחק נקודתי ליום ושעה מסוימים, או הרשמה עם הזמינות הקבועה שלך - והבוט מחפש לך התאמות באופן שוטף.\n\nמה תרצו לעשות?",buttons:[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"}]});
+export function levelRange(label){const nums=(label.match(/\d(?:\.5)?/g)||[]).map(Number);return nums.length?[Math.min(...nums),Math.max(...nums)]:[1,5];}
+function overlap(a,b){const [al,ah]=levelRange(a.level),[bl,bh]=levelRange(b.level);return al<=bh&&bl<=ah&&a.startMinute<b.endMinute&&b.startMinute<a.endMinute&&a.durations.some(x=>b.durations.includes(x));}
+export async function activeRequests(store,now=new Date()){const today=localDateParts(now).iso,rows=await store.list("request/");return rows.map(x=>x.value).filter(x=>x.active&&(!x.date||x.date>=today));}
+export async function findMatches(store,request,now=new Date()){const rows=await activeRequests(store,now);return rows.filter(x=>x.id!==request.id&&x.userId!==request.userId&&x.date===request.date&&overlap(x,request));}
+export async function publicBoard(store,{date,startMinute=0,endMinute=1440,now=new Date()}={}){return(await activeRequests(store,now)).filter(x=>(!date||x.date===date)&&x.startMinute<endMinute&&startMinute<x.endMinute).sort((a,b)=>a.startMinute-b.startMinute);}
+export function formatBoard(rows){if(!rows.length)return"לא מצאתי כרגע בקשות פתוחות בחלון הזה. אפשר לפתוח בקשה חדשה ואחפש התאמות.";return`*בקשות פתוחות*\n${rows.slice(0,10).map((x,i)=>`${i+1}. ${x.displayName} · רמה ${x.level} · ${clock(x.startMinute)}–${clock(x.endMinute)} · ${x.partySize} שחקנים${x.hasCourt?" · יש מגרש":""}`).join("\n")}\n\nכדי להתחבר כתבו את מספר הבקשה. פרטי טלפון אינם מוצגים.`;}
+export async function mute(store,userId,until){const p=await store.get(`profile/${userId}`)||{userId};p.mutedUntil=until;await store.set(`profile/${userId}`,p);return p;}
+export async function isMuted(store,userId,now=new Date()){const p=await store.get(`profile/${userId}`);return Boolean(p?.mutedUntil&&new Date(p.mutedUntil)>now);}
+export async function dailySweep(store,now=new Date()){const req=await activeRequests(store,now),pairs=[];for(let i=0;i<req.length;i++)for(let j=i+1;j<req.length;j++)if(req[i].date===req[j].date&&overlap(req[i],req[j])&&!await isMuted(store,req[i].userId,now)&&!await isMuted(store,req[j].userId,now)){const key=[req[i].id,req[j].id].sort().join("~");if(!await store.get(`notification/${key}`)){pairs.push([req[i],req[j]]);await store.set(`notification/${key}`,{sentAt:now.toISOString()});}}return pairs;}
+export function expiryFor(date,endMinute=1440){return new Date(`${addDays(date,1)}T00:00:00+03:00`).toISOString();}

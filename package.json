@@ -4,7 +4,14 @@
   "private": true,
   "type": "module",
   "description": "Hebrew WhatsApp availability agent for GT Padel Ganei Tikva",
-  "scripts": {"test":"node --test", "check":"node --check src/*.js && node --check netlify/functions/*.js"},
-  "engines": {"node": ">=20"}
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/*.js && node --check netlify/functions/*.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.1.0"
+  }
 }
-
