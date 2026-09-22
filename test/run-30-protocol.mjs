@@ -5,12 +5,12 @@ import {dailySweep} from '../src/matching.js';
 import {memoryStore} from '../src/store.js';
 const now=new Date('2026-09-23T00:10:00+03:00'), transcripts=[];
 const view=r=>({text:r.text,buttons:r.buttons?.map(x=>x.title),list:r.list?.sections?.flatMap(s=>s.rows.map(x=>x.title)),notifications:r.notifications?.map(x=>({to:x.to,text:x.response.text,buttons:x.response.buttons?.map(b=>b.title)}))});
-async function availability(title,user){const bot=await answer(user,{now});transcripts.push({title,type:'availability',turns:[{from:'user',text:user},{from:'bot',...view({text:bot})}]});}
+async function availability(title,users){const turns=[];for(const user of Array.isArray(users)?users:[users]){turns.push({from:'user',text:user});const bot=await answer(user,{now});turns.push({from:'bot',...view({text:bot})});}transcripts.push({title,type:'availability',turns});}
 const availabilityCases=[
-['היום בבוקר 90','יש מגרש היום בבוקר ל90 דקות?'],['חמישי ערב 60','מה פנוי מחר בערב לשעה?'],['שישי צהריים 120','תבדוק שישי בצהריים לשעתיים'],['שבת בבוקר','שבת בבוקר, מגרש לשעה וחצי'],['ראשון אחרי 19','יש משהו ביום ראשון אחרי 19:00?'],['שני לפני 18','מה פנוי ביום שני לפני 18:00 ל90 דק'],['שלישי לילה','שלישי בלילה לשעה וחצי'],['רביעי הבא','רביעי הבא בערב ל90 דקות'],['תאריך מספרי','מגרש ב25/9 בשעה 17:00 ל90 דקות'],['יום בחודש','מתי יש מגרש ב30 לחודש בערב?'],['שגיאת כתיב','יש מגרש מחר אחהצ לשעה וחצי'],['אחרי 20:30','מתי יש מגרשים פנויים אחרי 20:30 בערב ל90 דק'],['לפני 08:00','מגרש מחר לפני 08:00 ל60 דק'],['שעתיים','אפשר מחר ב16:00 לשעתיים?'],['ברירת מחדל 90','יש מגרש מחר בערב?']];
+['היום בבוקר 90','יש מגרש היום בבוקר ל90 דקות?'],['חמישי ערב 60','מה פנוי מחר בערב לשעה?'],['שישי צהריים 120','תבדוק שישי בצהריים לשעתיים'],['שבת בבוקר',['שבת בבוקר, מגרש לשעה וחצי','אז תבדוק שבת בצהריים לשעה וחצי']],['ראשון אחרי 19','יש משהו ביום ראשון אחרי 19:00?'],['שני לפני 18','מה פנוי ביום שני לפני 18:00 ל90 דק'],['שלישי לילה',['שלישי בלילה לשעה וחצי','אז תבדוק שלישי אחר הצהריים לשעה וחצי']],['רביעי הבא','רביעי הבא בערב ל90 דקות'],['תאריך מספרי','מגרש ב25/9 בשעה 17:00 ל90 דקות'],['יום בחודש','מתי יש מגרש ב30 לחודש בערב?'],['שגיאת כתיב','יש מגרש מחר אחהצ לשעה וחצי'],['אחרי 20:30',['מתי יש מגרשים פנויים אחרי 20:30 בערב ל90 דק','אז תבדוק היום לפני 20:30 ל90 דקות']],['לפני 08:00','מגרש מחר לפני 08:00 ל60 דק'],['שעתיים','אפשר מחר ב16:00 לשעתיים?'],['ברירת מחדל 90','יש מגרש מחר בערב?']];
 for(let i=0;i<availabilityCases.length;i++)await availability(`${i+1}. ${availabilityCases[i][0]}`,availabilityCases[i][1]);
 async function convo(title,steps,{store=memoryStore(),userId='u',name='דנה',availabilityFn}={}){const turns=[];for(const step of steps){turns.push({from:'user',text:step.text||`[${step.actionId}]`});const r=await handleConversation({userId,displayName:name,text:step.text||'',actionId:step.actionId,store,now,availabilityFn});turns.push({from:'bot',...view(r)});}transcripts.push({title,type:'matching',turns});return store;}
-await convo('16. הודעת פתיחה ושני כפתורים',[{text:'שלום'}]);
+await convo('16. הודעת פתיחה ושני כפתורים',[{text:'שלום'},{actionId:'availability'},{text:'יש מגרש מחר בערב?'}]);
 const yes=async i=>({kind:'availability',date:i.date,slots:[{courtId:'c3',courtName:'3',start:'19:00',end:'20:30',durationMinutes:i.durationMinutes,price:225}]});
 const no=async i=>({kind:'availability',date:i.date,slots:[]});
 const oneoff=[{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'מחר אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:yes'},{actionId:'flex:30'}];
@@ -23,7 +23,7 @@ const req=(await shared.list('request/'))[0].value;await convo('21a. בקשת ח
 const shared2=memoryStore();await convo('22a. יצירת בקשה לחיבור שנדחה',oneoff,{store:shared2,userId:'a',name:'רוני',availabilityFn:yes});const req2=(await shared2.list('request/'))[0].value;await convo('22a2. בקשת חיבור',[{actionId:`connect:${req2.id}`}],{store:shared2,userId:'b',name:'גל',availabilityFn:yes});const conn2=(await shared2.list('connection/'))[0].value;await convo('22. דחיית חיבור',[{actionId:`decline:${conn2.id}`}],{store:shared2,userId:'a',name:'רוני',availabilityFn:yes});
 await convo('23. השתקה לשבוע',[{actionId:'mute_week'}]);
 await convo('24. השתקה מותאמת ל-14 יום',[{actionId:'mute_custom'},{actionId:'mute_14'}]);
-await convo('25. תפריט הגדרות',[{text:'הגדרות'}]);
+await convo('25. תפריט הגדרות',[{text:'הגדרות'},{actionId:'mute_week'}]);
 const mine=memoryStore();await convo('26a. יצירת בקשה לניהול',oneoff,{store:mine,userId:'me',name:'תמר',availabilityFn:yes});await convo('26. הבקשות שלי',[{actionId:'my_requests'}],{store:mine,userId:'me',name:'תמר',availabilityFn:yes});
 const mismatch=memoryStore();await convo('27a. רמה 1-2',oneoff.map(x=>x.actionId==='level:3–3.5'?{actionId:'level:1–2'}:x),{store:mismatch,userId:'low',name:'אורי',availabilityFn:yes});await convo('27. אי התאמה בין רמות רחוקות',oneoff.map(x=>x.actionId==='level:3–3.5'?{actionId:'level:4+'}:x),{store:mismatch,userId:'high',name:'לי',availabilityFn:yes});
 await convo('28. משך 120 וגמישות שעה',[{actionId:'oneoff'},{actionId:'level:3.5–4'},{text:'מחר ב17:00'},{actionId:'duration:120'},{actionId:'party:3'},{actionId:'court:yes'},{actionId:'flex:60'}],{availabilityFn:yes});
@@ -31,12 +31,14 @@ await convo('29. אין מגרש חי - הבקשה לא מתפרסמת',[{action
 const sweep=memoryStore();await convo('30a. מנוי ראשון לסריקה',[{actionId:'recurring'},{actionId:'level:3–3.5'},{text:'ימי חמישי אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:no'},{actionId:'flex:30'}],{store:sweep,userId:'s1',name:'שרון',availabilityFn:yes});await convo('30b. מנוי שני לסריקה',[{actionId:'recurring'},{actionId:'level:3–3.5'},{text:'ימי חמישי אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:no'},{actionId:'flex:30'}],{store:sweep,userId:'s2',name:'עדי',availabilityFn:yes});const first=await dailySweep(sweep,now),second=await dailySweep(sweep,now);transcripts.push({title:'30. סריקה יומית ומניעת כפילות',type:'matching',turns:[{from:'system',text:`סריקה ראשונה: ${first.length} התאמות; סריקה חוזרת: ${second.length} התאמות חדשות.`},{from:'bot',text:'אותה התאמה אינה נשלחת פעמיים.'}]});
 // Extended entry/menu conversations.
 async function routed(title,steps){const store=memoryStore(),turns=[];for(const step of steps){turns.push({from:'user',text:step.text||`[${step.actionId}]`});const r=await routeIncoming({userId:`ext-${title}`,displayName:'דנה',text:step.text||'',actionId:step.actionId,store,now,availabilityFn:yes});turns.push({from:'bot',...view(r)});}transcripts.push({title,type:'entry',turns});}
-await routed('31. ברכה בלבד מציגה פתיחה',[{text:'היי'}]);
+await routed('31. ברכה בלבד מציגה פתיחה',[{text:'היי'},{actionId:'availability'},{text:'יש מגרש מחר בערב?'}]);
 await routed('32. שאלה ראשונה מקבלת תשובה ותפריט',[{text:'יש מגרש מחר בערב?'}]);
-await routed('33. שאלה לא מוכרת בלי פתיחה מלאה',[{text:'כמה עולה מנוי?'}]);
-await routed('34. תפריט זמין באמצע תהליך',[{actionId:'players'},{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'תפריט'}]);
+await routed('33. שאלה לא מוכרת בלי פתיחה מלאה',[{text:'כמה עולה מנוי?'},{text:'יש מגרש מחר בערב?'}]);
+await routed('34. תפריט זמין באמצע תהליך',[{actionId:'players'},{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'תפריט'},{actionId:'availability'},{text:'יש מגרש מחר בערב?'}]);
 // Keep exactly 34 numbered scenarios: auxiliary setup transcripts omitted from report.
 const final=transcripts.filter(x=>/^([1-9]|[12][0-9]|3[0-4])\./.test(x.title)&&!/^[0-9]+[a-z]/.test(x.title.split('.')[0])).filter(x=>!/^20a|21a|22a|26a|27a|30a|30b/.test(x.title));
 if(final.length!==34)throw Error(`expected 34, got ${final.length}: ${final.map(x=>x.title).join(',')}`);
+const dangling=final.filter(x=>{const last=x.turns.at(-1);return last.from==='bot'&&(/\?$/.test(last.text.trim())||/מה תרצו לעשות\?|רוצה שאבדוק|אפשר לנסח .*\?|כתבו .*ואצמצם/.test(last.text));});
+if(dangling.length)throw Error(`dangling bot prompt in: ${dangling.map(x=>x.title).join(',')}`);
 await import('node:fs').then(fs=>fs.writeFileSync('/tmp/gt-30-transcripts.json',JSON.stringify(final,null,2)));
 console.log(JSON.stringify({count:final.length,titles:final.map(x=>x.title)},null,2));
