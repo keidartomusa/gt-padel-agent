@@ -1,0 +1,11 @@
+import test from "node:test"; import assert from "node:assert/strict";
+import { parseIntent } from "../src/intent.js"; import { findAvailability,formatHebrew } from "../src/availability.js"; import { clearCache } from "../src/matchpointer.js";
+const venue={id:"v",name:"GT",timezone:"Asia/Jerusalem",advance_booking_days:21,opening_hours:[{day:"Wednesday",isOpen:true,timeRanges:[{openTime:"16:00",closeTime:"23:00"}]}]};
+const courts=[1,2,3].map(n=>({id:`c${n}`,name:String(n),sport:"padel",court_type:"outdoor",is_active:true}));
+const pricing=courts.flatMap(c=>[{court_id:c.id,day_of_week:3,start_time:"16:00:00",end_time:"23:00:00",price:160,price_90:240,price_120:320,label:"test"}]);
+function api(url){let data;if(url.includes("/venues?"))data=[venue];else if(url.includes("/courts?"))data=courts;else if(url.includes("/pricing_rules?"))data=pricing;else if(url.includes("/pricing_date_overrides?"))data=[];else if(url.includes("/reservation_slots?"))data=[{id:"r",court_id:"c1",date:"2026-09-23",start_time:"18:00:00",end_time:"19:00:00",status:"confirmed"}];else throw Error(url);return Promise.resolve({ok:true,json:async()=>data});}
+test("parses free Hebrew tomorrow evening",async()=>{delete process.env.OPENAI_API_KEY;const x=await parseIntent("יש מגרש מחר בערב?",new Date("2026-09-22T08:00:00Z"));assert.deepEqual({date:x.date,start:x.startMinute,end:x.endMinute,duration:x.durationMinutes},{date:"2026-09-23",start:1020,end:1380,duration:60});});
+test("real engine excludes occupied court and prices live slots",async()=>{clearCache();const r=await findAvailability({date:"2026-09-23",startMinute:1080,endMinute:1200,durationMinutes:60},{fetchImpl:api,today:"2026-09-22"});assert(!r.slots.some(s=>s.courtId==="c1"&&s.start==="18:00"));assert(r.slots.some(s=>s.courtId==="c2"&&s.start==="18:00"&&s.price===160));assert.match(formatHebrew(r),/מגרש 2: 18:00–19:00 · ₪160/);});
+test("90 minute price comes from pricing rule",async()=>{clearCache();const r=await findAvailability({date:"2026-09-23",startMinute:1140,endMinute:1260,durationMinutes:90},{fetchImpl:api,today:"2026-09-22"});assert(r.slots.some(s=>s.price===240));});
+
+test("parses day after tomorrow without shadowing",async()=>{delete process.env.OPENAI_API_KEY;const x=await parseIntent("מגרש מחרתיים בערב",new Date("2026-09-22T08:00:00Z"));assert.equal(x.date,"2026-09-24");});
