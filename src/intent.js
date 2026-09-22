@@ -17,7 +17,7 @@ function dateFromDayOfMonth(day,today){
 }
 function nextWeekday(today,target,nextWeek=false){ let delta=(target-weekdayIndex(today)+7)%7; if(delta===0||nextWeek) delta+=7; return addDays(today,delta); }
 function parseClock(text){
-  const m=text.match(/(?:בשעה|סביב|בערך|מ|אחרי|ב)\s*(\d{1,2})(?::(\d{2}))?/);
+  const m=text.match(/בשעה\s*(\d{1,2})(?::(\d{2}))?/)||text.match(/(?:סביב|בערך|מ|אחרי|ב)\s*(\d{1,2})(?::(\d{2}))?(?![\d/])/);
   if(!m) return [null,null]; let h=Number(m[1]), minute=Number(m[2]||0);
   if(h>23||minute>59) return [null,null];
   if(h<=6 && /ערב|לילה/.test(text)) h+=12; else if(h<12 && /(?:צהריים|אחה["״']?צ|אחר\s*הצהריים)/.test(text)) h+=12;
