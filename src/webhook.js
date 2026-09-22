@@ -1,0 +1,2 @@
+import {answer}from"./agent.js";import{handleConversation}from"./conversation.js";
+export async function routeIncoming({userId,displayName,text="",actionId,store,now=new Date(),availabilityFn}){const result=await handleConversation({userId,displayName,text,actionId,store,now,availabilityFn});if(result.mode==="availability")return{text:`${await answer(result.query,{now})}\n\nכתבו *תפריט* בכל שלב כדי לראות את האפשרויות.`,buttons:[{id:"menu",title:"לתפריט"}]};return result;}
