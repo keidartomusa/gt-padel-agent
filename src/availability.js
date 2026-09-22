@@ -13,3 +13,6 @@ export function formatHebrew(result,{maxGroups=5}={}){
   const tail=groups.length>maxGroups?`\nיש עוד שעות פנויות. כתוב לי טווח מועדף ואצמצם.`:"";
   return `יש זמינות ב${label}:\n${lines.join("\n")}${tail}\n\nזו בדיקת זמינות בלבד, לא הזמנה.`;
 }
+
+export async function findAvailabilitySeries(intent,opts={}){const dates=intent.dates?.length?intent.dates:[intent.date];return Promise.all(dates.map(date=>findAvailability({...intent,date,dates:undefined},opts)));}
+export function formatHebrewSeries(results,options={}){if(results.length===1)return formatHebrew(results[0],options);const sections=results.map(r=>{const label=heDate(r.date);if(r.kind==="outside_window")return null;if(!r.slots.length)return `*${label}*\nלא נמצאה זמינות בטווח שביקשת.`;const lines=grouped(r.slots).slice(0,3).map(g=>{const courts=g.courts.length===3?"כל 3 המגרשים":g.courts.length===1?`מגרש ${g.courts[0]}`:`מגרשים ${g.courts.join(", ")}`;return `• ${g.start}–${g.end} · ${courts}${g.price!=null?` · ₪${g.price}`:""}`;});return `*${label}*\n${lines.join("\n")}`;}).filter(Boolean);return `${sections.join("\n\n")}\n\nזו בדיקת זמינות בלבד, לא הזמנה.`;}

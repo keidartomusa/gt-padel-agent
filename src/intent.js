@@ -34,8 +34,15 @@ export function parseIntentLocal(raw,now=new Date()){
   else if(dom){const day=Number(dom[1]||dom[2]);if(day>=1&&day<=31){const candidate=dateFromDayOfMonth(day,today);if(candidate){date=candidate;dateExplicit=true;}}}
   if(!dateExplicit){ const w=text.match(/(?:יום\s*)?(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?:\s+(הבא))?/); if(w){date=nextWeekday(today,HEBREW_WEEKDAYS.get(w[1]),Boolean(w[2]));dateExplicit=true;} }
   let [startMinute,endMinute]=parseClock(text); for(const {re,range} of WINDOWS) if(re.test(text)){[startMinute,endMinute]=range;}
+  // Relational clock constraints are stronger than broad day-parts. "אחרי 20:30 בערב" starts at 20:30.
+  const after=text.match(/אחרי\s*(\d{1,2})(?::(\d{2}))?/);
+  const before=text.match(/לפני\s*(\d{1,2})(?::(\d{2}))?/);
+  if(after){let h=Number(after[1]),m=Number(after[2]||0);if(h<=6&&/ערב|לילה/.test(text))h+=12;startMinute=h*60+m;endMinute=1440;}
+  if(before){let h=Number(before[1]),m=Number(before[2]||0);if(h<=6&&/ערב|לילה/.test(text))h+=12;startMinute=0;endMinute=h*60+m;}
   const durationMinutes=/(?:שעה\s*וחצי|90\s*(?:דק|דקות)?)/.test(text)?90:/(?:שעתיים|120\s*(?:דק|דקות)?)/.test(text)?120:60;
-  return {date,startMinute,endMinute,durationMinutes,source:"local",dateExplicit};
+  const recurringWeekday=/ימי\s+(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?:\s+הבאים)?/.exec(text);
+  const dates=recurringWeekday?Array.from({length:3},(_,i)=>addDays(nextWeekday(today,HEBREW_WEEKDAYS.get(recurringWeekday[1])),i*7)):undefined;
+  return {date,startMinute,endMinute,durationMinutes,source:"local",dateExplicit,dates};
 }
 function sane(parsed,today){ return parsed&&validIso(parsed.date)&&parsed.date>=today&&[60,90,120].includes(parsed.durationMinutes)&&[parsed.startMinute,parsed.endMinute].every(v=>v==null||(Number.isInteger(v)&&v>=0&&v<=1440)); }
 export async function parseIntent(text,now=new Date(),fetchImpl=fetch){
@@ -45,6 +52,6 @@ export async function parseIntent(text,now=new Date(),fetchImpl=fetch){
     const res=await fetchImpl("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({model:process.env.OPENAI_MODEL||"gpt-4o-mini",temperature:0,response_format:{type:"json_object"},messages:[{role:"system",content:`Extract a GT Padel availability request in Hebrew. Today is ${today}, Asia/Jerusalem. Return only JSON: date (YYYY-MM-DD), startMinute (integer|null), endMinute (integer|null), durationMinutes (60|90|120). Resolve "25 לחודש" to the next calendar date numbered 25, never today. Morning 06:00-12:00, afternoon 12:00-17:00, evening 17:00-23:00. Do not invent a time.`},{role:"user",content:text}]})});
     if(!res.ok) throw Error(`OpenAI ${res.status}`); const parsed=JSON.parse((await res.json()).choices[0].message.content);
     // Explicit deterministic dates win over model drift; LLM helps only with fuzzy language.
-    const merged=local.dateExplicit?{...parsed,date:local.date}:{...local,...parsed}; return sane(merged,today)?{...merged,source:"llm"}:local;
+    const merged=local.dateExplicit?{...parsed,...local,date:local.date}:{...local,...parsed,dates:local.dates}; return sane(merged,today)?{...merged,source:"llm"}:local;
   }catch{return local;}
 }
