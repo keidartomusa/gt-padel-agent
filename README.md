@@ -20,3 +20,4 @@ netlify dev
 Webhook: `/api/webhooks/whatsapp`. Keep `DISABLE_OUTBOUND=true` until Meta verification and a smoke test pass.
 
 The Matchpointer anon key is public browser configuration, not a service-role credential. Availability is informational and can change before booking.
+

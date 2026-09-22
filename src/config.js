@@ -9,3 +9,4 @@ export const CONFIG = Object.freeze({
   // Public anon key shipped by Matchpointer's browser app. It is not a service-role secret.
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5YXV4eWZjb2pvY3d5YWJkYWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkzNTA2NjIsImV4cCI6MjA4NDkyNjY2Mn0.fAgM37xyYVJ6LgFOjmbMap4imH07Gn-kLzOCWTh7_rI"
 });
+

@@ -10,3 +10,4 @@
   from = "/health"
   to = "/.netlify/functions/health"
   status = 200
+

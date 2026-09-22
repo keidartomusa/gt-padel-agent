@@ -5,3 +5,4 @@ export async function sendText(to,body,phoneNumberId,fetchImpl=fetch){
  const res=await fetchImpl(`https://graph.facebook.com/v21.0/${id}/messages`,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({messaging_product:"whatsapp",to,type:"text",text:{body}})});
  return res.ok?{sent:true}:{sent:false,reason:`api_error_${res.status}`};
 }
+

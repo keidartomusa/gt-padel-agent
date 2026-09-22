@@ -13,3 +13,4 @@ export function rangesFor(venue, iso) {
   if (!d?.isOpen) return [];
   return d.timeRanges?.length ? d.timeRanges : [{openTime:d.openTime,closeTime:d.closeTime}];
 }
+

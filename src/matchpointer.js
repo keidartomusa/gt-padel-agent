@@ -28,3 +28,4 @@ export async function occupied(from, to, courtIds, fetchImpl = fetch) {
   return rows.filter(r => ids.has(r.court_id));
 }
 export function clearCache() { cache = { expires: 0, value: null }; }
+
