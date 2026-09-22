@@ -17,7 +17,7 @@ function dateFromDayOfMonth(day,today){
 }
 function nextWeekday(today,target,nextWeek=false){ let delta=(target-weekdayIndex(today)+7)%7; if(delta===0||nextWeek) delta+=7; return addDays(today,delta); }
 function parseClock(text){
-  const m=text.match(/(?:בשעה|סביב|בערך|מ|אחרי|ב)\s*(\d{1,2})(?::(\d{2}))?/);
+  const m=text.match(/בשעה\s*(\d{1,2})(?::(\d{2}))?/)||text.match(/(?:סביב|בערך|מ|אחרי|ב)\s*(\d{1,2})(?::(\d{2}))?(?![\d/])/);
   if(!m) return [null,null]; let h=Number(m[1]), minute=Number(m[2]||0);
   if(h>23||minute>59) return [null,null];
   if(h<=6 && /ערב|לילה/.test(text)) h+=12; else if(h<12 && /(?:צהריים|אחה["״']?צ|אחר\s*הצהריים)/.test(text)) h+=12;
@@ -33,13 +33,13 @@ export function parseIntentLocal(raw,now=new Date()){
   else if(slash){const candidate=`${slash[3]||today.slice(0,4)}-${pad(slash[2])}-${pad(slash[1])}`;if(validIso(candidate)){date=candidate;dateExplicit=true;}}
   else if(dom){const day=Number(dom[1]||dom[2]);if(day>=1&&day<=31){const candidate=dateFromDayOfMonth(day,today);if(candidate){date=candidate;dateExplicit=true;}}}
   if(!dateExplicit){ const w=text.match(/(?:יום\s*)?(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?:\s+(הבא))?/); if(w){date=nextWeekday(today,HEBREW_WEEKDAYS.get(w[1]),Boolean(w[2]));dateExplicit=true;} }
-  let [startMinute,endMinute]=parseClock(text); for(const {re,range} of WINDOWS) if(re.test(text)){[startMinute,endMinute]=range;}
+  let [startMinute,endMinute]=parseClock(text);if(startMinute==null)for(const {re,range} of WINDOWS)if(re.test(text)){[startMinute,endMinute]=range;}
   // Relational clock constraints are stronger than broad day-parts. "אחרי 20:30 בערב" starts at 20:30.
   const after=text.match(/אחרי\s*(\d{1,2})(?::(\d{2}))?/);
   const before=text.match(/לפני\s*(\d{1,2})(?::(\d{2}))?/);
   if(after){let h=Number(after[1]),m=Number(after[2]||0);if(h<=6&&/ערב|לילה/.test(text))h+=12;startMinute=h*60+m;endMinute=1440;}
   if(before){let h=Number(before[1]),m=Number(before[2]||0);if(h<=6&&/ערב|לילה/.test(text))h+=12;startMinute=0;endMinute=h*60+m;}
-  const durationMinutes=/(?:שעה\s*וחצי|90\s*(?:דק|דקות)?)/.test(text)?90:/(?:שעתיים|120\s*(?:דק|דקות)?)/.test(text)?120:90;
+  const durationMinutes=/(?:שעה\s*וחצי|90\s*(?:דק|דקות)?)/.test(text)?90:/(?:שעתיים|120\s*(?:דק|דקות)?)/.test(text)?120:/(?:לשעה(?!\s*וחצי)|60\s*(?:דק|דקות)?)/.test(text)?60:90;
   const recurringWeekday=/ימי\s+(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?:\s+הבאים)?/.exec(text);
   const dates=recurringWeekday?Array.from({length:3},(_,i)=>addDays(nextWeekday(today,HEBREW_WEEKDAYS.get(recurringWeekday[1])),i*7)):undefined;
   return {date,startMinute,endMinute,durationMinutes,source:"local",dateExplicit,dates};
