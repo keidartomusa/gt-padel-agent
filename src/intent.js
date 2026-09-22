@@ -39,7 +39,7 @@ export function parseIntentLocal(raw,now=new Date()){
   const before=text.match(/לפני\s*(\d{1,2})(?::(\d{2}))?/);
   if(after){let h=Number(after[1]),m=Number(after[2]||0);if(h<=6&&/ערב|לילה/.test(text))h+=12;startMinute=h*60+m;endMinute=1440;}
   if(before){let h=Number(before[1]),m=Number(before[2]||0);if(h<=6&&/ערב|לילה/.test(text))h+=12;startMinute=0;endMinute=h*60+m;}
-  const durationMinutes=/(?:שעה\s*וחצי|90\s*(?:דק|דקות)?)/.test(text)?90:/(?:שעתיים|120\s*(?:דק|דקות)?)/.test(text)?120:60;
+  const durationMinutes=/(?:שעה\s*וחצי|90\s*(?:דק|דקות)?)/.test(text)?90:/(?:שעתיים|120\s*(?:דק|דקות)?)/.test(text)?120:90;
   const recurringWeekday=/ימי\s+(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?:\s+הבאים)?/.exec(text);
   const dates=recurringWeekday?Array.from({length:3},(_,i)=>addDays(nextWeekday(today,HEBREW_WEEKDAYS.get(recurringWeekday[1])),i*7)):undefined;
   return {date,startMinute,endMinute,durationMinutes,source:"local",dateExplicit,dates};
