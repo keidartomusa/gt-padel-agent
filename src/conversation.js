@@ -10,7 +10,7 @@ const recurringDays=text=>[...WD].filter(([name])=>text.includes(name)).map(([,n
 export async function handleConversation({userId,displayName="שחקן/ית",text="",actionId,store,now=new Date(),availabilityFn=findAvailability}){
  const input=(actionId||text).trim(),state=await store.get(`state/${userId}`)||{}; const set=async s=>store.set(`state/${userId}`,s);
  if(/^(היי|הי|שלום|תפריט|menu|start)$/i.test(input)||input==="menu")return welcome();
- if(input==="availability"||/מגרש(?:ים)?(?:\s+פנוי)?|זמינות|איזה מגרשים|איפה מזמינים|מה פנוי/.test(input))return{mode:"availability",query:text||input};
+ if(input==="availability"||/מגרש(?:ים)?(?:\s+פנוי)?|זמינות|איזה מגרשים|איפה מזמינים|מה פנוי|תבדוק|(?:היום|מחר|ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת).*(?:בוקר|צהריים|ערב|לילה|שעה|דקות|דק)/.test(input))return{mode:"availability",query:text||input};
  if(input==="players"||/מציאת שחקנים/.test(input)){await set({flow:"players",step:"mode"});return btn("איך תרצו למצוא משחק?",[{id:"oneoff",title:"משחק נקודתי"},{id:"recurring",title:"זמינות קבועה"},{id:"board",title:"בקשות פתוחות"}]);}
  if(input==="settings"||/הגדרות|הבקשות שלי/.test(input))return btn("*ניהול הבקשות וההתראות*",[{id:"my_requests",title:"הבקשות שלי"},{id:"mute_week",title:"השתקה לשבוע"},{id:"mute_custom",title:"השתקה אחרת"}]);
  if(input==="mute_week"){const until=new Date(now);until.setDate(until.getDate()+7);await mute(store,userId,until.toISOString());return btn("ההתראות הושתקו לשבוע. אפשר לשנות זאת בכל רגע דרך תפריט ההגדרות.",[{id:"menu",title:"לתפריט"}]);}
