@@ -36,7 +36,7 @@ await routed('32. שאלה ראשונה מקבלת תשובה ותפריט',[{te
 await routed('33. שאלה לא מוכרת בלי פתיחה מלאה',[{text:'כמה עולה מנוי?'}]);
 await routed('34. תפריט זמין באמצע תהליך',[{actionId:'players'},{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'תפריט'}]);
 // Keep exactly 34 numbered scenarios: auxiliary setup transcripts omitted from report.
-const final=transcripts.filter(x=>/^([1-9]|1[0-9]|2[0-9]|30)\./.test(x.title)&&!/^[0-9]+[a-z]/.test(x.title.split('.')[0])).filter(x=>!/^20a|21a|22a|26a|27a|30a|30b/.test(x.title));
+const final=transcripts.filter(x=>/^([1-9]|[12][0-9]|3[0-4])\./.test(x.title)&&!/^[0-9]+[a-z]/.test(x.title.split('.')[0])).filter(x=>!/^20a|21a|22a|26a|27a|30a|30b/.test(x.title));
 if(final.length!==34)throw Error(`expected 34, got ${final.length}: ${final.map(x=>x.title).join(',')}`);
 await import('node:fs').then(fs=>fs.writeFileSync('/tmp/gt-30-transcripts.json',JSON.stringify(final,null,2)));
 console.log(JSON.stringify({count:final.length,titles:final.map(x=>x.title)},null,2));
