@@ -3,7 +3,7 @@ import {routeIncoming} from '../src/webhook.js';
 import {memoryStore} from '../src/store.js';
 const now=new Date('2026-09-23T00:10:00+03:00'), transcripts=[];
 const view=r=>({text:r.text,buttons:r.buttons?.map(x=>x.title),list:r.list?.sections?.flatMap(s=>s.rows.map(x=>x.title)),messages:r.messages,notifications:r.notifications?.map(x=>({to:x.to,text:x.response.text,buttons:x.response.buttons?.map(b=>b.title)}))});
-const yes=async i=>({kind:'availability',date:i.date,slots:[{courtId:'c3',courtName:'3',start:'19:00',end:'20:30',durationMinutes:i.durationMinutes,price:225}]});
+const yes=async i=>({kind:'availability',date:i.date,slots:[{courtId:'c3',courtName:'3',start:'19:00',end:'20:30',durationMinutes:i.durationMinutes,price:null}]});
 const no=async i=>({kind:'availability',date:i.date,slots:[]});
 async function run(title,steps,{store=memoryStore(),userId=`u-${transcripts.length+1}`,name='דנה',availabilityFn=yes,type='conversation'}={}){const turns=[];for(const step of steps){turns.push({from:'user',text:step.text||`[${step.actionId}]`});const r=await routeIncoming({userId,displayName:name,text:step.text||'',actionId:step.actionId,store,now,availabilityFn});turns.push({from:'bot',...view(r)});}transcripts.push({title,type,turns});return {store,turns};}
 const availabilityQueries=[

@@ -1,0 +1,900 @@
+{
+  "capturedAt": "2026-09-22T21:36:15.723Z",
+  "source": "https://api.matchpointer.app/rest/v1",
+  "venue": {
+    "id": "0e37917d-6702-4b19-969c-4e860aa3eeaa",
+    "name": "GT PADEL",
+    "timezone": "Asia/Jerusalem",
+    "opening_hours": [
+      {
+        "day": "Sunday",
+        "isOpen": true,
+        "openTime": "06:00",
+        "closeTime": "23:00",
+        "timeRanges": [
+          {
+            "openTime": "06:00",
+            "closeTime": "14:00"
+          },
+          {
+            "openTime": "16:00",
+            "closeTime": "23:00"
+          }
+        ]
+      },
+      {
+        "day": "Monday",
+        "isOpen": true,
+        "openTime": "06:00",
+        "closeTime": "23:00",
+        "timeRanges": [
+          {
+            "openTime": "06:00",
+            "closeTime": "14:00"
+          },
+          {
+            "openTime": "16:00",
+            "closeTime": "23:00"
+          }
+        ]
+      },
+      {
+        "day": "Tuesday",
+        "isOpen": true,
+        "openTime": "06:00",
+        "closeTime": "23:00",
+        "timeRanges": [
+          {
+            "openTime": "06:00",
+            "closeTime": "14:00"
+          },
+          {
+            "openTime": "16:00",
+            "closeTime": "23:00"
+          }
+        ]
+      },
+      {
+        "day": "Wednesday",
+        "isOpen": true,
+        "openTime": "06:00",
+        "closeTime": "23:00",
+        "timeRanges": [
+          {
+            "openTime": "06:00",
+            "closeTime": "14:00"
+          },
+          {
+            "openTime": "16:00",
+            "closeTime": "23:00"
+          }
+        ]
+      },
+      {
+        "day": "Thursday",
+        "isOpen": true,
+        "openTime": "06:00",
+        "closeTime": "23:00",
+        "timeRanges": [
+          {
+            "openTime": "06:00",
+            "closeTime": "14:00"
+          },
+          {
+            "openTime": "16:00",
+            "closeTime": "23:00"
+          }
+        ]
+      },
+      {
+        "day": "Friday",
+        "isOpen": true,
+        "openTime": "07:00",
+        "closeTime": "18:30",
+        "timeRanges": [
+          {
+            "openTime": "07:00",
+            "closeTime": "14:00"
+          },
+          {
+            "openTime": "16:00",
+            "closeTime": "18:30"
+          }
+        ]
+      },
+      {
+        "day": "Saturday",
+        "isOpen": true,
+        "openTime": "07:00",
+        "closeTime": "23:00",
+        "timeRanges": [
+          {
+            "openTime": "07:00",
+            "closeTime": "14:00"
+          },
+          {
+            "openTime": "16:00",
+            "closeTime": "23:00"
+          }
+        ]
+      }
+    ],
+    "advance_booking_days": 21
+  },
+  "courts": [
+    {
+      "id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "name": "1",
+      "sport": "padel",
+      "court_type": "outdoor",
+      "is_active": true
+    },
+    {
+      "id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "name": "2",
+      "sport": "padel",
+      "court_type": "outdoor",
+      "is_active": true
+    },
+    {
+      "id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "name": "3",
+      "sport": "padel",
+      "court_type": "outdoor",
+      "is_active": true
+    }
+  ],
+  "pricing": [
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 0,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 0,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 0,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 1,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 1,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 1,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 6,
+      "start_time": "06:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "שבת מחיר רגיל - לא הרצה יום שבת"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 6,
+      "start_time": "06:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "שבת מחיר רגיל - לא הרצה יום שבת"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 6,
+      "start_time": "06:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "שבת מחיר רגיל - לא הרצה יום שבת"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 2,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 2,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 2,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 3,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 3,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 3,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 4,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 4,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 0,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שעות בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 1,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שעות בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 2,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שעות בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 5,
+      "start_time": "06:00:00",
+      "end_time": "22:00:00",
+      "price": 150,
+      "price_90": null,
+      "price_120": null,
+      "label": "סוף שבוע"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 5,
+      "start_time": "06:00:00",
+      "end_time": "22:00:00",
+      "price": 150,
+      "price_90": null,
+      "price_120": null,
+      "label": "סוף שבוע"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 5,
+      "start_time": "06:00:00",
+      "end_time": "22:00:00",
+      "price": 150,
+      "price_90": null,
+      "price_120": null,
+      "label": "סוף שבוע"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 3,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שעות בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 4,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שעות בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "42056cf9-9adb-4c4f-ac1a-175ff7755dc8",
+      "day_of_week": 6,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 60,
+      "price_90": null,
+      "price_120": null,
+      "label": "טניס שבת בוקר"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 4,
+      "start_time": "17:00:00",
+      "end_time": "23:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "אמצע שבוע ערב"
+    },
+    {
+      "court_id": "42056cf9-9adb-4c4f-ac1a-175ff7755dc8",
+      "day_of_week": 4,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 40,
+      "price_90": null,
+      "price_120": null,
+      "label": "טניס שעות היום"
+    },
+    {
+      "court_id": null,
+      "day_of_week": null,
+      "start_time": "00:00:00",
+      "end_time": "24:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "default"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 0,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 0,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 0,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 1,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 1,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 2,
+      "start_time": "16:00:00",
+      "end_time": "22:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שעות ערב אמצש"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 3,
+      "start_time": "16:00:00",
+      "end_time": "22:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שעות ערב אמצש"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 4,
+      "start_time": "16:00:00",
+      "end_time": "22:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שעות ערב אמצש"
+    },
+    {
+      "court_id": null,
+      "day_of_week": 5,
+      "start_time": "16:00:00",
+      "end_time": "18:30:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שישי אחהצ"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 6,
+      "start_time": "16:00:00",
+      "end_time": "22:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שבת ערב"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 1,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 2,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 2,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 2,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 3,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 3,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 3,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "day_of_week": 4,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "day_of_week": 4,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "day_of_week": 4,
+      "start_time": "06:00:00",
+      "end_time": "17:00:00",
+      "price": 160,
+      "price_90": null,
+      "price_120": null,
+      "label": "בוקר אמצע שבוע"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 5,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שישי שבת"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 6,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שישי שבת"
+    },
+    {
+      "court_id": "42056cf9-9adb-4c4f-ac1a-175ff7755dc8",
+      "day_of_week": 2,
+      "start_time": "16:00:00",
+      "end_time": "19:00:00",
+      "price": 60,
+      "price_90": null,
+      "price_120": null,
+      "label": "שלישי 16-19 חינם לגני תקווה"
+    },
+    {
+      "court_id": "42056cf9-9adb-4c4f-ac1a-175ff7755dc8",
+      "day_of_week": 5,
+      "start_time": "16:00:00",
+      "end_time": "18:30:00",
+      "price": 60,
+      "price_90": null,
+      "price_120": null,
+      "label": "טניס שישי אחהצ"
+    },
+    {
+      "court_id": "42056cf9-9adb-4c4f-ac1a-175ff7755dc8",
+      "day_of_week": 5,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 60,
+      "price_90": null,
+      "price_120": null,
+      "label": "טניס שישי בוקר"
+    },
+    {
+      "court_id": "42056cf9-9adb-4c4f-ac1a-175ff7755dc8",
+      "day_of_week": 6,
+      "start_time": "16:00:00",
+      "end_time": "23:00:00",
+      "price": 60,
+      "price_90": null,
+      "price_120": null,
+      "label": "טניס שבת ערב"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 0,
+      "start_time": "16:00:00",
+      "end_time": "22:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שעות ערב אמצש"
+    },
+    {
+      "court_id": "61e3941c-4400-418f-863f-570c701b8f9d",
+      "day_of_week": 1,
+      "start_time": "16:00:00",
+      "end_time": "22:00:00",
+      "price": 50,
+      "price_90": null,
+      "price_120": null,
+      "label": "שעות ערב אמצש"
+    },
+    {
+      "court_id": "42056cf9-9adb-4c4f-ac1a-175ff7755dc8",
+      "day_of_week": 0,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 40,
+      "price_90": null,
+      "price_120": null,
+      "label": "טניס שעות היום"
+    },
+    {
+      "court_id": "42056cf9-9adb-4c4f-ac1a-175ff7755dc8",
+      "day_of_week": 1,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 40,
+      "price_90": null,
+      "price_120": null,
+      "label": "טניס שעות היום"
+    },
+    {
+      "court_id": "42056cf9-9adb-4c4f-ac1a-175ff7755dc8",
+      "day_of_week": null,
+      "start_time": "16:00:00",
+      "end_time": "23:00:00",
+      "price": 60,
+      "price_90": null,
+      "price_120": null,
+      "label": "טניס שעות ערב"
+    },
+    {
+      "court_id": "42056cf9-9adb-4c4f-ac1a-175ff7755dc8",
+      "day_of_week": 2,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 40,
+      "price_90": null,
+      "price_120": null,
+      "label": "טניס שעות היום"
+    },
+    {
+      "court_id": "42056cf9-9adb-4c4f-ac1a-175ff7755dc8",
+      "day_of_week": 3,
+      "start_time": "06:00:00",
+      "end_time": "16:00:00",
+      "price": 40,
+      "price_90": null,
+      "price_120": null,
+      "label": "טניס שעות היום"
+    }
+  ],
+  "overrides": [
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "override_date": "2026-09-13",
+      "start_time": "06:00:00",
+      "end_time": "18:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "ראש השנה"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "override_date": "2026-09-13",
+      "start_time": "06:00:00",
+      "end_time": "18:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "ראש השנה"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "override_date": "2026-09-13",
+      "start_time": "06:00:00",
+      "end_time": "18:00:00",
+      "price": 200,
+      "price_90": null,
+      "price_120": null,
+      "label": "ראש השנה"
+    }
+  ],
+  "reservations": [
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "date": "2026-09-25",
+      "start_time": "10:00",
+      "end_time": "11:30",
+      "id": "8516ffa4-4c8b-438b-b506-797fb6dcf084",
+      "status": "confirmed"
+    },
+    {
+      "court_id": "0529104c-184e-44ef-b13b-0cecd3e758e1",
+      "date": "2026-09-25",
+      "start_time": "09:00",
+      "end_time": "10:00",
+      "id": "86813ce5-f938-4a52-b13c-96e748ad4180",
+      "status": "confirmed"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "date": "2026-09-25",
+      "start_time": "11:30",
+      "end_time": "14:00",
+      "id": "b3d24dd3-0f85-4573-8a97-bdef4cdf2c6c",
+      "status": "confirmed"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "date": "2026-09-25",
+      "start_time": "17:00",
+      "end_time": "18:30",
+      "id": "91e9fc0a-78c2-4aff-93cd-8dbd5cac21b8",
+      "status": "confirmed"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "date": "2026-09-25",
+      "start_time": "07:00",
+      "end_time": "10:00",
+      "id": "3f3cf039-5287-4f06-bb52-913a5afcce55",
+      "status": "confirmed"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "date": "2026-09-25",
+      "start_time": "16:00",
+      "end_time": "17:00",
+      "id": "43e5a524-67d7-46ff-ba86-7805fd40aa84",
+      "status": "confirmed"
+    },
+    {
+      "court_id": "0f3c93eb-e851-48c9-b748-13eef346d7ca",
+      "date": "2026-09-25",
+      "start_time": "10:00",
+      "end_time": "11:30",
+      "id": "a2be39c4-9d4d-434b-adc1-73b18d63cfda",
+      "status": "confirmed"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "date": "2026-09-25",
+      "start_time": "08:00",
+      "end_time": "09:00",
+      "id": "190ef68a-cebb-4348-aff9-cfc4804e5cd6",
+      "status": "confirmed"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "date": "2026-09-25",
+      "start_time": "12:00",
+      "end_time": "14:00",
+      "id": "68c079d6-6e64-4c0a-83b7-6349cf14c33c",
+      "status": "confirmed"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "date": "2026-09-25",
+      "start_time": "09:00",
+      "end_time": "10:30",
+      "id": "61d1b891-ef4d-4b46-bde5-2c7abb656faf",
+      "status": "confirmed"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "date": "2026-09-25",
+      "start_time": "16:00",
+      "end_time": "17:00",
+      "id": "ecb84b2f-1f3d-40f3-be21-0bfa871d355e",
+      "status": "confirmed"
+    },
+    {
+      "court_id": "bf73df99-e7e6-4292-bf76-c42db7b0a3db",
+      "date": "2026-09-25",
+      "start_time": "17:30",
+      "end_time": "18:30",
+      "id": "70980e45-9bf2-4b5a-92ea-9738e64f7d27",
+      "status": "confirmed"
+    }
+  ],
+  "date": "2026-09-25"
+}
