@@ -19,3 +19,17 @@ test("dashboard: chat list + bubbles + prev/next, clear booking labels, no raw i
   assert.doesNotMatch(html, />אישור משתמש<|>אימות ספק<|>clicked</); assert.match(html, /המשתמש אישר שהזמין/); assert.match(html, /מופיע ביומן המועדון/);
   assert.doesNotMatch(html, /[–—]/);
 });
+
+// Tom 23.9 15:46: last-message preview in the dashboard chat list.
+test("dashboard: last message preview per user, without buttons or template tag", async () => {
+  const { previewText, addPreviews, logMessage } = await import("../src/messagelog.js"); const { memoryStore } = await import("../src/store.js");
+  assert.equal(previewText("*מה הרמה שלכם?*\n[רשימה] 1-2 | 2-2.5"), "מה הרמה שלכם?");
+  assert.equal(previewText("[תבנית match_alert] יש התאמה"), "יש התאמה");
+  const st = memoryStore();
+  await logMessage(st, "972500000001", { direction: "in", kind: "user", body: "שלום", at: new Date("2026-09-23T10:00:00Z") });
+  await logMessage(st, "972500000001", { direction: "out", kind: "service", body: "ברוכים הבאים\n[כפתורים] a | b", at: new Date("2026-09-23T10:00:05Z") });
+  const m = { users: [{ userId: "972500000001" }] };
+  await addPreviews(st, await st.keys("msg/"), m);
+  assert.equal(m.users[0].lastText, "ברוכים הבאים"); assert.equal(m.users[0].lastDirection, "out");
+  const html = await (await adminPage()).text(); assert.match(html, /u\.lastText/);
+});

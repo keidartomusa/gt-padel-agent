@@ -21,13 +21,13 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{background:#f7f8fa;c
 .mini{border:1px solid #d1d7db;background:#fff;border-radius:8px;padding:5px 9px;font-size:13px;margin:2px}
 .hint{color:#8696a0;font-size:13px;margin:8px 2px}
 .chat{display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 58px);background:#fff}
-.list{border-inline-end:1px solid #e9edef;display:flex;flex-direction:column;min-height:0}
+.list{border-inline-end:1px solid #e9edef;display:flex;flex-direction:column;min-height:0;min-width:0}
 .search{padding:10px}.search input{width:100%;padding:9px 14px;border:0;background:#f0f2f5;border-radius:10px;font-size:15px}
 .users{overflow-y:auto;flex:1}
 .u{display:flex;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid #f0f2f5;cursor:pointer}.u:hover{background:#f5f6f6}.u.on{background:#f0f2f5}
 .av{width:44px;height:44px;border-radius:50%;background:#dfe5e7;color:#54656f;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
 .u .mid{flex:1;min-width:0}.u .nm{font-weight:600;display:flex;justify-content:space-between;gap:8px}.u .nm time{font-weight:400;color:#667781;font-size:12px}
-.u .sub{color:#667781;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u .sub2{color:#8696a0;font-size:12px}.u .me{color:#8696a0}.bad{color:#d93025}.u .sub{color:#667781;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pane{display:flex;flex-direction:column;min-height:0;background:#efeae2}
 .ph{background:#f0f2f5;padding:10px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #e9edef}.ph .mid{flex:1}.ph .nm{font-weight:600}.ph .sub{font-size:12px;color:#667781}
 .ph button:disabled{opacity:.3;cursor:default}.ph button{border:0;background:transparent;font-size:20px;color:#54656f;padding:4px 8px}.back{display:none}
@@ -41,7 +41,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{background:#f7f8fa;c
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.chips span{background:#ffffffb3;border:1px solid #cfe9c9;color:#027eb5;border-radius:14px;padding:2px 10px;font-size:13px}
 .empty{flex:1;display:flex;align-items:center;justify-content:center;color:#667781;background:#f0f2f5}
 @media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}.kpi b{font-size:24px}.top{padding:10px 12px}.top h1{font-size:15px}.tabs button{padding:6px 10px;font-size:14px}.page{padding:12px}
-.chat{grid-template-columns:1fr}.chat.open .list{display:none}.chat:not(.open) .pane{display:none}.back{display:block}.b{max-width:88%}.wide{display:none}.msgs{padding:12px 10px}
+.chat{grid-template-columns:minmax(0,1fr)}.chat.open .list{display:none}.chat:not(.open) .pane{display:none}.back{display:block}.b{max-width:88%}.wide{display:none}.msgs{padding:12px 10px}
 table.clicks thead{display:none}table.clicks tr{display:block;border-bottom:1px solid #eef0f2;padding:8px 0}table.clicks td{display:flex;justify-content:space-between;border:0;padding:4px 12px}table.clicks td::before{content:attr(data-l);color:#8696a0}}
 `;
 const JS = String.raw`
@@ -71,7 +71,7 @@ function clicksView(){var c=(D.bookingClicks||[]).slice().sort((a,b)=>String(b.c
 function chatsView(){return'<div class="chat" id="chat"><div class="list"><div class="search"><input id="q" placeholder="חיפוש לפי שם או מספר" autocomplete="off"></div><div class="users" id="users"></div></div><div class="pane" id="pane"><div class="empty">בחרו שיחה מהרשימה</div></div></div>'}
 function users(){return(D.messages&&D.messages.users)||[]}
 function drawUsers(){var q=($('#q')&&$('#q').value||'').trim().toLowerCase();var l=users().filter(u=>!q||(u.name||'').toLowerCase().indexOf(q)>=0||phone(u.userId).indexOf(q)>=0||u.userId.indexOf(q)>=0);
- $('#users').innerHTML=l.length?l.map(u=>'<div class="u'+(u.userId===CUR?' on':'')+'" data-user="'+esc(u.userId)+'"><div class="av">'+esc(initials(u))+'</div><div class="mid"><div class="nm"><span>'+esc(u.name||phone(u.userId))+'</span><time>'+esc(when(u.lastAt))+'</time></div><div class="sub">'+esc(phone(u.userId))+' · '+(u.received+u.sent)+' הודעות'+(u.failed?' · '+u.failed+' נכשלו':'')+'</div></div></div>').join(''):'<p class="hint" style="padding:0 14px">אין תוצאות</p>'}
+ $('#users').innerHTML=l.length?l.map(u=>'<div class="u'+(u.userId===CUR?' on':'')+'" data-user="'+esc(u.userId)+'"><div class="av">'+esc(initials(u))+'</div><div class="mid"><div class="nm"><span>'+esc(u.name||phone(u.userId))+'</span><time>'+esc(when(u.lastAt))+'</time></div><div class="sub">'+(u.lastText!=null?(u.lastDirection==='out'?'<span class="me">בוט: </span>':'')+esc(u.lastText||'...'):esc(phone(u.userId)))+'</div><div class="sub2">'+esc(phone(u.userId))+(u.failed?' · <span class="bad">'+u.failed+' נכשלו</span>':'')+'</div></div></div>').join(''):'<p class="hint" style="padding:0 14px">אין תוצאות</p>'}
 function bubble(x){var body=String(x.body||''),chips=[],m;var lines=body.split('\n').filter(function(l){if((m=/^\[(כפתורים|רשימה)\]\s*(.*)$/.exec(l))){chips=chips.concat(m[2].split(' | ').map(s=>s.trim()).filter(Boolean));return false}if((m=/^\[קישור\]\s*(.*?)\s*(https?:\S+)?$/.exec(l))){chips.push('↗ '+m[1]);return false}return true});
  var tpl=x.kind==='template',fail=x.sent===false,tag=tpl?'<span class="tag">תבנית</span>':'';if(fail)tag+='<span class="tag bad">לא נשלחה'+(x.reason?' ('+esc(x.reason)+')':'')+'</span>';
  return'<div class="b '+(x.direction==='in'?'in':'out')+(fail?' fail':'')+'">'+tag+esc(lines.join('\n').trim())+(chips.length?'<div class="chips">'+chips.map(c=>'<span>'+esc(c)+'</span>').join('')+'</div>':'')+'<time>'+esc(hm(x.at))+'</time></div>'}

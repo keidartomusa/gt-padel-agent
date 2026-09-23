@@ -25,3 +25,8 @@ export function summarizeMessages(keys,profiles={}){
  return{users:rows,totals:{...t,estimatedUsd:+(t.service*RATE_USD.service+t.template*RATE_USD.template).toFixed(4)}};
 }
 export async function conversation(store,userId){return(await store.list(`msg/${userId}/`)).sort((a,b)=>a.key.localeCompare(b.key)).map(x=>x.value);}
+
+// Dashboard chat list preview (Tom 23.9 15:46): last message per user - first line, buttons/links dropped, 80 chars.
+export const previewText=body=>{const l=String(body||"").split("\n").map(x=>x.trim()).filter(x=>x&&!/^\[(כפתורים|רשימה|קישור)\]/.test(x));return(l[0]||"").replace(/^\[תבנית [^\]]*\]\s*/,"").replace(/\*/g,"").slice(0,80);};
+export async function addPreviews(store,keys,messages){const last={};for(const k of keys){const p=parseKey(k);if(p&&(!last[p.userId]||k>last[p.userId]))last[p.userId]=k;}
+ await Promise.all((messages?.users||[]).map(async u=>{const k=last[u.userId];if(!k)return;const v=await store.get(k);u.lastText=previewText(v?.body);u.lastDirection=parseKey(k).direction;}));return messages;}
