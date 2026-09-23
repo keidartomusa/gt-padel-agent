@@ -1,3 +1,4 @@
+import { noDur } from "./no-duration.mjs";
 // Critique round 23.9 (Tom: "תתקן הכל") + Tom 14:58 (pending answer beats menu words) + Tom 15:01 (שלח הודעה) + Tom 15:16 (club contact).
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -11,7 +12,7 @@ import { memoryStore, named } from "./named-store.mjs";
 const now = new Date("2026-09-23T08:00:00+03:00");
 const available = async i => ({ kind: "availability", date: i.date, slots: [{ courtId: "c1", courtName: "1", start: "19:00", end: "20:30", durationMinutes: i.durationMinutes || 90, price: 300 }] });
 const none = async i => ({ kind: "availability", date: i.date, slots: [] });
-const H = (s, u, displayName = "שחקן/ית", availabilityFn = available) => o => handleConversation({ userId: u, displayName, store: s, now, availabilityFn, ...o });
+const H = (s, u, displayName = "שחקן/ית", availabilityFn = available) => noDur(o => handleConversation({ userId: u, displayName, store: s, now, availabilityFn, ...o }));
 const rows = r => (r.list?.sections || []).flatMap(x => x.rows);
 async function create(s, u, name, { when = "מחר אחרי 19:00", pc = "pc:1:yes", level = "level:3" } = {}) {
   await named(s, u, name); const h = H(s, u, name);
@@ -24,7 +25,7 @@ const mine = async (s, u) => (await s.list("request/")).map(x => x.value).filter
 test("'שלום' typed as the name is saved as the name, not the welcome", async () => {
   const s = rawStore(), h = H(s, "n1");
   await h({ actionId: "oneoff" }); await h({ actionId: "level:3" }); await h({ actionId: "pc:1:yes" }); await h({ text: "מחר אחרי 19:00" });
-  const ask = await h({ actionId: "duration:90" }); assert.equal(ask.text, NAME_ASK);
+  const ask = await h({ actionId: "duration:90" }); assert.match(ask.text, /באיזה שם להציג אתכם בלוח המשחקים\?$/); assert.doesNotMatch(ask.text, /כמה זמן/);
   const r = await h({ text: "שלום" }); assert.match(r.text, /הבקשה נשמרה|נשמרו \d+ בקשות/); assert.equal((await s.get("profile/n1")).name, "שלום");
   assert.equal(cleanName("שלום"), null); assert.equal(cleanName("שלום", { asked: true }), "שלום");
 });
@@ -58,19 +59,20 @@ test("item 9: a duration in the time text skips the duration question; last requ
   assert.deepEqual(durationFromText("מחר אחרי 19 ל-90 דקות"), [90]); assert.deepEqual(durationFromText("שעתיים"), [120]); assert.equal(durationFromText("מחר אחרי 19"), null);
   const s = memoryStore(), h = H(s, "d", "דנה"); await named(s, "d", "דנה");
   for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a });
-  const r = await h({ text: "מחר אחרי 19:00 ל120 דקות" }); assert.match(r.text, /הבקשה נשמרה|נשמרו \d+ בקשות/); assert.deepEqual((await mine(s, "d"))[0].durations, [120]);
-  const again = await h({ actionId: "oneoff" }); assert.match(again.text, /^לקחתי מהבקשה הקודמת: רמה 3–3\.5, 120 דקות\.\n\nכמה אתם/); assert.deepEqual(rows(again).filter(x => x.id.startsWith("pc_")).map(x => [x.id, x.title]), [["pc_level", "עדכן רמה"], ["pc_dur", "עדכן משך זמן"]]);
+  const r = await h({ text: "מחר אחרי 19:00 ל120 דקות" }); assert.match(r.text, /הבקשה נשמרה|נשמרו \d+ בקשות/);
+  // Tom 23.9 18:51: duration is gone from partner finding - only the level is reused and offered for a fix.
+  const again = await h({ actionId: "oneoff" }); assert.match(again.text, /^לקחתי מהבקשה הקודמת: רמה 3–3\.5\.\n\nכמה אתם/); assert.deepEqual(rows(again).filter(x => x.id.startsWith("pc_")).map(x => [x.id, x.title]), [["pc_level", "עדכן רמה"]]);
 });
 test("item 10: day understood without an hour -> ask only the hour, then continue", async () => {
   const s = memoryStore(), h = H(s, "t", "דנה");
   for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a });
   const q = await h({ text: "מחר אחרי העבודה" }); assert.equal(q.text, "חמישי 24.9 - מאיזו שעה?"); assert.deepEqual(q.buttons.map(b => b.id), ["tm:17", "tm:18", "tm:19"]);
-  const r = await h({ actionId: "tm:18" }); assert.match(r.text, /^רשמתי: יום חמישי 24\.9, אחרי 18:00\.\n\nכמה זמן/);
+  const r = await h({ actionId: "tm:18" }); assert.match(r.text, /^רשמתי: יום חמישי 24\.9, אחרי 18:00\.\n\n(?!כמה זמן)/);
 });
 test("item 14: recurring availability is echoed", async () => {
   const s = memoryStore(), h = H(s, "r", "דנה");
   for (const a of ["recurring", "level:3", "pc:1:yes"]) await h({ actionId: a });
-  const r = await h({ text: "שני ורביעי אחרי 20:00" }); assert.match(r.text, /^רשמתי: כל שני ורביעי, אחרי 20:00\.\n\nכמה זמן/);
+  const r = await h({ text: "שני ורביעי אחרי 20:00" }); assert.match(r.text, /^רשמתי: כל שני ורביעי, אחרי 20:00\.\n\n(?!כמה זמן)/);
 });
 
 // Items 4-8
@@ -80,7 +82,7 @@ test("item 4: the requester gets the matches as connect rows", async () => {
 });
 test("item 5: alert shows party, court, duration and the combined count", async () => {
   const s = memoryStore(); await create(s, "a", "דנה"); const r = await create(s, "b", "נועם", { pc: "pc:2:no" });
-  assert.match(r.notifications[0].response.text, /נועם · חמישי 24\.9 · אחרי 19:00 · רמה 3–3\.5\n2 שחקנים · בלי מגרש · 90 דק׳\nיחד: 3 מתוך 4\n\nתרצו להתחבר\?$/);
+  assert.match(r.notifications[0].response.text, /נועם · חמישי 24\.9 · אחרי 19:00 · רמה 3–3\.5\n2 שחקנים · בלי מגרש\nיחד: 3 מתוך 4\n\nתרצו להתחבר\?$/);
 });
 test("item 6: sides that together exceed 4 never match", async () => {
   const s = memoryStore(); await create(s, "a", "דנה", { pc: "pc:3:yes" }); const r = await create(s, "b", "נועם", { pc: "pc:2:yes" });
@@ -136,8 +138,8 @@ test("item 13: extra list rows are 'אפשרויות', not 'שעות'", () => {
 });
 test("item 15: after an edit the card is shown again with 'עריכה נוספת'", async () => {
   const s = memoryStore(); await create(s, "e", "דנה"); const [q] = await mine(s, "e"), h = H(s, "e", "דנה");
-  await h({ actionId: `ef:${q.id}:duration` }); const r = await h({ actionId: "duration:120" });
-  assert.match(r.text, /^עדכנתי\.\n\n\*חמישי 24\.9 · אחרי 19:00\*\nחד-פעמית · רמה 3–3\.5 · 120 דק׳ · שחקן אחד · יש מגרש/); assert.deepEqual(r.buttons.map(b => b.id), [`edit:${q.id}`, "menu"]);
+  await h({ actionId: `ef:${q.id}:level` }); const r = await h({ actionId: "level:4" });
+  assert.match(r.text, /^עדכנתי\.\n\n\*חמישי 24\.9 · אחרי 19:00\*\nחד-פעמית · רמה 3\.5–4 · שחקן אחד · יש מגרש/); assert.deepEqual(r.buttons.map(b => b.id), [`edit:${q.id}`, "menu"]);
 });
 test("item 16 + 17: level question has the hint; no singular address left in the source", async () => {
   const r = await H(memoryStore(), "l")({ actionId: "oneoff" }); assert.equal(r.text, "מה הרמה שלכם?\nלא בטוחים? בחרו את הקרובה ביותר, אפשר לשנות אחר כך.");
@@ -151,7 +153,7 @@ test("item 18: the full greeting once, then a short menu", async () => {
 test("item 19: the WhatsApp profile name is offered with one tap", async () => {
   const s = rawStore(), h = H(s, "p", "Tom K");
   for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a }); await h({ text: "מחר אחרי 19:00" });
-  const ask = await h({ actionId: "duration:90" }); assert.equal(ask.text, "להופיע בלוח המשחקים בתור Tom K?"); assert.deepEqual(ask.buttons.map(b => b.id), ["name_wa", "name_other"]);
+  const ask = await h({ actionId: "duration:90" }); assert.match(ask.text, /להופיע בלוח המשחקים בתור Tom K\?$/); assert.deepEqual(ask.buttons.map(b => b.id), ["name_wa", "name_other"]);
   const r = await h({ actionId: "name_wa" }); assert.match(r.text, /הבקשה נשמרה|נשמרו \d+ בקשות/); assert.equal((await s.get("profile/p")).name, "Tom K");
   const s2 = rawStore(), h2 = H(s2, "p2", "Tom K"); for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h2({ actionId: a }); await h2({ text: "מחר אחרי 19:00" }); await h2({ actionId: "duration:90" });
   assert.equal((await h2({ actionId: "name_other" })).text, NAME_ASK); await h2({ text: "תום" }); assert.equal((await s2.get("profile/p2")).name, "תום");
@@ -167,23 +169,19 @@ test("prefilled level/duration: one-tap fix buttons and free-text 'אני רוצ
   for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a }); await h({ text: "מחר אחרי 19:00 ל120 דקות" });
   let r = await h({ actionId: "oneoff" }); assert.match(r.text, /^לקחתי מהבקשה הקודמת/);
   r = await h({ text: "אני רוצה לשנות רמה" }); assert.match(r.text, /^מה הרמה שלכם/);
-  r = await h({ actionId: "level:4" }); assert.match(r.text, /^כמה אתם/); assert.ok(rows(r).some(x => x.id === "pc_dur"));
-  r = await h({ actionId: "pc_dur" }); assert.match(r.text, /^כמה זמן/);
-  r = await h({ actionId: "duration:90" }); assert.match(r.text, /כמה אתם/);
-  const st = await s.get("state/e"); assert.deepEqual(st.draft.durations, [90]); assert.notEqual(st.draft.level, (await mine(s, "e"))[0].level);
+  r = await h({ actionId: "level:4" }); assert.match(r.text, /^כמה אתם/); assert.ok(!rows(r).some(x => x.id === "pc_dur"));
+  const st = await s.get("state/e"); assert.notEqual(st.draft.level, (await mine(s, "e"))[0].level);
   r = await h({ actionId: "pc_level" }); assert.match(r.text, /^מה הרמה שלכם/);
 });
 
-test("live 16:32: 'לשנות רמה ומשך' (text or the old row) asks level and then duration, before the party question", async () => {
+test("live 16:32: 'לשנות רמה ומשך' (text or the old row) asks the level again, then the party question (no duration since 18:51)", async () => {
   assert.equal(fieldEditIntent("לשנות רמה ומשך"), "both");
   for (const how of [{ text: "לשנות רמה ומשך" }, { actionId: "pc_reset" }]) {
     const s = memoryStore(), h = H(s, "f", "דנה"); await named(s, "f", "דנה");
     for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a }); await h({ text: "מחר אחרי 19:00 ל120 דקות" });
     await h({ actionId: "oneoff" });
     let r = await h(how); assert.match(r.text, /^מה הרמה שלכם/);
-    r = await h({ actionId: "level:3.5" }); assert.match(r.text, /^כמה זמן תרצו לשחק/);
-    r = await h({ actionId: "duration:90" }); assert.match(r.text, /^כמה אתם/);
-    assert.deepEqual((await s.get("state/f")).draft.durations, [90]);
+    r = await h({ actionId: "level:3.5" }); assert.match(r.text, /^כמה אתם/); assert.doesNotMatch(r.text, /כמה זמן/);
   }
 });
 
@@ -224,8 +222,9 @@ test("Tom 17:12: 'די' and other stop words are never saved as a name", async (
   assert.equal(cleanName("תום", { asked: true }), "תום");
 });
 
-test("Tom 18:37: with a court the duration question is just 'כמה זמן?'", async () => {
-  for (const [pc, re] of [["pc:1:yes", /^כמה זמן\?$/], ["pc:1:no", /^כמה זמן תרצו לשחק\?$/]]) {
+test("Tom 18:51: no duration question after the time, with or without a court", async () => {
+  // Tom 23.9 18:51 supersedes 18:37: no duration question at all, with or without a court.
+  for (const [pc, re] of [["pc:1:yes", /^(?!כמה זמן)/], ["pc:1:no", /^(?!כמה זמן)/]]) {
     const s = memoryStore(), h = H(s, "k", "דנה"); await named(s, "k", "דנה");
     for (const a of ["oneoff", "level:3", pc]) await h({ actionId: a }); const r = await h({ text: "מחר אחרי 19:00" }); assert.match(r.text.split("\n\n").pop(), re);
   }

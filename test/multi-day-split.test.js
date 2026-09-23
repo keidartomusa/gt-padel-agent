@@ -22,11 +22,11 @@ test("multi-day split: each day matches, and is deleted, on its own", async () =
   const h = H(s, "me", "תום"); await h({ actionId: `delok:${fri.id}` });
   assert.deepEqual((await reqs(s, "me")).map(x => x.id), [sat.id]);
 });
-test("multi-day split respects the 5-request cap before saving anything", async () => {
-  const s = memoryStore(); await recurring(s, "me", "תום", "ראשון ושני אחרי 20:00");
-  const r = await recurring(s, "me", "תום", "שלישי רביעי חמישי שישי אחרי 20:00");
-  assert.match(r.text, /כל יום נשמר כבקשה נפרדת.*יש לכם כבר 2, אז אפשר להוסיף עוד 3 ימים/s);
-  assert.equal((await reqs(s, "me")).length, 2);
+test("multi-day split respects the 7-request cap before saving anything", async () => {
+  const s = memoryStore(); await recurring(s, "me", "תום", "ראשון ושני אחרי 20:00"); await recurring(s, "me", "תום", "שלישי ורביעי אחרי 20:00");
+  const r = await recurring(s, "me", "תום", "חמישי שישי שבת ראשון אחרי 08:00");
+  assert.match(r.text, /כל יום נשמר כבקשה נפרדת, ואפשר עד 7 בקשות פעילות\. יש לכם כבר 4, אז אפשר להוסיף עוד 3 ימים/);
+  assert.equal((await reqs(s, "me")).length, 4);
 });
 test("'6 וחצי' / '7 ורבע' parse to :30 / :15, 'שעה וחצי' stays a duration", async () => {
   const p = async t => parseWhen(t, now, { log: false });

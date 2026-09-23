@@ -20,7 +20,7 @@ function overlap(a,b){return levelsCompatible(a.level,b.level)&&timesCompatible(
 // Item 8: "לא הפעם" on an alert hides that one pairing (either direction), nothing else.
 export const skipKey=(userId,requestId)=>`skip/${userId}/${requestId}`;
 const skipped=async(store,a,b)=>Boolean(await store.get(skipKey(a.userId,b.id))||await store.get(skipKey(b.userId,a.id)));
-const durText=r=>r.durations?.length>1?"משך גמיש":r.durations?.length?`${r.durations[0]} דק׳`:"";
+const durText=()=>"";
 // Item 5: the alert shows who, when, level, party, court, duration and the combined count. One builder for instant and daily alerts.
 export function matchAlert(viewer,r){const sum=partyOf(viewer)+partyOf(r),when=`${dayLabel(r.recurring&&r.date?{date:r.date}:r)} · ${timeLabel(r)}`;const g=groupNames(r).length>1;return{text:`מצאתי התאמה אפשרית: ${g?`${groupLabel(r)} (כבר מחוברים ביניהם)`:r.displayName} · ${when} · רמה ${r.level}${levelNote(viewer.level,r.level)}\n${[partyOf(r)===1?"שחקן אחד":`${partyOf(r)} שחקנים`,r.hasCourt?"יש מגרש":"בלי מגרש",durText(r)].filter(Boolean).join(" · ")}\nיחד: ${sum} מתוך 4\n\nתרצו להתחבר?`,buttons:[{id:`connect:${r.id}`,title:"רוצה להתחבר"},{id:`notnow:${r.id}`,title:"לא הפעם"}]};}
 // Tom 23.9 16:25: a game closes automatically 4 hours after its time window ends - no question asked.

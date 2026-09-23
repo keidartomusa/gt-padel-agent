@@ -1,6 +1,6 @@
 // Multi-request management (Tom 23.9 13:18 approved: list / edit / delete / add, cap 5, no notice to the other side on edit).
 import { activeRequests, levelTitle } from "./matching.js";
-export const MAX_ACTIVE_REQUESTS = 5;
+export const MAX_ACTIVE_REQUESTS = 7; // Tom 23.9 19:01: cap 7 (was 5)
 const HE_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const hhmm = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 export function timeLabel(r) {
@@ -18,13 +18,13 @@ export function dayLabel(r) {
 }
 export const reqTitle = r => `${r.recurring ? "קבועה · " : ""}${dayLabel(r)} · ${timeLabel(r)}`;
 export function reqDesc(r) {
-  const dur = r.durations?.length > 1 ? "משך גמיש" : r.durations?.length ? `${r.durations[0]} דק׳` : "";
+  const dur = "";
   return [r.recurring ? "קבועה" : "חד-פעמית", r.level ? `רמה ${r.level}` : "", dur].filter(Boolean).join(" · ");
 }
 export async function userActiveRequests(store, userId, now) {
   return (await activeRequests(store, now)).filter(x => x.userId === userId).sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
 }
 export async function lastRequest(store, userId) {
-  return (await store.list("request/")).map(x => x.value).filter(x => x?.userId === userId && x.level && x.durations?.length)
+  return (await store.list("request/")).map(x => x.value).filter(x => x?.userId === userId && x.level)
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))[0] || null;
 }

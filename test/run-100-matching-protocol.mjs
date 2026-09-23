@@ -1,7 +1,9 @@
 // 100 matching/registration conversations (50 same-store pairs) through the production path, live clock and live Matchpointer.
 import fs from "node:fs";
 import { memoryStore } from "../src/store.js";
-import { provider, makeUser, turn, turnAll, view } from "./harness.mjs";
+import { provider, makeUser, turn, turnAll as turnAll0, view } from "./harness.mjs";
+// Tom 23.9 18:51: no duration question in partner finding - scripted duration taps are skipped.
+const turnAll = (u, s) => s?.actionId?.startsWith("duration:") ? Promise.resolve([]) : turnAll0(u, s);
 const out = [], problems = [];
 const levels = ["1–2", "2–2.5", "2.5–3", "3–3.5", "3.5–4", "4+"];
 async function registration(store, n, { recurring, level, when, duration, party, court, flex, expectMatch, expectNote = null }) {
