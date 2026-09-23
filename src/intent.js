@@ -50,6 +50,10 @@ export function parseIntentLocal(raw,now=new Date()){raw=spelledHours(canon(raw)
   const before=text.match(/לפני\s*(\d{1,2})(?::(\d{2}))?/);
   if(after){const r=resolveHour(Number(after[1]),text,after[1].length===2&&after[1][0]==="0"),m=Number(after[2]||0);if(r.h!=null){startMinute=r.h*60+m;endMinute=1440;ambiguousHour=r.ambiguous?Number(after[1]):null;}}
   if(before){const r=resolveHour(Number(before[1]),text,before[1].length===2&&before[1][0]==="0"),m=Number(before[2]||0);if(r.h!=null){startMinute=0;endMinute=r.h*60+m;ambiguousHour=r.ambiguous?Number(before[1]):null;}}
+  // Tom 23.9 17:19: an explicit range keeps the end the user wrote ("18:00-20:00", "בין 18 ל-20", "מ-18 עד 20"), not start+3h.
+  {const rg=clockText.match(/(?:בין|מ-?|משעה)?\s*(\d{1,2})(?::(\d{2}))?\s*(?:-|עד(?:\s*ה?שעה)?|ל-?)\s*(\d{1,2})(?::(\d{2}))?(?![\d:])(?!\s*(?:דק|שעות|שעה|ש'))/);
+   if(rg&&!after&&!before&&(rg[2]||rg[4]||/בין|מ-?|עד|-/.test(rg[0]))){const a=resolveHour(Number(rg[1]),text,rg[1].length===2&&rg[1][0]==="0"),b=resolveHour(Number(rg[3]),text,rg[3].length===2&&rg[3][0]==="0");
+    if(a.h!=null&&b.h!=null){let s=a.h*60+Number(rg[2]||0),e=b.h*60+Number(rg[4]||0);if(e<=s&&b.h<12)e+=720;if(e>s&&e<=1440&&Number(rg[2]||0)<60&&Number(rg[4]||0)<60){startMinute=s;endMinute=e;ambiguousHour=null;}}}}
   const durationMinutes=/(?:שעה\s*וחצי|90\s*(?:דק|דקות)?)/.test(text)?90:/(?:שעתיים|120\s*(?:דק|דקות)?)/.test(text)?120:/(?:לשעה(?!\s*וחצי)|60\s*(?:דק|דקות)?)/.test(text)?60:90;
   const recurringWeekday=/ימי\s+(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?:\s+הבאים)?/.exec(text);
   const dates=recurringWeekday?Array.from({length:3},(_,i)=>addDays(nextWeekday(today,HEBREW_WEEKDAYS.get(recurringWeekday[1])),i*7)):undefined;
