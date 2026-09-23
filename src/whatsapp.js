@@ -10,8 +10,10 @@ export const sendText=(to,body,phoneNumberId,fetchImpl=fetch)=>post(to,{type:"te
 // Tom 23.9 14:51: number/time ranges ("3–3.5", "17:30–19:00") render reversed inside Hebrew (RTL) text.
 // Wrap every range in invisible LTR isolate marks (LRI U+2066 ... PDI U+2069) on every outbound field.
 const RANGE=/(?<![\d.:\-–\u2066])(\d{1,2}(?::\d{2}|\.\d{1,2})?)(\s?[–-]\s?)(\d{1,2}(?::\d{2}|\.\d{1,2})?)(?![\d.:\-–]|\u2069)/g;
-export const bidiRanges=t=>typeof t==="string"?t.replace(RANGE,"\u2066$1$2$3\u2069"):t;
-const fit=(t,max)=>{const w=bidiRanges(t);return w.length<=max?w:t.slice(0,max);};
+// Tom 23.9 15:27: regular hyphen instead of long dashes everywhere users see text. Stored data (level keys) keeps its dashes; only outbound text changes.
+export const plainDashes=t=>typeof t==="string"?t.replace(/[–—]/g,"-"):t;
+export const bidiRanges=t=>typeof t==="string"?plainDashes(t).replace(RANGE,"\u2066$1$2$3\u2069"):t;
+const fit=(t,max)=>{const w=bidiRanges(t);return w.length<=max?w:plainDashes(t).slice(0,max);};
 export function bidiResponse(r){if(!r||typeof r!=="object")return r;const o={...r};if(o.text)o.text=bidiRanges(o.text);
  if(o.buttons)o.buttons=o.buttons.map(b=>({...b,title:fit(b.title,20)}));
  if(o.list)o.list={...o.list,sections:o.list.sections.map(sec=>({...sec,rows:sec.rows.map(x=>({...x,title:fit(x.title,24),...(x.description?{description:fit(x.description,72)}:{})}))}))};

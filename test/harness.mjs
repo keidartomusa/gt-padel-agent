@@ -5,7 +5,7 @@ import { deliver } from "../src/notify.js";
 import { routeIncoming } from "../src/webhook.js";
 import { logInbound, logOutbound } from "../src/messagelog.js";
 import { memoryStore } from "../src/store.js";
-import { sendTyping, sendResponse, sendTemplate } from "../src/whatsapp.js";
+import { sendTyping, sendResponse, sendTemplate, plainDashes } from "../src/whatsapp.js";
 process.env.DISABLE_OUTBOUND = "false";
 process.env.WHATSAPP_ACCESS_TOKEN = "qa-capture-only";
 process.env.WHATSAPP_PHONE_NUMBER_ID = "qa-phone";
@@ -36,7 +36,8 @@ export async function turn(user, step, { now = new Date() } = {}) {
 export const options = r => [...(r.buttons || []).map(b => ({ id: b.id, title: b.title })), ...(r.list?.sections || []).flatMap(s => s.rows.map(x => ({ id: x.id, title: x.title, description: x.description })))];
 export function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 2 ** 32; }; }
 export const pick = (rand, arr) => arr[Math.floor(rand() * arr.length)];
-export function view(t) { const r = t.response; return { text: r.text, buttons: r.buttons?.map(b => b.title), list: r.list ? { button: r.list.button, rows: r.list.sections.flatMap(s => s.rows.map(x => ({ title: x.title, description: x.description || "" }))) } : undefined, cta: r.ctaUrl ? { label: r.ctaUrl.displayText, url: r.ctaUrl.url } : undefined, notifications: r.notifications?.map(n => ({ to: n.to, text: n.response.text })) }; }
+// The view shows what the user gets: regular hyphens (Tom 15:27), as sendResponse applies on the wire.
+export function view(t) { const r = t.response, d = plainDashes; return { text: d(r.text), buttons: r.buttons?.map(b => d(b.title)), list: r.list ? { button: r.list.button, rows: r.list.sections.flatMap(s => s.rows.map(x => ({ title: d(x.title), description: d(x.description || "") }))) } : undefined, cta: r.ctaUrl ? { label: r.ctaUrl.displayText, url: r.ctaUrl.url } : undefined, notifications: r.notifications?.map(n => ({ to: n.to, text: d(n.response.text) })) }; }
 const NAMES = ["יוסי", "דנה", "אבי כהן", "מיכל", "רון", "נועה לוי", "איתי", "שירה", "עומר", "טל", "גיל", "ליאור", "מאיה", "אלון", "רותם", "Tom", "עדי", "נדב", "יעל", "אורי"];
 export const realName = u => u.realName || (/\d/.test(u.displayName || "") || !u.displayName ? NAMES[[...String(u.userId)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % NAMES.length] : u.displayName);
 // A real user answers the one-time name question with their name; both turns are recorded.
