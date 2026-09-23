@@ -26,7 +26,7 @@ export function spelledHours(text){const t=String(text||""),W=HOUR_WORDS.map(x=>
 // Tom 23.9: measured corpus (test/fixtures/hebrew-when-corpus.json). Canonicalize slang, typos and English before parsing.
 const B="(^|[\\s,.?!])",E="(?=$|[\\s,.?!])";
 const CANON=[[/(^|[\s,.?!])(ב|ל|ו)?(?:מאחר|מחרר|מחאר)(?=$|[\s,.?!])/g,"$1$2מחר"],[/מחרתים/g,"מחרתיים"],[/ערבב+/g,"ערב"],[/שישיי+/g,"שישי"],[/שבתת+/g,"שבת"],[/(^|[\s,.?!])(ב|ל|ו)?חמשי(?=$|[\s,.?!])/g,"$1$2חמישי"],[/(^|[\s,.?!])(ב|ל|ו)?רבעי(?=$|[\s,.?!])/g,"$1$2רביעי"],
- [/\btomorrow\b/gi,"מחר"],[/\btoday\b/gi,"היום"],[/\bevening\b/gi,"בערב"],[/\bmorning\b/gi,"בבוקר"],[/(\d{1,2})(?::(\d{2}))?\s*pm\b/gi,(m,h,mm)=>` ${Number(h)%12+12}:${mm||"00"}`],[/(\d{1,2})(?::(\d{2}))?\s*am\b/gi,(m,h,mm)=>` ${String(Number(h)%12).padStart(2,"0")}:${mm||"00"}`],
+ [/(\d{1,2})\s+וחצי(?!\s*שע)/g,"$1:30"],[/(\d{1,2})\s+ורבע(?!\s*שע)/g,"$1:15"],[/\btomorrow\b/gi,"מחר"],[/\btoday\b/gi,"היום"],[/\bevening\b/gi,"בערב"],[/\bmorning\b/gi,"בבוקר"],[/(\d{1,2})(?::(\d{2}))?\s*pm\b/gi,(m,h,mm)=>` ${Number(h)%12+12}:${mm||"00"}`],[/(\d{1,2})(?::(\d{2}))?\s*am\b/gi,(m,h,mm)=>` ${String(Number(h)%12).padStart(2,"0")}:${mm||"00"}`],
  [/(?:ב)?מוצאי\s*שבת|(?:ב)?מוצ["״']?ש(?=$|[\s,.?!])/g,"שבת אחרי 19:00"],[/(?:ב)?סוף\s*(?:ה)?שבוע|(?:ב)?סופ["״']?ש(?=$|[\s,.?!])|(?:ב)?סוףש/g,"שישי"],
  [/יום\s*([אבגדהו])['׳]?(?=$|[\s,.?!])/g,(m,l)=>`יום ${["ראשון","שני","שלישי","רביעי","חמישי","שישי"]["אבגדהו".indexOf(l)]}`]];
 export function canon(t){let x=String(t||"");for(const[re,to]of CANON)x=x.replace(re,to);return x;}
