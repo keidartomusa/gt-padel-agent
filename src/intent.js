@@ -61,13 +61,4 @@ export function parseIntentLocal(raw,now=new Date()){raw=spelledHours(canon(raw)
   return {date,startMinute,endMinute,durationMinutes,source:"local",dateExplicit,dates,...(ambiguousHour?{ambiguousHour}:{})};
 }
 function sane(parsed,today){ return parsed&&validIso(parsed.date)&&parsed.date>=today&&[60,90,120].includes(parsed.durationMinutes)&&[parsed.startMinute,parsed.endMinute].every(v=>v==null||(Number.isInteger(v)&&v>=0&&v<=1440)); }
-export async function parseIntent(text,now=new Date(),fetchImpl=fetch){
-  const local=parseIntentLocal(text,now),t0=Date.now(); if(!process.env.OPENAI_API_KEY){console.log(JSON.stringify({event:"parse_source",source:"local_no_key"}));return local;}
-  const today=localDateParts(now).iso;
-  try{
-    const res=await fetchImpl("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({model:process.env.OPENAI_MODEL||"gpt-4o-mini",temperature:0,response_format:{type:"json_object"},messages:[{role:"system",content:`Extract a GT Padel availability request in Hebrew. Today is ${today}, Asia/Jerusalem. Return only JSON: date (YYYY-MM-DD), startMinute (integer|null), endMinute (integer|null), durationMinutes (60|90|120). Resolve "25 לחודש" to the next calendar date numbered 25, never today. Morning 06:00-12:00, afternoon 12:00-17:00, evening 17:00-23:00. Do not invent a time.`},{role:"user",content:text}]})});
-    if(!res.ok) throw Error(`OpenAI ${res.status} ${(await res.text().catch(()=>"")).slice(0,200)}`); const parsed=JSON.parse((await res.json()).choices[0].message.content);
-    // Explicit deterministic dates win over model drift; LLM helps only with fuzzy language.
-    const merged=local.dateExplicit?{...parsed,...local,date:local.date}:{...local,...parsed,dates:local.dates}; const ok=sane(merged,today);console.log(JSON.stringify({event:"parse_source",source:ok?"llm":"local_rejected",ms:Date.now()-t0,model:process.env.OPENAI_MODEL||"gpt-4o-mini"}));return ok?{...merged,source:"llm"}:local;
-  }catch(e){console.log(JSON.stringify({event:"parse_source",source:"local_fallback",ms:Date.now()-t0,error:String(e.message||e).slice(0,240)}));return local;}
-}
+export async function parseIntent(text,now=new Date(),fetchImpl=fetch){const {parseWhen}=await import("./when.js");return parseWhen(text,now,{fetchImpl});}
