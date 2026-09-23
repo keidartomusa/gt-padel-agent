@@ -13,6 +13,9 @@ export const PLAYERS_MENU="מה בא לכם?\n\n👥 חסרים לי שחקני�
 const NAME_ASK="מה השם שלך? כך תופיעו בלוח המשחקים.";
 export function cleanName(raw){let t=String(raw||"").replace(/^(אני\s+)?(קוראים לי|שמי|השם שלי(?:\s+הוא)?|תקרא(?:ו)? לי|תקראי לי)\s*/,"").replace(/[.!?,"'״׳:;()]/g," ").replace(/\s+/g," ").trim();if(!t||t.length>30||/\d|@/.test(t)||t.split(" ").length>3)return null;if(/^(לא|כן|תפריט|שלום|היי|הי|אוקי|בסדר|menu|hi)$/i.test(t))return null;if(t.split(" ").some(w=>/^(מה|איך|מתי|כמה|איפה|למה|מי|יש|אין|רוצה|רוצים|מגרש|מגרשים|משחק|שחקן|שחקנים|פנוי|מחר|היום|בערב|בבוקר|תודה|אפשר|צריך|בוקר|ערב|טוב|קורה|שלום)$/.test(w)))return null;return t;}
 export function nameChangeIntent(text){const t=String(text||"").trim();if(!t)return null;let m=t.match(/^(?:אני\s+)?(?:קוראים לי|שמי)\s+(.+)$/);if(m)return{name:cleanName(m[1])};if(/השם שלי(?:\s+הוא)?\s+לא(?:\s|$)/.test(t))return{name:null};m=t.match(/(?:לשנות|לעדכן|להחליף|תשנה|תעדכן|תחליף|שנה|תחליפו|תשנו)\s+(?:לי\s+)?(?:את\s+)?(?:ה)?שם(?:\s+שלי)?(?:\s+ל[-־]?\s*(\S.*))?$/);if(m)return{name:m[1]?cleanName(m[1]):null};m=t.match(/^(?:אבל\s+)?השם שלי(?:\s+הוא)?\s+(?!לא(?:\s|$))(.+)$/);if(m)return{name:cleanName(m[1])};if(/השם שלי(?:\s+הוא)?\s+לא(?:\s|$)/.test(t)||/(?:לשנות|לעדכן|שינוי|עדכון|להחליף)\s+(?:את\s+)?(?:ה)?שם/.test(t)||/השם\s+(?:שלי\s+)?לא\s+נכון/.test(t))return{name:null};return null;}
+const NEXT_WEEK=/(?:ב|ל)?שבוע ה(?:בא|קרוב)/;
+const HE_DAYS=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+export function nextWeekDays(now){const t=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jerusalem"}).format(now),base=new Date(`${t}T12:00:00Z`),dow=base.getUTCDay(),out=[];for(let i=0;i<7;i++){const d=new Date(base.getTime()+((7-dow)+i)*86400000);out.push({date:d.toISOString().slice(0,10),ddmm:`${d.getUTCDate()}.${d.getUTCMonth()+1}`,label:`${HE_DAYS[d.getUTCDay()]} ${d.getUTCDate()}.${d.getUTCMonth()+1}`});}return out;}
 const WD=new Map([["ראשון",0],["שני",1],["שלישי",2],["רביעי",3],["חמישי",4],["שישי",5],["שבת",6]]);
 const recurringDays=text=>[...WD].filter(([name])=>text.includes(name)).map(([,n])=>n);
 export async function handleConversation({userId,displayName="שחקן/ית",text="",actionId,store,now=new Date(),availabilityFn=findAvailability}){
@@ -28,6 +31,9 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  // Tom 23.9: flow questions first; the name is asked only where it is needed (publishing a request / connecting).
  if(!name&&input.startsWith("connect:")){await set({step:"name",pending:input});return{text:NAME_ASK};}
  if(/^(היי|הי|שלום|תפריט|menu|start)$/i.test(input)||input==="menu"){if(state.step)await set({});return welcome(name);}
+ // Tom 23.9 10:36: "בשבוע הבא אחרי 18:00" got "לא הבנתי". "Next week" is a week, not a day: ask which day (dates listed), keep the time part, then continue the same step.
+ if(text&&!actionId&&NEXT_WEEK.test(text)&&!recurringDays(text.replace(NEXT_WEEK,"")).length&&(!state.step||["avail_when","board_when","when"].includes(state.step))){const days=nextWeekDays(now);await set({step:"nw_day",nwResume:state,nwRest:text.replace(NEXT_WEEK,"").replace(/\s+/g," ").trim(),nwDays:days});return list("באיזה יום בשבוע הבא?",days.map((d,i)=>({id:`nw:${i}`,title:d.label})));}
+ if(state.step==="nw_day"&&input.startsWith("nw:")){const d=state.nwDays?.[Number(input.slice(3))];if(d){await set(state.nwResume||{});return handleConversation({userId,displayName,text:`${d.ddmm} ${state.nwRest}`.trim(),store,now,availabilityFn});}}
  if(input==="availability"){await set({flow:"availability",step:"avail_when"});return list("מתי תרצו לשחק? בחרו מהרשימה או כתבו יום, שעה ומשך, למשל: מחר אחרי 19:00 ל90 דקות",WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));}
  if(input.startsWith("when:")){await set({});return{mode:"availability",query:whenLabel(input.slice(5))};}
  if(state.step==="avail_when"&&text&&!actionId){await set({});return{mode:"availability",query:text};}
