@@ -33,3 +33,9 @@ test("dashboard: last message preview per user, without buttons or template tag"
   assert.equal(m.users[0].lastText, "ברוכים הבאים"); assert.equal(m.users[0].lastDirection, "out");
   const html = await (await adminPage()).text(); assert.match(html, /u\.lastText/);
 });
+// Tom 23.9 15:59: "סקירה" is the default tab and the first one; a chat deep link (#u=) still opens the chat.
+test("dashboard opens on the overview tab", async () => {
+  const html = await (await adminPage()).text();
+  assert.match(html, /VIEW=\/\[#&\]u=\\d\/\.test\(location\.hash\)\?'chats':'overview'/);
+  assert.ok(html.indexOf('data-v="overview"') < html.indexOf('data-v="chats"'));
+});

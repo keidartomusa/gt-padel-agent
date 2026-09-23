@@ -45,7 +45,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{background:#f7f8fa;c
 table.clicks thead{display:none}table.clicks tr{display:block;border-bottom:1px solid #eef0f2;padding:8px 0}table.clicks td{display:flex;justify-content:space-between;border:0;padding:4px 12px}table.clicks td::before{content:attr(data-l);color:#8696a0}}
 `;
 const JS = String.raw`
-var $=function(s){return document.querySelector(s)};var D=null,TOKEN=null,CUR=null,VIEW='chats';
+var $=function(s){return document.querySelector(s)};var D=null,TOKEN=null,CUR=null,VIEW=/[#&]u=\d/.test(location.hash)?'chats':'overview';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 var TZ={timeZone:'Asia/Jerusalem'};
 function hm(v){return v?new Date(v).toLocaleTimeString('he-IL',Object.assign({hour:'2-digit',minute:'2-digit'},TZ)):''}
@@ -61,7 +61,7 @@ async function load(token){TOKEN=token;D=await api();sessionStorage.setItem('gt-
 function tab(v){VIEW=v;render()}
 function render(){document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===VIEW));var a=$('#app');a.hidden=false;
  if(VIEW==='chats')a.innerHTML=chatsView();else if(VIEW==='overview')a.innerHTML=overview();else a.innerHTML=clicksView();
- if(VIEW==='chats'){drawUsers();var h=decodeURIComponent((location.hash.match(/u=(\d+)/)||[])[1]||'');if(h)showConv(h,true)}}
+ if(VIEW!=='chats'&&CUR===null)history.replaceState(null,'',location.pathname);if(VIEW==='chats'){drawUsers();var h=decodeURIComponent((location.hash.match(/u=(\d+)/)||[])[1]||'');if(h)showConv(h,true)}}
 function overview(){var s=D.summary,m=(D.messages||{}).totals||{};var k=[['משתמשים',(D.messages&&D.messages.users.length)||s.registrations,'כתבו לבוט לפחות פעם אחת'],['בקשות פעילות',s.activeRequests,'מופיעות עכשיו בלוח'],['הצעות התאמה',s.matches,''],['חיבורים שאושרו',s.acceptedMatches,'שני הצדדים הסכימו'],['לחיצות על הזמנה',s.bookingClicks,'לחיצה אינה הזמנה'],['הזמנות שאושרו',s.verifiedBookings,'מסומנות ידנית בלשונית הזמנות'],['הכנסה מהזמנות שאושרו','₪'+s.attributedRevenue,''],['עלות הודעות',usd(m.estimatedUsd),(m.sent||0)+' נשלחו · '+(m.received||0)+' התקבלו']];
  return'<div class="page"><div class="kpis">'+k.map(x=>'<div class="kpi"><b>'+esc(x[1])+'</b><span>'+esc(x[0])+'</span>'+(x[2]?'<small>'+esc(x[2])+'</small>':'')+'</div>').join('')+'</div>'+(m.failed?'<p class="hint">'+m.failed+' הודעות לא נשלחו. אפשר לראות אותן בשיחה (מסומנות באדום).</p>':'')+'</div>'}
 var ST={clicked:['לחיצה בלבד',''],user_confirmed:['המשתמש אישר שהזמין','ok'],provider_verified:['מופיע ביומן המועדון','ok']},SRC={availability:'מגרש פנוי',matching:'התאמה'};
@@ -93,7 +93,7 @@ $('#enter').onclick=enter;$('#password').onkeydown=e=>{if(e.key==='Enter')enter(
 var saved=sessionStorage.getItem('gt-admin-token');if(saved)load(saved).catch(e=>{$('#error').textContent=e.message;sessionStorage.removeItem('gt-admin-token')});
 `;
 export const html = '<!doctype html><html dir="rtl" lang="he"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GT PADEL - מערכת ניהול</title><style>' + CSS + '</style>'
- + '<header class="top"><h1>GT PADEL - מערכת ניהול</h1><nav class="tabs" id="tabs" hidden><button data-v="chats">שיחות</button><button data-v="overview">סקירה</button><button data-v="clicks">הזמנות</button></nav></header>'
+ + '<header class="top"><h1>GT PADEL - מערכת ניהול</h1><nav class="tabs" id="tabs" hidden><button data-v="overview">סקירה</button><button data-v="chats">שיחות</button><button data-v="clicks">הזמנות</button></nav></header>'
  + '<div id="login" class="login"><h2>כניסה</h2><label for="password">סיסמת ניהול</label><input id="password" type="password" autocomplete="current-password"><button id="enter" class="btn">כניסה</button><div id="error" class="err"></div></div><main id="app" hidden></main>'
  + '<script>' + JS + '</script></html>';
 export default async () => new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
