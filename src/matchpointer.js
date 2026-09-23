@@ -9,7 +9,7 @@ async function get(path, fetchImpl = fetch) {
 export async function staticData(fetchImpl = fetch, now = Date.now()) {
   if (cache.value && cache.expires > now) return cache.value;
   const [venues, courts, pricing, overrides] = await Promise.all([
-    get(`venues?slug=eq.${CONFIG.venueSlug}&select=id,name,timezone,opening_hours,advance_booking_days`, fetchImpl),
+    get(`venues?slug=eq.${CONFIG.venueSlug}&select=id,name,timezone,opening_hours,advance_booking_days,allow_unbookable_time`, fetchImpl),
     get(`courts?venue_id=eq.${CONFIG.venueId}&is_active=eq.true&select=id,name,sport,court_type,is_active`, fetchImpl),
     get(`pricing_rules?venue_id=eq.${CONFIG.venueId}&select=court_id,day_of_week,start_time,end_time,price,price_90,price_120,label`, fetchImpl),
     get(`pricing_date_overrides?venue_id=eq.${CONFIG.venueId}&select=court_id,override_date,start_time,end_time,price,price_90,price_120,label`, fetchImpl)
