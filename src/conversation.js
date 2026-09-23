@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { parseIntentLocal } from "./intent.js";
 import { findAvailability } from "./availability.js";
-import { activeRequests, DURATIONS, findMatches, formatBoard, LEVELS, levelNote, flexMinutesFor, mute, publicBoard, welcome } from "./matching.js";
+import { activeRequests, DURATIONS, findMatches, formatBoard, LEVELS, levelTitle, levelNote, flexMinutesFor, mute, publicBoard, welcome } from "./matching.js";
 const withMenu=text=>`${text}\n\nכתבו *תפריט* בכל שלב כדי לראות את האפשרויות.`;
 const btn=(text,buttons)=>({text,buttons:buttons.map(x=>typeof x==="string"?{id:x,title:x}:x)}), list=(text,items)=>({text,list:{button:"לבחירה",sections:[{title:"אפשרויות",rows:items}]}});
 const id=()=>crypto.randomUUID();
@@ -25,7 +25,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
 
  if(input.startsWith("connect:")){const request=await store.get(`request/${input.slice(8)}`);if(!request||!request.active)return{text:"הבקשה כבר לא פעילה."};if(request.userId===userId)return{text:"זו הבקשה שלך."};const connectionId=id();await store.set(`connection/${connectionId}`,{id:connectionId,fromUserId:userId,fromDisplayName:displayName,toUserId:request.userId,requestId:request.id,status:"pending",createdAt:now.toISOString()});return{text:`שלחתי בקשת חיבור ל${request.displayName}. פרטי הקשר יישארו חסויים עד לאישור.`,notifications:[{to:request.userId,response:btn(`${displayName} רוצה להתחבר לבקשה שלך: ${request.date} · רמה ${request.level}. לחבר ביניכם?`,[{id:`accept:${connectionId}`,title:"כן, לחבר"},{id:`decline:${connectionId}`,title:"לא מתאים"},{id:"mute_week",title:"השתקה לשבוע"}])}]};}
  if(input.startsWith("accept:")||input.startsWith("decline:")){const connection=await store.get(`connection/${input.split(":")[1]}`);if(!connection||connection.toUserId!==userId)return{text:"הבקשה אינה זמינה."};connection.status=input.startsWith("accept:")?"accepted":"declined";await store.set(`connection/${connection.id}`,connection);if(connection.status==="declined")return{text:"סימנתי שלא מתאים. פרטי קשר לא נחשפו.",notifications:[{to:connection.fromUserId,response:{text:"בקשת החיבור לא התאימה הפעם. אמשיך לחפש התאמות אחרות."}}]};return{text:`חיברתי ביניכם בתוך הבוט. אפשר לתאם כאן דרך בקשות הדדיות; מספרי הטלפון נשארים חסויים.`,notifications:[{to:connection.fromUserId,response:{text:`${displayName} אישר/ה את החיבור. אפשר להמשיך בתיאום דרך הבוט; מספרי הטלפון נשארים חסויים.`}}]};}
- if(input==="oneoff"||input==="recurring"){await set({flow:"players",step:"level",draft:{recurring:input==="recurring",displayName}});return list("מה הרמה שלכם?",LEVELS.map(x=>({id:`level:${x}`,title:x})));}
+ if(input==="oneoff"||input==="recurring"){await set({flow:"players",step:"level",draft:{recurring:input==="recurring",displayName}});return list("מה הרמה שלכם?",LEVELS.map(x=>({id:`level:${x}`,title:levelTitle(x)})));}
  if(state.flow==="players"&&state.step==="level"&&input.startsWith("level:")){const draft={...state.draft,level:input.slice(6)};await set({...state,step:draft.recurring?"schedule":"when",draft});return draft.recurring?{text:"באילו ימים ושעות אתם זמינים בדרך כלל? למשל: שני ורביעי אחרי 20:00"}:{text:"מתי תרצו לשחק? אפשר לכתוב למשל: מחר אחרי 19:00"};}
  if(state.flow==="players"&&(state.step==="when"||state.step==="schedule")){
    if(state.step==="schedule"&&!recurringDays(text).length)return{text:"בזמינות קבועה צריך לציין ימים בשבוע, למשל: שני ורביעי אחרי 20:00. לחיפוש משחק ליום מסוים חזרו לתפריט ובחרו \"חסרים לי שחקנים\"."};

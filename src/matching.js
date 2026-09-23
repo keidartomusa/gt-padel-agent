@@ -1,6 +1,8 @@
 import { addDays, localDateParts, weekdayIndex } from "./time.js";
 const pad=n=>String(n).padStart(2,"0"), clock=m=>`${pad(Math.floor(m/60)%24)}:${pad(m%60)}`;
 export const LEVELS=["1–2","2–2.5","2.5–3","3–3.5","3.5–4","4+"];
+export const LEVEL_LABELS={"1–2":"מתחילים","2–2.5":"מתחילים+","2.5–3":"בינוניים","3–3.5":"בינוניים+","3.5–4":"בינוניים-גבוהים","4+":"מתקדמים"};
+export const levelTitle=l=>LEVEL_LABELS[l]?`${l} · ${LEVEL_LABELS[l]}`:l;
 export const DURATIONS=[60,90,120];
 export const welcome=()=>({text:"*ברוכים הבאים ל־GT PADEL* 🎾\n\nאני כאן כדי לעזור לכם להגיע למגרש ולמשחק שמתאים לכם.\n\n*1. למצוא מגרש פנוי*\nבדיקת זמינות חיה לפי יום, שעה ומשך - וקישור ישיר להזמנה.\n\n*2. למצוא שחקנים למשחק*\nחיפוש משחק נקודתי ליום ושעה מסוימים, או הרשמה עם הזמינות הקבועה שלך - והבוט מחפש לך התאמות באופן שוטף.\n\nמה תרצו לעשות?",buttons:[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"}]});
 export function levelRange(label){const nums=(label.match(/\d(?:\.5)?/g)||[]).map(Number);return nums.length?[Math.min(...nums),Math.max(...nums)]:[1,5];}
