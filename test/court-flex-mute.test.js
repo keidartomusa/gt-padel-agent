@@ -35,11 +35,12 @@ test("request-saved confirmation offers no mute", async () => {
     assert.ok(!ids(r).some(x => x.startsWith("mute")), JSON.stringify(ids(r)));
   }
 });
-test("match notification still offers mute", async () => {
+// Tom 23.9 14:13 supersedes "mute only in notifications": no mute anywhere.
+test("match notification offers only the connect action, no mute", async () => {
   const s = memoryStore();
   await (await upToCourt(s, "x", "דנה"))({ actionId: "court:yes" });
   const r = await (await upToCourt(s, "y", "נועם"))({ actionId: "court:yes" });
   assert.match(r.text, /מצאתי התאמה אפשרית ושלחתי הצעה/);
   assert.ok(r.notifications?.length);
-  assert.ok(r.notifications.some(n => ids(n.response).some(x => x.startsWith("mute"))), JSON.stringify(r.notifications.map(n => ids(n.response))));
+  for (const n of r.notifications) assert.deepEqual(ids(n.response), [`connect:${(await s.list("request/")).map(x => x.value).find(x => x.userId === "y").id}`]);
 });

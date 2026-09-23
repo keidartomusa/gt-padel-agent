@@ -10,7 +10,8 @@ const TERMINAL = [
   ["connected", t => /חיברתי ביניכם/.test(t.response.text || "")],
   ["declined", t => /סימנתי שלא מתאים/.test(t.response.text || "")],
   ["connect_sent", t => /שלחתי בקשת חיבור/.test(t.response.text || "")],
-  ["muted", t => /הושתקו/.test(t.response.text || "")],
+  ["left", t => /הוסרת מהרשימה/.test(t.response.text || "")],
+  ["stayed", t => /נשארת ברשימה/.test(t.response.text || "")],
   ["my_requests", t => /אין לך כרגע בקשות|\*הבקשות שלי\*/.test(t.response.text || "")],
   ["board_empty", t => /לא מצאתי כרגע בקשות פתוחות/.test(t.response.text || "")],
   ["day_full", t => /אין מגרש פנוי .* וגם לא בשאר היום/.test(t.response.text || "")]
@@ -55,8 +56,8 @@ await convo("92. אישור חיבור מתווך", "board", owner, [{ actionId:
 const b2 = memoryStore(), o2 = makeUser("972503000903", "רוני", b2), v2 = makeUser("972503000904", "גל", b2);
 for (const s of reg(o2)) await turnAll(o2, s); const r2 = (await b2.list("request/"))[0].value; await turnAll(v2, { actionId: `connect:${r2.id}` }); const c2 = (await b2.list("connection/"))[0].value;
 await convo("93. דחיית חיבור בלי חשיפת טלפון", "board", o2, [{ actionId: `decline:${c2.id}` }]);
-await convo("94. השתקה לשבוע", "settings", makeUser("972503000905", "עדי"), [{ actionId: "mute_week" }]);
-await convo("95. השתקה מותאמת", "settings", makeUser("972503000906", "עדי"), [{ actionId: "mute_custom" }, { actionId: "mute_14" }]);
+await convo("94. הסרה מהרשימה", "settings", makeUser("972503000905", "עדי"), [{ text: "הגדרות" }, { actionId: "leave" }, { actionId: "leave_yes" }]);
+await convo("95. הסרה בהקלדה ובחירה להישאר", "settings", makeUser("972503000906", "עדי"), [{ text: "תסירו אותי מהרשימה" }, { actionId: "leave_no" }]);
 await convo("96. אין בקשות פעילות", "settings", makeUser("972503000907", "עדי"), [{ actionId: "my_requests" }]);
 const mine = memoryStore(), me = makeUser("972503000908", "תמר", mine); for (const s of reg(me)) await turnAll(me, s);
 await convo("97. הצגת הבקשות שלי", "settings", me, [{ actionId: "my_requests" }]);

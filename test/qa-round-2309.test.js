@@ -25,33 +25,44 @@ test("one match: 'מצאתי התאמה אפשרית', never 'מצאתי 1 הת�
   const s = memoryStore(); await create(s, "a", "דנה"); const r = await create(s, "b", "נועם");
   assert.match(r.text, /מצאתי התאמה אפשרית ושלחתי הצעה:/); assert.doesNotMatch(r.text, /מצאתי 1 /);
 });
-test("match notification: weekday + date + window, no ISO date; mute button renamed 'השתקה למשך זמן…'", async () => {
+test("match notification: weekday + date + window, no ISO date; only the connect button (Tom 14:13: no mute)", async () => {
   const s = memoryStore(); await create(s, "a", "דנה"); const r = await create(s, "b", "נועם");
   const n = r.notifications[0].response;
   assert.match(n.text, /נועם · חמישי 24\.9 · אחרי 19:00 · רמה 3–3\.5/); assert.doesNotMatch(n.text, /2026-/);
-  assert.deepEqual(ids(n).map(x => x.title), ["רוצה להתחבר", "השתקה לשבוע", "השתקה למשך זמן…"]);
-  assert.ok(ids(n).every(x => x.title.length <= 20));
+  assert.deepEqual(ids(n).map(x => x.title), ["רוצה להתחבר"]);
 });
-test("'השתקה למשך זמן…' asks for how long; 1 day reads 'יום אחד'", async () => {
-  const s = memoryStore(), h = H(s, "a", "דנה"); await named(s, "a", "דנה");
-  const r = await h({ actionId: "mute_custom" });
-  assert.match(r.text, /לכמה זמן להשתיק/);
-  assert.deepEqual(ids(r).map(x => x.title), ["יום אחד", "3 ימים", "7 ימים", "14 ימים", "30 ימים"]);
-  assert.equal((await h({ actionId: "mute_1" })).text, "ההתראות הושתקו ליום אחד.");
-  assert.equal((await h({ actionId: "mute_3" })).text, "ההתראות הושתקו ל־3 ימים.");
+test("connect request to the owner has no mute button", async () => {
+  const s = memoryStore(); await create(s, "a", "יוסי"); const req = (await s.list("request/"))[0].value;
+  await named(s, "b", "דנה"); const sent = await H(s, "b", "דנה")({ actionId: `connect:${req.id}` });
+  assert.deepEqual(ids(sent.notifications[0].response).map(x => x.title), ["כן, לחבר", "לא מתאים"]);
 });
-test("no 'השתקה אחרת' anywhere in settings", async () => {
-  const s = memoryStore(), r = await H(s, "a", "דנה")({ text: "הגדרות" });
-  assert.ok(!ids(r).some(x => x.title === "השתקה אחרת")); assert.ok(ids(r).some(x => x.title === "השתקה למשך זמן…"));
+test("no mute wording anywhere in settings, lists or alerts", async () => {
+  const s = memoryStore(); await create(s, "a", "דנה"); const r = await create(s, "b", "נועם");
+  const set1 = await H(s, "a", "דנה")({ text: "הגדרות" }), mine = withMenu(await H(s, "a", "דנה")({ actionId: "my_requests" }));
+  for (const x of [set1, mine, r, ...r.notifications.map(n => n.response)]) assert.doesNotMatch(JSON.stringify(x), /השתק|mute/);
 });
-test("muted user can unmute from settings (the mute message promises it)", async () => {
-  const s = memoryStore(), h = H(s, "a", "דנה");
-  assert.match((await h({ actionId: "mute_week" })).text, /דרך תפריט ההגדרות/);
-  const set1 = await h({ text: "הגדרות" });
-  assert.match(set1.text, /ההתראות מושתקות כרגע/); assert.ok(ids(set1).some(x => x.id === "unmute" && x.title === "ביטול השתקה"));
-  assert.equal((await h({ actionId: "unmute" })).text, "ההתראות חזרו לפעול.");
-  assert.equal(await isMuted(s, "a", now), false);
-  const set2 = await h({ text: "הגדרות" }); assert.ok(ids(set2).some(x => x.id === "mute_week")); assert.ok(!ids(set2).some(x => x.id === "unmute"));
+test("leave the list: from settings, from 'הבקשות שלי', or by typing; confirm; requests removed; no more alerts", async () => {
+  const s = memoryStore(); await create(s, "a", "דנה"); await create(s, "a", "דנה", { when: "שישי בבוקר" });
+  const h = H(s, "a", "דנה");
+  assert.ok(ids(await h({ text: "הגדרות" })).some(x => x.id === "leave" && x.title === "הסרה מהרשימה"));
+  assert.ok(ids(await h({ actionId: "my_requests" })).some(x => x.id === "leave"));
+  for (const t of ["תסירו אותי מהרשימה", "הסר אותי", "אני רוצה להפסיק לקבל הודעות", "stop"]) { const q = await h({ text: t }); assert.match(q.text, /^להסיר אותך מהרשימה\?/, t); }
+  const no = await h({ actionId: "leave_no" }); assert.equal(no.text, "בסדר, נשארת ברשימה.");
+  assert.equal((await s.list("request/")).filter(x => x.value.active).length, 2);
+  const ask = await h({ actionId: "leave" }); assert.deepEqual(ids(ask).map(x => x.id), ["leave_yes", "leave_no"]);
+  const done = await h({ actionId: "leave_yes" }); assert.match(done.text, /^הוסרת מהרשימה\. הבקשות שלך נמחקו/);
+  assert.equal((await s.list("request/")).filter(x => x.value.active && x.value.userId === "a").length, 0);
+  assert.ok((await s.get("profile/a")).optedOutAt);
+  const other = await create(s, "b", "נועם"); assert.ok(!(other.notifications || []).some(n => n.to === "a"));
+  assert.doesNotMatch(other.text, /דנה/);
+  const board = await quiet(() => H(s, "c", "גל")({ text: "מי מחפש משחק מחר בערב?" })); assert.doesNotMatch(board.text, /דנה/);
+});
+test("a normal message containing 'הסר' is not an opt-out", async () => {
+  const s = memoryStore(); const r = await quiet(() => H(s, "a", "דנה")({ text: "איך מסירים בקשה אחת?" }));
+  assert.doesNotMatch(r.text || "", /להסיר אותך מהרשימה/);
+});
+test("old mute buttons in chat history lead to the leave option, not an error", async () => {
+  const s = memoryStore(); for (const a of ["mute_week", "mute_custom", "mute_3", "unmute"]) { const r = await H(s, "a", "דנה")({ actionId: a }); assert.ok(ids(r).some(x => x.id === "leave"), a); }
 });
 test("connect request and answers: weekday date, gender-neutral copy", async () => {
   const s = memoryStore(); await create(s, "a", "יוסי"); const req = (await s.list("request/"))[0].value;

@@ -23,7 +23,7 @@ function check(conv, who, v) {
   for (const b of v.buttons || []) { if (b.title.length > 20) problems.push(`button title > 20: ${b.title}`); if (b.id.length > 256 || !/^[\x20-\x7e]+$/.test(b.id)) problems.push(`button id: ${b.id}`); }
   for (const r of v.rows || []) { if (r.title.length > 24) problems.push(`row title > 24: ${r.title}`); if (r.description.length > 72) problems.push(`row desc > 72: ${r.description}`); if (r.id.length > 200 || !/^[\x20-\x7e]+$/.test(r.id)) problems.push(`row id: ${r.id.slice(0, 60)}`); }
   if ((v.rows || []).length > 10) problems.push(`> 10 rows: ${where}`);
-  if (/הבקשה נשמרה/.test(v.text) && (v.buttons || []).some(b => /^mute/.test(b.id))) problems.push(`mute on saved: ${where}`);
+  if (/השתק|mute/.test(JSON.stringify(v))) problems.push(`mute on saved: ${where}`);
 }
 async function scenario(title, group, actors, steps, expect = {}) {
   const store = memoryStore(), users = {}, last = {}, log = [];
@@ -99,9 +99,10 @@ S.push(await scenario("11. מגבלת 5 בקשות", "ניהול בקשות", { 
 S.push(await scenario("13. בלי מגרש, ואין מגרש פנוי בחלון: הבקשה לא מתפרסמת, ניסיון זמן אחר", "מציאת שחקנים", { a: A("972501110071", "הילה") }, [
   ...reg("a", /^3/, "מחר בערב", /רק אני/, /^לא$/), ["a", { tap: /^שעה$/ }], ["a", { text: "@name", ifAsked: /מה השם/ }], ["a", { tap: /זמן אחר/, ifAsked: /לא פורסמה/ }], ["a", { text: "ראשון בערב", ifAsked: /מתי/ }], ["a", { tap: /^שעה$/, ifAsked: /גמישים/ }]]));
 // ---------- 6. settings ----------
-S.push(await scenario("12. השתקה מתוך התראה, השתקה למשך זמן, ביטול השתקה, ומשתמש מושתק לא מקבל התראות", "הגדרות", { a: A("972501110061", "עדי"), b: A("972501110062", "נדב"), c: A("972501110063", "שני") }, [
+S.push(await scenario("12. הסרה מהרשימה (במקום השתקה): הגדרות, התחרטות, הקלדה, אישור, ואין יותר התראות", "הגדרות", { a: A("972501110061", "עדי"), b: A("972501110062", "נדב"), c: A("972501110063", "שני") }, [
   ...reg("a", /^3/, "מחר אחרי 19:00", /רק אני/), ...reg("b", /^3/, "מחר אחרי 19:00", /רק אני/),
-  ["a", { tap: /השתקה לשבוע/ }], ["b", { text: "הגדרות" }], ["b", { tap: /השתקה למשך זמן/ }], ["b", { tap: /^3 ימים/ }], ["b", { text: "הגדרות" }], ["b", { tap: /ביטול השתקה/ }], ["b", { text: "הגדרות" }], ["b", { tap: /הבקשות שלי/ }],
-  ...reg("c", /^3/, "מחר אחרי 19:00", /רק אני/)]));
+  ["a", { text: "הגדרות" }], ["a", { tap: /הסרה מהרשימה/ }], ["a", { tap: /^לא$/ }],
+  ["a", { text: "תסירו אותי מהרשימה" }], ["a", { tap: /כן, להסיר/ }],
+  ...reg("c", /^3/, "מחר אחרי 19:00", /רק אני/), ["b", { text: "מי מחפש משחק מחר בערב?" }]]));
 fs.writeFileSync("/tmp/full-round.json", JSON.stringify({ at: now.toISOString(), scenarios: S, problems, providerRequests: provider.requests.length }, null, 1));
 console.log(JSON.stringify({ scenarios: S.length, turns: S.reduce((a, s) => a + s.log.length, 0), messages: S.reduce((a, s) => a + s.log.reduce((b, e) => b + e.out.length, 0), 0), problems }, null, 1));
