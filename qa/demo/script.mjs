@@ -27,7 +27,9 @@ await say("dana", { text: "היי" });
 // 2. Court search with live availability -> booking card
 S(2, "חיפוש מגרש פנוי - זמינות אמיתית מהמועדון", "dana");
 let r = await say("dana", { text: "יש מגרש פנוי מחר בערב?" });
-const slot = pick(r, x => x.id?.startsWith("bk:") || x.id?.startsWith("slot:"));
+// tap the offered slot closest to the evening that was asked for (the latest start)
+const slotRows = (r.list?.sections || []).flatMap(x => x.rows).filter(x => x.id?.startsWith("bk:"));
+const slot = slotRows.sort((a, b) => b.title.localeCompare(a.title))[0];
 out.bookingRow = slot || null;
 if (slot) { r = await say("dana", { actionId: slot.id }, slot.title); out.bookingCard = r; }
 // 3. Partner finding: מיכל and רון are already looking; דנה registers and is offered both right away
