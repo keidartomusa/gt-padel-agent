@@ -1,0 +1,7 @@
+import test from "node:test";import assert from "node:assert/strict";import {parseIntent} from "../src/intent.js";
+// Every parse logs which parser answered (llm / local_fallback with error / local_no_key) - no key or user text in the log.
+const now=new Date("2026-09-23T10:36:00+03:00");
+async function capture(fn){const lines=[],o=console.log;console.log=x=>lines.push(String(x));try{await fn()}finally{console.log=o}return lines.map(l=>{try{return JSON.parse(l)}catch{return{}}}).filter(x=>x.event==="parse_source");}
+test("no key -> local_no_key",async()=>{const k=process.env.OPENAI_API_KEY;delete process.env.OPENAI_API_KEY;try{const l=await capture(()=>parseIntent("מחר בערב",now));assert.equal(l[0].source,"local_no_key");}finally{if(k)process.env.OPENAI_API_KEY=k;}});
+test("API error -> local_fallback with status, key never logged",async()=>{process.env.OPENAI_API_KEY="sk-test-SECRET";try{const l=await capture(()=>parseIntent("מחר בערב",now,async()=>({ok:false,status:401,text:async()=>"invalid_api_key"})));assert.equal(l[0].source,"local_fallback");assert.match(l[0].error,/401/);assert.doesNotMatch(JSON.stringify(l),/SECRET|מחר/);}finally{delete process.env.OPENAI_API_KEY;}});
+test("success -> llm",async()=>{process.env.OPENAI_API_KEY="k";try{const l=await capture(()=>parseIntent("מחר בערב",now,async()=>({ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({date:"2026-09-24",startMinute:1020,endMinute:1380,durationMinutes:90})}}]})})));assert.equal(l[0].source,"llm");}finally{delete process.env.OPENAI_API_KEY;}});
