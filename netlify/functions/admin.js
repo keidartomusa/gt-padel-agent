@@ -18,7 +18,7 @@ h2.sec{font-size:16px;color:#54656f;margin:24px 0 10px}
 .panel{background:#fff;border-radius:14px;box-shadow:0 1px 3px #0000000f;overflow:hidden}
 table{width:100%;border-collapse:collapse;font-size:14px}th{background:#f7f8fa;color:#54656f;font-weight:600}th,td{padding:10px 12px;text-align:right;border-bottom:1px solid #eef0f2}
 .pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;background:#eef0f2;color:#54656f}.pill.ok{background:#d9fdd3;color:#1d6b33}
-.page a{color:#027eb5;text-decoration:none;font-weight:600}.tabs button{white-space:nowrap}.mini{border:1px solid #d1d7db;background:#fff;border-radius:8px;padding:5px 9px;font-size:13px;margin:2px}
+.page a{color:#027eb5;text-decoration:none;font-weight:600}.tabs button{white-space:nowrap}.game{background:#fff;border-radius:14px;box-shadow:0 1px 3px #0000000f;padding:14px 16px;margin-bottom:12px}.gh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.gh b{font-size:16px}.gh .cnt{margin-inline-start:auto}.next{color:#667781;font-size:13px}.pill.rec{background:#e7f0fe;color:#1a56b0}.pill.one{background:#fff4e0;color:#8a5a00}.gd{color:#54656f;font-size:14px;margin:8px 0 10px}.ppl{display:flex;flex-wrap:wrap;gap:8px}.pp{display:flex;align-items:center;gap:8px;background:#f5f6f6;border-radius:12px;padding:6px 10px;color:#111b21!important;font-weight:400!important}.pp small{color:#667781}.tag2{color:#008069!important}.av.sm{width:32px;height:32px;font-size:14px}.gf{color:#8696a0;font-size:12px;margin-top:10px}.mini{border:1px solid #d1d7db;background:#fff;border-radius:8px;padding:5px 9px;font-size:13px;margin:2px}
 .hint{color:#8696a0;font-size:13px;margin:8px 2px}
 .chat{display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 58px);background:#fff}
 .list{border-inline-end:1px solid #e9edef;display:flex;flex-direction:column;min-height:0;min-width:0}
@@ -40,7 +40,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{background:#f7f8fa;c
 .b .tag{font-size:11px;color:#8696a0;display:block;margin-bottom:2px}.b.fail{background:#fde8e8}.b .tag.bad{color:#d93025}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.chips span{background:#ffffffb3;border:1px solid #cfe9c9;color:#027eb5;border-radius:14px;padding:2px 10px;font-size:13px}
 .empty{flex:1;display:flex;align-items:center;justify-content:center;color:#667781;background:#f0f2f5}
-@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}.kpi b{font-size:24px}.top{padding:10px 12px}.top h1{font-size:15px}.tabs button{padding:6px 10px;font-size:14px}.page{padding:12px}
+@media(max-width:760px){.top{flex-wrap:wrap;gap:6px 10px}.tabs{margin-inline-start:0;width:100%;overflow-x:auto}.chat{height:calc(100vh - 92px)}.gh .cnt{margin-inline-start:0}.kpis{grid-template-columns:repeat(2,1fr)}.kpi b{font-size:24px}.top{padding:10px 12px}.top h1{font-size:15px}.tabs button{padding:6px 10px;font-size:14px}.page{padding:12px}
 .chat{grid-template-columns:minmax(0,1fr)}.chat.open .list{display:none}.chat:not(.open) .pane{display:none}.back{display:block}.b{max-width:88%}.wide{display:none}.msgs{padding:12px 10px}
 table.clicks thead{display:none}table.clicks tr{display:block;border-bottom:1px solid #eef0f2;padding:8px 0}table.clicks td{display:flex;justify-content:space-between;border:0;padding:4px 12px}table.clicks td::before{content:attr(data-l);color:#8696a0}}
 `;
@@ -60,7 +60,7 @@ async function api(q){const r=await fetch('/.netlify/functions/admin-data'+(q||'
 async function load(token){TOKEN=token;D=await api();sessionStorage.setItem('gt-admin-token',token);$('#login').hidden=true;$('#tabs').hidden=false;render()}
 function tab(v){VIEW=v;render()}
 function render(){document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===VIEW));var a=$('#app');a.hidden=false;
- if(VIEW==='chats')a.innerHTML=chatsView();else if(VIEW==='overview')a.innerHTML=overview();else a.innerHTML=clicksView();
+ if(VIEW==='chats')a.innerHTML=chatsView();else if(VIEW==='overview')a.innerHTML=overview();else if(VIEW==='live')a.innerHTML=liveView();else a.innerHTML=clicksView();
  if(VIEW!=='chats'&&CUR===null)history.replaceState(null,'',location.pathname);if(VIEW==='chats'){drawUsers();var h=decodeURIComponent((location.hash.match(/u=(\d+)/)||[])[1]||'');if(h)showConv(h,true)}}
 function overview(){var s=D.summary,m=(D.messages||{}).totals||{};var k=[['משתמשים',(D.messages&&D.messages.users.length)||s.registrations,'כתבו לבוט לפחות פעם אחת'],['בקשות פעילות',s.activeRequests,'מופיעות עכשיו בלוח'],['הצעות התאמה',s.matches,''],['חיבורים שאושרו',s.acceptedMatches,'שני הצדדים הסכימו'],['לחיצות על "להזמנה"',s.bookingClicks,'פתחו את דף ההזמנה באתר'],['עלות הודעות',usd(m.estimatedUsd),(m.sent||0)+' נשלחו · '+(m.received||0)+' התקבלו']];
  return'<div class="page"><div class="kpis">'+k.map(x=>'<div class="kpi"><b>'+esc(x[1])+'</b><span>'+esc(x[0])+'</span>'+(x[2]?'<small>'+esc(x[2])+'</small>':'')+'</div>').join('')+'</div>'+(m.failed?'<p class="hint">'+m.failed+' הודעות לא נשלחו. אפשר לראות אותן בשיחה (מסומנות באדום).</p>':'')+'</div>'}
@@ -68,6 +68,18 @@ var SRC={availability:'מגרש פנוי',matching:'התאמה'};
 function clicksView(){var c=(D.bookingClicks||[]).slice().sort((a,b)=>String(b.clickedAt).localeCompare(String(a.clickedAt)));
  if(!c.length)return'<div class="page"><p class="hint">עוד אף אחד לא לחץ על "להזמנה".</p></div>';
  return'<div class="page"><p class="hint">משתמשים שלחצו על "להזמנה" בבוט ופתחו את דף ההזמנה באתר. זה לא אומר שההזמנה הושלמה.</p><div class="panel"><table class="clicks"><thead><tr><th>משתמש</th><th>טלפון</th><th>מתי לחצו</th><th>מקור</th><th>המשחק</th><th>מחיר</th></tr></thead><tbody>'+c.map(x=>'<tr><td data-l="משתמש">'+(x.userId?'<a href="#u='+esc(x.userId)+'" data-user-open="'+esc(x.userId)+'">'+esc(x.userName||'ללא שם')+'</a>':'<span class="hint">לא ידוע</span>')+'</td><td data-l="טלפון">'+(x.userId?esc(phone(x.userId)):'-')+'</td><td data-l="מתי לחצו">'+esc(stamp(x.clickedAt))+'</td><td data-l="מקור">'+esc(SRC[x.source]||x.source)+'</td><td data-l="המשחק">'+esc(gameDay(x.date)+' · '+x.time+' · '+x.duration+' דק׳')+'</td><td data-l="מחיר">'+(x.price==null?'-':'₪'+esc(x.price))+'</td></tr>').join('')+'</tbody></table></div>'+(c.some(x=>!x.userId)?'<p class="hint">לחיצות ישנות נרשמו לפני שהתחלנו לשמור מי לחץ.</p>':'')+'</div>'}
+var dash=v=>String(v??'').replace(/[\u2013\u2014]/g,'-');
+function relDay(iso){var t=new Date().toLocaleDateString('en-CA',TZ),m=new Date(Date.now()+864e5).toLocaleDateString('en-CA',TZ);return iso===t?'היום':iso===m?'מחר':gameDay(iso)}
+function liveView(){var L=D.live||[];if(!L.length)return'<div class="page"><p class="hint">אין כרגע חיבורים פעילים. חיבור מופיע כאן אחרי ששני הצדדים אישרו, עד שמועד המשחק עובר.</p></div>';
+ var last='',out='<div class="page"><p class="hint">חיבורים ששני הצדדים אישרו ומועד המשחק עוד לפניהם. כל כרטיס הוא משחק אחד, מהקרוב לרחוק.</p>';
+ L.forEach(g=>{var day=relDay(g.nextDate);if(day!==last){out+='<h2 class="sec">'+esc(day)+'</h2>';last=day}
+  var dur=g.durations.length>1?'משך גמיש':g.durations.length?g.durations[0]+' דק׳':'';
+  var court=g.court?'מגרש '+esc(g.court.name)+(g.court.start?' · '+esc(g.court.start):'')+(g.court.price!=null?' · ₪'+esc(g.court.price):''):(g.hasCourt?'יש להם מגרש':'בלי מגרש עדיין');
+  out+='<div class="game"><div class="gh"><span class="pill '+(g.type==='recurring'?'rec':'one')+'">'+(g.type==='recurring'?'קבוע':'חד-פעמי')+'</span><b>'+esc(dash(g.type==='recurring'?g.when:gameDay(g.nextDate)+' · '+g.when.split(' · ').slice(1).join(' · ')))+'</b>'+(g.type==='recurring'?'<span class="next">הבא: '+esc(gameDay(g.nextDate))+'</span>':'')+'<span class="pill '+(g.full?'ok':'')+' cnt">'+(g.full?'מלא · 4/4':g.total+' מתוך 4 · חסר '+(4-g.total))+'</span></div>'
+   +'<div class="gd">'+[g.level?'רמה '+esc(dash(g.level)):'',esc(dur),court].filter(Boolean).join(' · ')+'</div>'
+   +'<div class="ppl">'+g.participants.map(p=>'<a href="#u='+esc(p.userId)+'" data-user-open="'+esc(p.userId)+'" class="pp"><span class="av sm">'+esc(initials(p))+'</span><span><b>'+esc(p.name||'ללא שם')+'</b>'+(p.party>1?' <small>+'+(p.party-1)+'</small>':'')+(p.role==='owner'?' <small class="tag2">פתח/ה את הבקשה</small>':'')+'<br><small>'+esc(phone(p.userId))+'</small></span></a>').join('')+'</div>'
+   +'<div class="gf">חובר '+esc(stamp(g.firstConnectedAt))+'</div></div>'});
+ return out+'</div>'}
 function chatsView(){return'<div class="chat" id="chat"><div class="list"><div class="search"><input id="q" placeholder="חיפוש לפי שם או מספר" autocomplete="off"></div><div class="users" id="users"></div></div><div class="pane" id="pane"><div class="empty">בחרו שיחה מהרשימה</div></div></div>'}
 function users(){return(D.messages&&D.messages.users)||[]}
 function drawUsers(){var q=($('#q')&&$('#q').value||'').trim().toLowerCase();var l=users().filter(u=>!q||(u.name||'').toLowerCase().indexOf(q)>=0||phone(u.userId).indexOf(q)>=0||u.userId.indexOf(q)>=0);
@@ -92,7 +104,7 @@ $('#enter').onclick=enter;$('#password').onkeydown=e=>{if(e.key==='Enter')enter(
 var saved=sessionStorage.getItem('gt-admin-token');if(saved)load(saved).catch(e=>{$('#error').textContent=e.message;sessionStorage.removeItem('gt-admin-token')});
 `;
 export const html = '<!doctype html><html dir="rtl" lang="he"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GT PADEL - מערכת ניהול</title><style>' + CSS + '</style>'
- + '<header class="top"><h1>GT PADEL - מערכת ניהול</h1><nav class="tabs" id="tabs" hidden><button data-v="overview">סקירה</button><button data-v="chats">שיחות</button><button data-v="clicks">לחיצות</button></nav></header>'
+ + '<header class="top"><h1>GT PADEL - מערכת ניהול</h1><nav class="tabs" id="tabs" hidden><button data-v="overview">סקירה</button><button data-v="chats">שיחות</button><button data-v="live">חיבורים</button><button data-v="clicks">לחיצות</button></nav></header>'
  + '<div id="login" class="login"><h2>כניסה</h2><label for="password">סיסמת ניהול</label><input id="password" type="password" autocomplete="current-password"><button id="enter" class="btn">כניסה</button><div id="error" class="err"></div></div><main id="app" hidden></main>'
  + '<script>' + JS + '</script></html>';
 export default async () => new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
