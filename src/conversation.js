@@ -9,8 +9,9 @@ const WD=new Map([["ראשון",0],["שני",1],["שלישי",2],["רביעי",3
 const recurringDays=text=>[...WD].filter(([name])=>text.includes(name)).map(([,n])=>n);
 export async function handleConversation({userId,displayName="שחקן/ית",text="",actionId,store,now=new Date(),availabilityFn=findAvailability}){
  const input=(actionId||text).trim(),state=await store.get(`state/${userId}`)||{}; const set=async s=>store.set(`state/${userId}`,s);
- if(/^(היי|הי|שלום|תפריט|menu|start)$/i.test(input)||input==="menu")return welcome();
- if(input==="availability"||(!/מי מחפש|שחקן פנוי|בקשות פתוחות/.test(input)&&/מגרש(?:ים)?(?:\s+פנוי)?|זמינות|איזה מגרשים|איפה מזמינים|מה פנוי|תבדוק|(?:היום|מחר|ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת).*(?:בוקר|צהריים|ערב|לילה|שעה|דקות|דק)/.test(input)))return{mode:"availability",query:text||input};
+ if(/^(היי|הי|שלום|תפריט|menu|start)$/i.test(input)||input==="menu"){if(state.step)await set({});return welcome();}
+ if(input==="availability"&&state.step){await set({});state.step=undefined;}
+ if(input==="availability"||(!(!actionId&&["when","schedule"].includes(state.step))&&!/מי מחפש|שחקן פנוי|בקשות פתוחות/.test(input)&&/מגרש(?:ים)?(?:\s+פנוי)?|זמינות|איזה מגרשים|איפה מזמינים|מה פנוי|תבדוק|(?:היום|מחר|מחרתיים|ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת|\d{1,2}[/.]\d{1,2}|\d{1,2}\s*לחודש).*(?:בוקר|צהריים|אחה"?צ|ערב|לילה|שעה|שעתיים|דקות|דק|\d{1,2}:\d{2}|אחרי\s*\d|לפני\s*\d|ב-?\d{1,2}\b)|^\s*\d{1,2}[/.]\d{1,2}\b/.test(input)))return{mode:"availability",query:text||input};
  if(input==="players"||/מציאת שחקנים/.test(input)){await set({flow:"players",step:"mode"});return btn("איך תרצו למצוא משחק?",[{id:"oneoff",title:"משחק נקודתי"},{id:"recurring",title:"זמינות קבועה"},{id:"board",title:"בקשות פתוחות"}]);}
  if(input==="settings"||/הגדרות|הבקשות שלי/.test(input))return btn("*ניהול הבקשות וההתראות*",[{id:"my_requests",title:"הבקשות שלי"},{id:"mute_week",title:"השתקה לשבוע"},{id:"mute_custom",title:"השתקה אחרת"}]);
  if(input==="mute_week"){const until=new Date(now);until.setDate(until.getDate()+7);await mute(store,userId,until.toISOString());return btn("ההתראות הושתקו לשבוע. אפשר לשנות זאת בכל רגע דרך תפריט ההגדרות.",[{id:"menu",title:"לתפריט"}]);}
