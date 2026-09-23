@@ -119,6 +119,12 @@ test("picking 'find a court' from the menu immediately asks when, and the answer
 
 test("picking 'find players' from the menu immediately asks how to find a game", async () => {
   const r = await routeIncoming({ userId: "guide-p", actionId: "players", store: memoryStore(), now: new Date("2026-09-23T08:00:00+03:00") });
-  assert.match(r.text, /איך תרצו למצוא משחק/);
-  assert(r.buttons.length >= 2);
+  assert.equal(r.text, "רוצים להצטרף למשחק קיים, או לחפש שחקנים שישלימו לכם רביעייה? אפשר גם לרשום את הזמינות השבועית והמערכת תנסה לשדך שחקנים");
+  assert.deepEqual(r.buttons.slice(0, 3).map(b => [b.id, b.title]), [["oneoff", "חסרים לי שחקנים"], ["board", "להצטרף למשחק חד-פעמי"], ["recurring", "משחק קבוע כל שבוע"]]);
+  for (const b of r.buttons) assert(b.title.length <= 20, b.title);
+});
+
+test("no reply points users to a retired players button label", async () => {
+  const src = (await import("node:fs")).readFileSync(new URL("../src/conversation.js", import.meta.url), "utf8");
+  for (const old of ["משחק נקודתי", "זמינות קבועה\"}", "איך תרצו למצוא משחק"]) assert(!src.includes(old), old);
 });
