@@ -15,7 +15,8 @@ function widened(x){const f=Math.max(0,Number(x.flexMinutes)||0);return[Math.max
 export function timesCompatible(a,b){const[as,ae]=widened(a),[bs,be]=widened(b);return as<be&&bs<ae;}
 export const partyOf=x=>Number(x?.partySize)||1;
 // Critique 23.9 item 6: two sides only match when together they are at most 4.
-function overlap(a,b){return levelsCompatible(a.level,b.level)&&timesCompatible(a,b)&&a.durations.some(x=>b.durations.includes(x))&&partyOf(a)+partyOf(b)<=4;}
+// Live bug 23.9 18:38 (120 vs 90 min got no offer). Agent decision, pending Tom review: the game length is not a match condition - each side sees the other's duration and they settle it.
+function overlap(a,b){return levelsCompatible(a.level,b.level)&&timesCompatible(a,b)&&partyOf(a)+partyOf(b)<=4;}
 // Item 8: "לא הפעם" on an alert hides that one pairing (either direction), nothing else.
 export const skipKey=(userId,requestId)=>`skip/${userId}/${requestId}`;
 const skipped=async(store,a,b)=>Boolean(await store.get(skipKey(a.userId,b.id))||await store.get(skipKey(b.userId,a.id)));

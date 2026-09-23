@@ -69,7 +69,7 @@ test("old mute buttons in chat history lead to the leave option, not an error", 
 test("connect request and answers: weekday date, gender-neutral copy", async () => {
   const s = memoryStore(); await create(s, "a", "יוסי"); const req = (await s.list("request/"))[0].value;
   await named(s, "b", "דנה"); const sent = await H(s, "b", "דנה")({ actionId: `connect:${req.id}` });
-  assert.equal(sent.text, "שלחתי בקשת חיבור ליוסי. אעדכן כשתגיע תשובה.");
+  assert.match(sent.text, /^שלחתי בקשת חיבור ליוסי\. אעדכן כשתגיע תשובה\./);
   const ask = sent.notifications[0].response.text;
   assert.match(ask, /^דנה רוצה להתחבר לבקשה שלכם: חמישי 24\.9 · אחרי 19:00 · רמה 3–3\.5\./); assert.doesNotMatch(ask, /2026-/);
   const c = (await s.list("connection/"))[0].value, acc = await H(s, "a", "יוסי")({ actionId: `accept:${c.id}` });

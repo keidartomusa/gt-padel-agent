@@ -39,6 +39,8 @@ const WHEN_ASK="מתי תרצו לשחק? אפשר לכתוב למשל: מחר �
 const COURT_WHEN_ASK="באיזה שעה? אפשר לכתוב למשל: מחר ב-19:00";
 const whenAsk=d=>d?.hasCourt?COURT_WHEN_ASK:WHEN_ASK;
 const SCHEDULE_ASK="באילו ימים ושעות אתם זמינים בדרך כלל? למשל: שני ורביעי אחרי 20:00";
+// Tom 23.9 18:37: with a court already, just "כמה זמן?".
+const durAsk=d=>d?.hasCourt?"כמה זמן?":DURATION_ASK;
 const DURATION_ASK="כמה זמן תרצו לשחק?", FLEX_ASK="עד כמה אתם גמישים בשעה?";
 const AVAIL_ASK="מתי תרצו לשחק? בחרו מהרשימה או כתבו יום, שעה ומשך, למשל: מחר אחרי 19:00 ל90 דקות", BOARD_ASK="מתי תרצו לשחק? בחרו מהרשימה או כתבו יום ושעה, למשל: מחר אחרי 19:00";
 const PLAYERS_BTNS=[{id:"oneoff",title:"חסרים לי שחקנים"},{id:"board",title:"להצטרף למשחק חד-פעמי"},{id:"recurring",title:"משחק קבוע כל שבוע"}];
@@ -101,7 +103,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  const menuFor=async()=>{const p=await store.get(profileKey)||{userId},w=welcome(name),buttons=[...w.buttons,CLUB_BTN];if(p.welcomedAt)return{text:name?`${name}, מה תרצו לעשות?`:"מה תרצו לעשות?",buttons};await store.set(profileKey,{...p,welcomedAt:now.toISOString()});return{...w,buttons};};
  const timeAsk=async(date,resume)=>{if(resume!==null)await set({step:"time_ask",tResume:resume,tDate:date});return btn(`${dayLabel({date})} - מאיזו שעה?`,[17,18,19].map(h=>({id:`tm:${h}`,title:`${h}:00`})));};
  const reask=async s=>{switch(s.step){case"avail_when":return list(AVAIL_ASK,WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));case"board_when":return list(BOARD_ASK,WHEN_OPTIONS.map((x,i)=>({id:`bwhen:${i}`,title:x})));case"when":case"edit_when":{const er=s.step==="edit_when"?await ownReq(s.editId):null;return{text:er?.recurring?SCHEDULE_ASK:whenAsk(er||s.draft)};};case"schedule":return{text:SCHEDULE_ASK};
-   case"level":case"edit_level":return list(LEVEL_ASK,LEVEL_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"pc":return list(PC_ASK,PC_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"duration":case"edit_duration":return list(DURATION_ASK,DURATION_ROWS());case"flex":case"edit_flex":return list(FLEX_ASK,FLEX_ROWS());case"edit_party":return list("כמה שחקנים אתם?",PARTY_ROWS());case"court":case"edit_court":return btn("כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);
+   case"level":case"edit_level":return list(LEVEL_ASK,LEVEL_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"pc":return list(PC_ASK,PC_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"duration":case"edit_duration":return list(durAsk(s.draft),DURATION_ROWS());case"flex":case"edit_flex":return list(FLEX_ASK,FLEX_ROWS());case"edit_party":return list("כמה שחקנים אתם?",PARTY_ROWS());case"court":case"edit_court":return btn("כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);
    case"mode":return btn(PLAYERS_MENU,PLAYERS_BTNS);case"time_ask":return timeAsk(s.tDate,null);case"nw_day":return s.nwDays?list("באיזה יום בשבוע הבא?",s.nwDays.map((d,i)=>({id:`nw:${i}`,title:d.label}))):null;case"leave_confirm":return btn(LEAVE_ASK,[{id:"leave_yes",title:"כן, להסיר"},{id:"leave_no",title:"לא"}]);case"name_confirm":return btn(`לשנות את השם ${fromName(s.oldName)} ${toName(s.newName)}?`,[{id:"name_yes",title:"כן, לשנות"},{id:"name_no",title:"לא"}]);default:return null;}};
  // Items 3 and 9: one routine decides the next missing field, so known answers are never asked again.
  const finish=async(st,d,prefix="")=>{if(!name)return askName({pending:"pfinish",resume:{...st,flow:"players",step:"ready",draft:d}},prefix);const request={...d,displayName,id:id(),userId,flexMinutes:d.flexMinutes??0,active:true,createdAt:now.toISOString()};
@@ -109,19 +111,23 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    await store.set(`request/${request.id}`,request);await set({});const matches=await findMatches(store,request,now),saved=`${prefix}הבקשה נשמרה ותופיע בלוח המשחקים.`;
    if(!matches.length)return btn(`${saved}\n\nאעדכן כשאמצא התאמה.`,[MY_REQ,{id:"players",title:"בקשה נוספת"},MENU]);
    // Item 4: the matches as a list, each one connectable right away.
-   const top=matches.slice(0,3),response={text:`${saved}\n\n${top.length===1?"מצאתי התאמה אפשרית ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:":`מצאתי ${top.length} התאמות אפשריות ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:`}`,list:{button:"להתאמות",sections:[{title:"התאמות",rows:top.map(m=>({id:`connect:${m.id}`,title:`${groupShort(m)} · ${m.level}`.slice(0,24),description:`${groupNames(m).length>1?groupLabel(m)+" · ":""}${partyText(m.partySize)}${m.hasCourt?" · יש מגרש":""}${levelNote(request.level,m.level)}`.slice(0,72)})).concat(MY_REQ,MENU)}]}};
+   const asked=await pendingTo(),top=matches.filter(m=>!asked.has(m.id)).slice(0,3);if(!top.length)return btn(`${saved}\n\nאעדכן כשאמצא התאמה.`,[MY_REQ,{id:"players",title:"בקשה נוספת"},MENU]);const response={text:`${saved}\n\n${top.length===1?"מצאתי התאמה אפשרית ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:":`מצאתי ${top.length} התאמות אפשריות ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:`}`,list:{button:"להתאמות",sections:[{title:"התאמות",rows:top.map(m=>({id:`connect:${m.id}`,title:`${groupShort(m)} · ${m.level}`.slice(0,24),description:`${groupNames(m).length>1?groupLabel(m)+" · ":""}${partyText(m.partySize)}${m.hasCourt?" · יש מגרש":""}${levelNote(request.level,m.level)}`.slice(0,72)})).concat(MY_REQ,MENU)}]}};
    response.notifications=await matchNotifications(store,request,top,now);return response;};
+ // Board rows the user can still pick: not their own, not already asked (pending), not the one just picked.
+ const pendingTo=async()=>new Set((await store.list("connection/")).map(x=>x.value).filter(c=>c?.status==="pending"&&c.fromUserId===userId).map(c=>c.requestId));
+ const pickRow=x=>({id:`connect:${x.id}`,title:`${groupShort(x)} · ${x.level}`.slice(0,24),description:`${groupNames(x).length>1?groupLabel(x)+" · ":""}${timeLabel(x)} · ${partyText(x.partySize)}${x.hasCourt?" · יש מגרש":""}`.slice(0,72)});
+ const morePicks=async(win,skipId)=>{if(!win?.date)return[];const asked=await pendingTo();return(await publicBoard(store,{date:win.date,startMinute:win.startMinute??0,endMinute:win.endMinute??1440,now})).filter(x=>x.id!==skipId&&!isMine(x,userId)&&!asked.has(x.id)&&!x.full).slice(0,8).map(pickRow);};
  const nextStep=async(st,d,prefix="")=>{const cancel=st.autoOpen?[CANCEL_ROW]:[],base={...st,flow:"players",draft:d};
    if(!d.level){await set({...base,step:"level"});return list(prefix+LEVEL_ASK,LEVEL_ROWS().concat(cancel));}
    // Live 23.9 16:32: "לשנות רמה ומשך" asks both, in a row - duration right after the level.
-   if(st.redoDuration&&!d.durations){await set({...base,step:"duration"});return list(prefix+DURATION_ASK,DURATION_ROWS());}
+   if(st.redoDuration&&!d.durations){await set({...base,step:"duration"});return list(prefix+durAsk(d),DURATION_ROWS());}
    // Tom 23.9 16:35: a weekly game never asks about a court.
    if(d.recurring&&d.partySize==null){await set({...base,step:"party"});return list(prefix+"כמה שחקנים אתם?",PARTY_ROWS().concat(st.prefilled?PREFILL_ROWS(d):[],cancel));}
    if(d.recurring&&d.hasCourt==null){d.hasCourt=false;d.flexMinutes??=0;}
    if(d.partySize==null){await set({...base,step:"pc"});return list(prefix+PC_ASK,PC_ROWS().concat(st.prefilled?PREFILL_ROWS(d):[],cancel));}
    if(d.hasCourt==null){await set({...base,step:"court"});return btn(prefix+"כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);}
    if(d.recurring?!d.weekdays?.length:!d.date){await set({...base,step:d.recurring?"schedule":"when"});return{text:prefix+(d.recurring?SCHEDULE_ASK:whenAsk(d))};}
-   if(!d.durations?.length){await set({...base,step:"duration"});return list(prefix+DURATION_ASK,DURATION_ROWS());}
+   if(!d.durations?.length){await set({...base,step:"duration"});return list(prefix+durAsk(d),DURATION_ROWS());}
    // Tom 23.9 13:14: with a court the time is fixed - no flex question.
    if(d.flexMinutes==null){if(d.hasCourt)d={...d,flexMinutes:0};else{await set({...base,draft:d,step:"flex"});return list(prefix+FLEX_ASK,FLEX_ROWS());}}
    return finish(st,d,prefix);};
@@ -173,13 +179,14 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  // Old mute buttons still sitting in chats (removed 23.9 14:13) lead to the leave option instead.
  if(/^mute_(?:week|custom|\d+)$/.test(input)||input==="unmute")return btn("השתקה כבר לא קיימת. אם לא רוצים לקבל יותר הודעות, אפשר להסיר את עצמכם מהרשימה.",[LEAVE,MENU]);
  if(input==="cancel_req"){await set({});return btn("בסדר, לא פתחתי בקשה.",[MENU]);}
- if(input==="my_requests"||/^הבקשות שלי$/.test(input)){await set({});const rows=await userActiveRequests(store,userId,now);if(!rows.length)return btn("אין לכם כרגע בקשות פעילות.",[{id:"players",title:"בקשה חדשה"},MENU]);return{text:"*הבקשות שלי*",list:{button:"לבקשות",sections:[{title:"בקשות פעילות",rows:rows.map(r=>({id:`req:${r.id}`,title:reqTitle(r).slice(0,24),description:reqDesc(r).slice(0,72)})).concat(rows.length<MAX_ACTIVE_REQUESTS?[{id:"players",title:"➕ בקשה חדשה"}]:[],LEAVE,{id:"menu",title:"לתפריט"})}]}};}
+ if(input==="my_requests"||/^הבקשות שלי$/.test(input)){await set({});const rows=await userActiveRequests(store,userId,now);if(!rows.length)return btn("אין לכם כרגע בקשות פעילות.",[{id:"players",title:"בקשה חדשה"},MENU]);// Live 23.9 18:41: the requests are listed in the message body too, not only behind the list button.
+return{text:`*הבקשות שלי* (${rows.length})\n\n${rows.map((r,i)=>`${i+1}. ${reqTitle(r)}\n${reqDesc(r)}`).join("\n\n")}\n\nלעריכה או מחיקה לחצו על 'לבקשות' ובחרו בקשה.`,list:{button:"לבקשות",sections:[{title:"בקשות פעילות",rows:rows.map(r=>({id:`req:${r.id}`,title:reqTitle(r).slice(0,24),description:reqDesc(r).slice(0,72)})).concat(rows.length<MAX_ACTIVE_REQUESTS?[{id:"players",title:"➕ בקשה חדשה"}]:[],LEAVE,{id:"menu",title:"לתפריט"})}]}};}
  if(input==="board"){await set({flow:"board",step:"board_when"});return list(BOARD_ASK,WHEN_OPTIONS.map((x,i)=>({id:`bwhen:${i}`,title:x})));}
  if(input.startsWith("bwhen:")||(state.step==="board_when"&&text&&!actionId)||/מי מחפש|שחקן פנוי|בקשות פתוחות/.test(input)){const q=input.startsWith("bwhen:")?whenLabel(input.slice(6)):text||input;if(state.step==="board_when")await set({});const p=await parseWhen(q,now);if(p.needsClarification==="unclear"){if(p.dateExplicit&&p.startMinute==null)return timeAsk(p.date,{flow:"board",step:"board_when"});await set({step:"board_when"});return{text:UNCLEAR_WHEN};}const rows=await publicBoard(store,{date:p.date,startMinute:p.startMinute??0,endMinute:p.endMinute??1440,now});const head=`חיפשתי: ${whenEcho(p)}.\n\n`;if(!rows.length){// Tom 23.9: nothing open in the window -> open the request for the user, reusing level and duration from the last request.
    if((await userActiveRequests(store,userId,now)).length>=MAX_ACTIVE_REQUESTS)return btn(`אין כרגע משחקים פתוחים ב${whenEcho(p).replace(", "," ")}.\n\n${CAP_TEXT}`,[MY_REQ,MENU]);
    const last=await lastRequest(store,userId),draft={recurring:false,displayName,date:p.date,startMinute:p.startMinute??1140,endMinute:p.endMinute??1380},open=`אין כרגע משחקים פתוחים ב${whenEcho(p).replace(", "," ")}, אז אני פותח לכם בקשה ואחפש לכם שחקנים.`;
    if(last){draft.level=last.level;draft.durations=last.durations;return nextStep({autoOpen:true,prefilled:true},draft,`${open}\nלקחתי מהבקשה הקודמת: רמה ${last.level}, ${last.durations.length>1?"משך גמיש":`${last.durations[0]} דקות`}.\n\n`);}
-   return nextStep({autoOpen:true},draft,`${open}\n\n`);}const pick=rows.slice(0,9).filter(x=>!isMine(x,userId));if(!pick.length)return btn(head+formatBoard(rows,userId),[MY_REQ,MENU]);return{text:head+formatBoard(rows,userId),list:{button:"לבקשות",sections:[{title:"בקשות פתוחות",rows:pick.map(x=>({id:`connect:${x.id}`,title:`${groupShort(x)} · ${x.level}`.slice(0,24),description:`${groupNames(x).length>1?groupLabel(x)+" · ":""}${timeLabel(x)} · ${partyText(x.partySize)}${x.hasCourt?" · יש מגרש":""}`.slice(0,72)}))}]}};}
+   return nextStep({autoOpen:true},draft,`${open}\n\n`);}await set({boardWin:{date:p.date,startMinute:p.startMinute??0,endMinute:p.endMinute??1440}});const pick=rows.slice(0,9).filter(x=>!isMine(x,userId));if(!pick.length)return btn(head+formatBoard(rows,userId),[MY_REQ,MENU]);return{text:head+formatBoard(rows,userId),list:{button:"לבקשות",sections:[{title:"בקשות פתוחות",rows:pick.map(x=>({id:`connect:${x.id}`,title:`${groupShort(x)} · ${x.level}`.slice(0,24),description:`${groupNames(x).length>1?groupLabel(x)+" · ":""}${timeLabel(x)} · ${partyText(x.partySize)}${x.hasCourt?" · יש מגרש":""}`.slice(0,72)}))}]}};}
 
  if(input.startsWith("connect:")){const request=await store.get(`request/${input.slice(8)}`);if(!request||!request.active)return{text:"הבקשה כבר לא פעילה."};if(request.userId===userId)return{text:"זו הבקשה שלכם."};
    // Tom 23.9 15:36: no connecting into a group that would pass 4, and no second pending request to the same game.
@@ -188,7 +195,16 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    if((await store.list("connection/")).some(c=>c.value?.status==="pending"&&c.value.fromUserId===userId&&c.value.requestId===request.id))return btn(`כבר שלחתי בקשת חיבור ל${request.displayName}. אעדכן כשתגיע תשובה.`,[MENU]);
    const connectionId=id();await store.set(`connection/${connectionId}`,{id:connectionId,fromUserId:userId,fromDisplayName:displayName,toUserId:request.userId,requestId:request.id,members:[request.userId,...(request.joined||[])],status:"pending",createdAt:now.toISOString()});// Tom 23.9 16:28: a connected group gets the join request together - any one of them can answer.
    const members=[request.userId,...(request.joined||[])],isGroup=members.length>1,ask=btn(isGroup?`${displayName} רוצה להצטרף אליכם (${groupLabel(request)}): ${whenOf(request)} · רמה ${request.level}. לחבר? מספיק שאחד מכם יאשר.`:`${displayName} רוצה להתחבר לבקשה שלכם: ${whenOf(request)} · רמה ${request.level}. לחבר ביניכם?`,[{id:`accept:${connectionId}`,title:"כן, לחבר"},{id:`decline:${connectionId}`,title:"לא מתאים"}]);
-   return{text:isGroup?`שלחתי בקשת הצטרפות לקבוצה של ${groupLabel(request)}. אעדכן כשתגיע תשובה.`:`שלחתי בקשת חיבור ל${request.displayName}. אעדכן כשתגיע תשובה.`,notifications:members.map(to=>({to,response:ask}))};}
+   const sentText=isGroup?`שלחתי בקשת הצטרפות לקבוצה של ${groupLabel(request)}. אעדכן כשתגיע תשובה.`:`שלחתי בקשת חיבור ל${request.displayName}. אעדכן כשתגיע תשובה.`,notes=members.map(to=>({to,response:ask}));
+   // Live 23.9 18:25: picking someone also registers the picker as an open seeker (until a connection is approved or the window closes).
+   // No request of their own for this game yet -> open one now: board window (else the picked game's window) + last level/duration; party and court are asked.
+   if(!mine&&request.date){const win=state.boardWin&&state.boardWin.date===request.date?state.boardWin:{startMinute:request.startMinute,endMinute:request.endMinute},last=await lastRequest(store,userId);
+    const draft={recurring:false,displayName,date:request.date,startMinute:win.startMinute,endMinute:win.endMinute};if(last){draft.level=last.level;draft.durations=last.durations;}
+    const r=await nextStep({prefilled:Boolean(last),boardWin:state.boardWin},draft,`${sentText}\n\nכדי שגם אחרים ימצאו אתכם, אני פותח גם לכם בקשה בלוח.\n\n`);return{...r,notifications:[...(r.notifications||[]),...notes]};}
+   // Tom 18:25: more than one pick - the rest of the board is offered again.
+   const more=await morePicks(state.boardWin||{date:request.date,startMinute:request.startMinute,endMinute:request.endMinute},request.id);
+   if(more.length)return{text:`${sentText}\n\nאפשר לשלוח בקשה גם למשחק נוסף:`,list:{button:"לבקשות",sections:[{title:"בקשות פתוחות",rows:more.concat(MENU)}]},notifications:notes};
+   return{text:sentText,notifications:notes};}
  // Item 8: "לא הפעם" skips only this match; nothing is muted.
  if(input.startsWith("notnow:")){await store.set(skipKey(userId,input.slice(7)),{at:now.toISOString()});return btn("בסדר, לא אציע לכם את ההתאמה הזאת שוב.",[MENU]);}
  // Tom 23.9 15:36 closing flow: "עוד לא" keeps the request on the board.
@@ -229,7 +245,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  {const REG=["level","pc","party","court","when","schedule","duration","flex"],fe=state.flow==="players"&&state.draft&&REG.includes(state.step)?(input==="pc_level"?"level":input==="pc_dur"?"duration":!actionId?fieldEditIntent(text):null):null;
   if(fe==="level")return nextStep(state,{...state.draft,level:undefined});
   if(fe==="both")return nextStep({...state,redoDuration:true},{...state.draft,level:undefined,durations:undefined,flexMinutes:undefined});
-  if(fe==="duration"){await set({...state,step:"duration",draft:{...state.draft,durations:undefined,flexMinutes:undefined}});return list(DURATION_ASK,DURATION_ROWS());}}
+  if(fe==="duration"){await set({...state,step:"duration",draft:{...state.draft,durations:undefined,flexMinutes:undefined}});return list(durAsk(state.draft),DURATION_ROWS());}}
  // Any answer to a registration field is kept, whichever question is showing (buttons from earlier messages included); then the next missing field is asked.
  const REG_STEPS=["level","pc","party","court","when","schedule","duration","flex"];
  if(state.flow==="players"&&state.draft&&actionId&&REG_STEPS.includes(state.step)){let f=null;
