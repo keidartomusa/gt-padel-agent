@@ -1,4 +1,4 @@
-import test from"node:test";import assert from"node:assert/strict";import{routeIncoming}from"../src/webhook.js";import{memoryStore}from"../src/store.js";
+import test from"node:test";import assert from"node:assert/strict";import{routeIncoming}from"../src/webhook.js";import{memoryStore}from"./named-store.mjs";
 const now=new Date("2026-09-23T08:00:00+03:00"),available=async i=>({kind:"availability",date:i.date,slots:[{courtId:"c3",courtName:"3",start:"17:00",end:"18:30",durationMinutes:i.durationMinutes,price:300}]});
 test("bare greeting gets approved welcome",async()=>{const r=await routeIncoming({userId:"g",text:"היי",store:memoryStore(),now,availabilityFn:available});assert.match(r.text,/ברוכים הבאים/);assert.equal(r.buttons.length,2);});
 test("first-message availability question gets only its answer plus menu",async()=>{const r=await routeIncoming({userId:"q",text:"יש מגרש מחר בערב?",store:memoryStore(),now,availabilityFn:available});assert.match(r.text,/זמינות|לא מצאתי/);assert.doesNotMatch(r.text,/ברוכים הבאים/);assert.equal(r.list.button,"לבחירת שעה");assert.doesNotMatch(r.text,/כתבו .*תפריט/);});

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { availabilityChoices, findAvailability, formatHebrew, nearestGroups, formatNearest } from "../src/availability.js";
 import { routeIncoming } from "../src/webhook.js";
-import { memoryStore } from "../src/store.js";
+import { memoryStore, named } from "./named-store.mjs";
 import { clearCache } from "../src/matchpointer.js";
 
 const snap = JSON.parse(await (await import("node:fs/promises")).readFile(new URL("./provider-snapshot-2026-09-23.json", import.meta.url), "utf8"));

@@ -1,12 +1,12 @@
 // 100 matching/registration conversations (50 same-store pairs) through the production path, live clock and live Matchpointer.
 import fs from "node:fs";
 import { memoryStore } from "../src/store.js";
-import { provider, makeUser, turn, view } from "./harness.mjs";
+import { provider, makeUser, turn, turnAll, view } from "./harness.mjs";
 const out = [], problems = [];
 const levels = ["1–2", "2–2.5", "2.5–3", "3–3.5", "3.5–4", "4+"];
 async function registration(store, n, { recurring, level, when, duration, party, court, flex, expectMatch, expectNote = null }) {
   const user = makeUser(`97250400${String(n).padStart(4, "0")}`, `שחקן ${n}`, store), turns = [];
-  for (const s of [{ text: "שלום" }, { actionId: "players" }, { actionId: recurring ? "recurring" : "oneoff" }, { actionId: `level:${level}` }, { text: when }, { actionId: duration === "flex" ? "duration:flex" : `duration:${duration}` }, { actionId: `party:${party}` }, { actionId: `court:${court ? "yes" : "no"}` }, { actionId: `flex:${flex}` }]) turns.push(await turn(user, s));
+  for (const s of [{ text: "שלום" }, { actionId: "players" }, { actionId: recurring ? "recurring" : "oneoff" }, { actionId: `level:${level}` }, { text: when }, { actionId: duration === "flex" ? "duration:flex" : `duration:${duration}` }, { actionId: `party:${party}` }, { actionId: `court:${court ? "yes" : "no"}` }, { actionId: `flex:${flex}` }]) turns.push(...await turnAll(user, s));
   const last = turns.at(-1), text = last.response.text || "", found = /מצאתי \d+ התאמ/.test(text), saved = /הבקשה נשמרה/.test(text), notPublished = /לא פורסמה/.test(text);
   if (!saved && !notPublished) problems.push(`nonterminal ${n}: ${text.slice(0, 120)}`);
   if (saved && expectMatch !== found) problems.push(`match expectation ${n}: expected ${expectMatch}, got ${found}`);
