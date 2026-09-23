@@ -187,6 +187,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    if(connection.status==="accepted"&&(!R||!R.active)){connection.status="closed";await store.set(`connection/${connection.id}`,connection);return{text:"הבקשה הזאת כבר סגורה, אז לא חיברתי.",notifications:[{to:connection.fromUserId,response:{text:"המשחק שביקשתם להצטרף אליו כבר התמלא. אמשיך לחפש לכם התאמות."}}]};}
    if(R&&R.active){const FR=(await userActiveRequests(store,connection.fromUserId,now)).find(x=>R.date&&appliesOn(x,R.date)&&timesCompatible(x,R))||null,sum=partyOf(R)+(FR?partyOf(FR):1),at=now.toISOString();
      if(sum>4){connection.status="closed";await store.set(`connection/${connection.id}`,connection);return{text:`אין מספיק מקום: יחד הייתם ${sum}. לא חיברתי.`,notifications:[{to:connection.fromUserId,response:{text:`במשחק של ${R.displayName} כבר אין מספיק מקום בשבילכם. אמשיך לחפש לכם התאמות.`}}]};}
+     connection.joinParty=FR?partyOf(FR):1;connection.groupSize=sum;await store.set(`connection/${connection.id}`,connection);// for the dashboard "חיבורים" tab
      if(FR)await store.set(`request/${FR.id}`,{...FR,active:false,closedAt:at,closedReason:"merged",mergedInto:R.id});
      if(sum>=4){await store.set(`request/${R.id}`,{...R,active:false,closedAt:at,closedReason:"full"});group="\n\nיחד אתם 4 - רביעייה מלאה! הורדתי את הבקשות מהלוח.";
        for(const j of R.joined||[])if(j!==connection.fromUserId)fullNotes.push({to:j,response:{text:`עדכון: המשחק של ${R.displayName} התמלא - יש 4 שחקנים. משחק מוצלח! 🎾`}});
