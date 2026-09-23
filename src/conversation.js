@@ -5,7 +5,7 @@ import { parseIntentLocal } from "./intent.js";
 import { parseWhen, whenLabel as whenEcho } from "./when.js";
 import { findAvailability } from "./availability.js";
 
-import { activeRequests, DURATIONS, findMatches, formatBoard, LEVELS, levelTitle, levelNote, flexMinutesFor, publicBoard, welcome, formatPhone, clockLabel, appliesOn, timesCompatible, skipKey, matchAlert, partyOf } from "./matching.js";
+import { activeRequests, DURATIONS, findMatches, formatBoard, LEVELS, levelTitle, levelNote, flexMinutesFor, publicBoard, welcome, formatPhone, clockLabel, appliesOn, timesCompatible, skipKey, matchAlert, partyOf, pairKey, allowAlert } from "./matching.js";
 import { slotActionId } from "./availability.js";
 // Row/button ids stay ASCII (index-based); Hebrew labels live only in titles. Tom 23.9: list taps went undelivered.
 const WHEN_OPTIONS=["היום בערב","מחר בבוקר","מחר בערב","שישי בבוקר","שבת בבוקר"];
@@ -54,9 +54,10 @@ const FLEX_ROWS=()=>[{id:"flex:0",title:"שעה מדויקת"},{id:"flex:60",tit
 const CAP_TEXT=`יש לכם כבר ${MAX_ACTIVE_REQUESTS} בקשות פעילות. אפשר למחוק אחת דרך 'הבקשות שלי'.`;
 const matchLines=(request,matches)=>matches.length?`\n\n${matches.length===1?"מצאתי התאמה אפשרית ושלחתי הצעה:":`מצאתי ${matches.length} התאמות אפשריות ושלחתי הצעה:`}\n${matches.slice(0,3).map(m=>`• ${m.displayName} · רמה ${m.level}${levelNote(request.level,m.level)}`).join("\n")}`:"";
 // Items 5 and 8: the alert shows party, court, duration and the combined count; "לא הפעם" skips only this match.
-const matchNotifications=(request,matches)=>matches.slice(0,3).map(m=>({to:m.userId,response:matchAlert(m,request)}));
+// Tom 23.9 15:36: each pair is offered once; a person gets at most ALERTS_PER_DAY alerts a day.
+const matchNotifications=async(store,request,matches,now)=>{const out=[];for(const m of matches.slice(0,3)){const k=pairKey(m,request);if(await store.get(k))continue;await store.set(k,{sentAt:now.toISOString()});if(await allowAlert(store,m.userId,now))out.push({to:m.userId,response:matchAlert(m,request)});}return out;};
 // Tom-approved copy 23.9 10:28 (+emoji per option).
-export const PLAYERS_MENU="מה בא לכם?\n\n👥 חסרים לי שחקנים - יש לכם מגרש וזמן, וחסרים שחקנים להשלמת רביעייה.\n\n⚡ להצטרף למשחק חד-פעמי - רוצים לראות משחקים פתוחים ולהצטרף.\n\n🔁 משחק קבוע כל שבוע - רושמים פעם אחת את הזמנים שנוחים, וכל שבוע המערכת תנסה לשדך לכם שחקנים. בלי התחייבות - אפשר לעדכן או להסיר בכל רגע.";
+export const PLAYERS_MENU="מה בא לכם?\n\n👥 חסרים לי שחקנים - מחפשים שחקנים להשלמת רביעייה, עם מגרש או בלי.\n\n⚡ להצטרף למשחק חד-פעמי - רוצים לראות משחקים פתוחים ולהצטרף.\n\n🔁 משחק קבוע כל שבוע - רושמים פעם אחת את הזמנים שנוחים, וכל שבוע המערכת תנסה לשדך לכם שחקנים. בלי התחייבות - אפשר לעדכן או להסיר בכל רגע.";
 export const NAME_ASK="באיזה שם להציג אתכם בלוח המשחקים?";
 // Tom 23.9 14:58: when the name was asked, the answer wins over menu words ("שלום" is a real name). Commands are never names.
 export function cleanName(raw,{asked=false}={}){if(asked&&/^\s*שלום\s*[.!]?\s*$/.test(String(raw||"")))return "שלום";let t=String(raw||"").replace(/^(אני\s+)?(קוראים לי|שמי|השם שלי(?:\s+הוא)?|תקרא(?:ו)? לי|תקראי לי)\s*/,"").replace(/[.!?,"'״׳:;()]/g," ").replace(/\s+/g," ").trim();if(!t||t.length>30||/\d|@/.test(t)||t.split(" ").length>3)return null;if(/^(לא|כן|תפריט|שלום|היי|הי|אוקי|בסדר|menu|hi|hello|start|stop|עזרה|הגדרות|ביטול|הבקשות שלי|הסר|הסר אותי)$/i.test(t))return null;if(t.split(" ").some(w=>/^(מה|איך|מתי|כמה|איפה|למה|מי|יש|אין|רוצה|רוצים|מגרש|מגרשים|משחק|שחקן|שחקנים|פנוי|מחר|היום|בערב|בבוקר|תודה|אפשר|צריך|בוקר|ערב|טוב|קורה|שלום)$/.test(w)))return null;return t;}
@@ -101,7 +102,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    if(!matches.length)return btn(`${saved}\n\nאעדכן כשאמצא התאמה.`,[MY_REQ,{id:"players",title:"בקשה נוספת"},MENU]);
    // Item 4: the matches as a list, each one connectable right away.
    const top=matches.slice(0,3),response={text:`${saved}\n\n${top.length===1?"מצאתי התאמה אפשרית ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:":`מצאתי ${top.length} התאמות אפשריות ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:`}`,list:{button:"להתאמות",sections:[{title:"התאמות",rows:top.map(m=>({id:`connect:${m.id}`,title:`${m.displayName} · ${m.level}`.slice(0,24),description:`${partyText(m.partySize)}${m.hasCourt?" · יש מגרש":""}${levelNote(request.level,m.level)}`.slice(0,72)})).concat(MY_REQ,MENU)}]}};
-   response.notifications=matchNotifications(request,top);return response;};
+   response.notifications=await matchNotifications(store,request,top,now);return response;};
  const nextStep=async(st,d,prefix="")=>{const cancel=st.autoOpen?[CANCEL_ROW]:[],base={...st,flow:"players",draft:d};
    if(!d.level){await set({...base,step:"level"});return list(prefix+LEVEL_ASK,LEVEL_ROWS().concat(cancel));}
    if(d.partySize==null){await set({...base,step:"pc"});return list(prefix+PC_ASK,PC_ROWS().concat(st.prefilled?[{id:"pc_reset",title:"לשנות רמה ומשך"}]:[],cancel));}
@@ -137,7 +138,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    if(patch){const updated={...r,...patch,updatedAt:now.toISOString()};
      if(!updated.recurring&&!updated.hasCourt&&(patch.date||patch.durations||patch.hasCourt===false)){const a=await availabilityFn({date:updated.date,startMinute:updated.startMinute,endMinute:updated.endMinute,durationMinutes:updated.durations[0]},{today:today()});if(!a.slots?.length){await set({});return btn("לא מצאתי מגרש פנוי שמתאים לשינוי, אז הבקשה נשארה כמו שהייתה.",[MY_REQ,MENU]);}updated.courtSlot=a.slots[0];}
      await store.set(`request/${r.id}`,updated);await set({});const matches=await findMatches(store,updated,now);// Item 15: after an edit, the request card again with "עריכה נוספת".
-     const resp=btn(`עדכנתי.\n\n*${reqTitle(updated)}*\n${reqDesc(updated)} · ${partyText(updated.partySize)} · ${updated.hasCourt?"יש מגרש":"בלי מגרש"}${matchLines(updated,matches)}`,[{id:`edit:${r.id}`,title:"עריכה נוספת"},{id:"menu",title:"סיום"}]);if(matches.length)resp.notifications=matchNotifications(updated,matches);return resp;}
+     const resp=btn(`עדכנתי.\n\n*${reqTitle(updated)}*\n${reqDesc(updated)} · ${partyText(updated.partySize)} · ${updated.hasCourt?"יש מגרש":"בלי מגרש"}${matchLines(updated,matches)}`,[{id:`edit:${r.id}`,title:"עריכה נוספת"},{id:"menu",title:"סיום"}]);if(matches.length)resp.notifications=await matchNotifications(store,updated,matches,now);return resp;}
  }
  if(text&&!actionId&&(state.step?["avail_when","board_when","when"].includes(state.step):true)){const p=parseIntentLocal(text,now),h=p.ambiguousHour;if(h&&(state.step||p.dateExplicit)){await set({step:"ampm",apResume:state,apText:text});return btn(`התכוונתם ל-${h} בבוקר או ל-${h} בערב?`,[{id:"ampm:am",title:`${h} בבוקר`},{id:"ampm:pm",title:`${h} בערב`}]);}}
  // Tom 23.9 10:36: "בשבוע הבא אחרי 18:00" got "לא הבנתי". "Next week" is a week, not a day: ask which day (dates listed), keep the time part, then continue the same step.
@@ -167,17 +168,28 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    if(last){draft.level=last.level;draft.durations=last.durations;return nextStep({autoOpen:true,prefilled:true},draft,`${open}\nלקחתי מהבקשה הקודמת: רמה ${last.level}, ${last.durations.length>1?"משך גמיש":`${last.durations[0]} דקות`}.\n\n`);}
    return nextStep({autoOpen:true},draft,`${open}\n\n`);}return{text:head+formatBoard(rows),list:{button:"לבקשות",sections:[{title:"בקשות פתוחות",rows:rows.slice(0,9).map(x=>({id:`connect:${x.id}`,title:`${x.displayName} · ${x.level}`.slice(0,24),description:`${timeLabel(x)} · ${partyText(x.partySize)}${x.hasCourt?" · יש מגרש":""}`.slice(0,72)}))}]}};}
 
- if(input.startsWith("connect:")){const request=await store.get(`request/${input.slice(8)}`);if(!request||!request.active)return{text:"הבקשה כבר לא פעילה."};if(request.userId===userId)return{text:"זו הבקשה שלכם."};const connectionId=id();await store.set(`connection/${connectionId}`,{id:connectionId,fromUserId:userId,fromDisplayName:displayName,toUserId:request.userId,requestId:request.id,status:"pending",createdAt:now.toISOString()});return{text:`שלחתי בקשת חיבור ל${request.displayName}. אעדכן כשתגיע תשובה.`,notifications:[{to:request.userId,response:btn(`${displayName} רוצה להתחבר לבקשה שלכם: ${whenOf(request)} · רמה ${request.level}. לחבר ביניכם?`,[{id:`accept:${connectionId}`,title:"כן, לחבר"},{id:`decline:${connectionId}`,title:"לא מתאים"}])}]};}
+ if(input.startsWith("connect:")){const request=await store.get(`request/${input.slice(8)}`);if(!request||!request.active)return{text:"הבקשה כבר לא פעילה."};if(request.userId===userId)return{text:"זו הבקשה שלכם."};
+   // Tom 23.9 15:36: no connecting into a group that would pass 4, and no second pending request to the same game.
+   const mine=request.date?(await userActiveRequests(store,userId,now)).find(x=>appliesOn(x,request.date)&&timesCompatible(x,request)):null;
+   if(partyOf(request)+(mine?partyOf(mine):1)>4)return btn(`במשחק של ${request.displayName} כבר אין מספיק מקום בשבילכם. אמשיך לחפש לכם התאמות.`,[MENU]);
+   if((await store.list("connection/")).some(c=>c.value?.status==="pending"&&c.value.fromUserId===userId&&c.value.requestId===request.id))return btn(`כבר שלחתי בקשת חיבור ל${request.displayName}. אעדכן כשתגיע תשובה.`,[MENU]);
+   const connectionId=id();await store.set(`connection/${connectionId}`,{id:connectionId,fromUserId:userId,fromDisplayName:displayName,toUserId:request.userId,requestId:request.id,status:"pending",createdAt:now.toISOString()});return{text:`שלחתי בקשת חיבור ל${request.displayName}. אעדכן כשתגיע תשובה.`,notifications:[{to:request.userId,response:btn(`${displayName} רוצה להתחבר לבקשה שלכם: ${whenOf(request)} · רמה ${request.level}. לחבר ביניכם?`,[{id:`accept:${connectionId}`,title:"כן, לחבר"},{id:`decline:${connectionId}`,title:"לא מתאים"}])}]};}
  // Item 8: "לא הפעם" skips only this match; nothing is muted.
  if(input.startsWith("notnow:")){await store.set(skipKey(userId,input.slice(7)),{at:now.toISOString()});return btn("בסדר, לא אציע לכם את ההתאמה הזאת שוב.",[MENU]);}
+ // Tom 23.9 15:36 closing flow: "עוד לא" keeps the request on the board.
+ if(input.startsWith("notyet:"))return btn("בסדר, הבקשה נשארת בלוח ואמשיך לחפש.",[MY_REQ,MENU]);
  // Item 7: "סגרתם משחק?" -> the request leaves the board.
  if(input.startsWith("closed:")){const r=await ownReq(input.slice(7));if(!r)return btn("הבקשה כבר לא פעילה.",[MY_REQ,MENU]);await store.set(`request/${r.id}`,{...r,active:false,closedAt:now.toISOString(),closedReason:"played"});return btn("מעולה, הורדתי את הבקשה מהלוח. משחק מוצלח! 🎾",[MENU]);}
  if(input.startsWith("accept:")||input.startsWith("decline:")){const connection=await store.get(`connection/${input.split(":")[1]}`);if(!connection||connection.toUserId!==userId)return{text:"הבקשה אינה זמינה."};connection.status=input.startsWith("accept:")?"accepted":"declined";await store.set(`connection/${connection.id}`,connection);if(connection.status==="declined")return{text:"סימנתי שלא מתאים.",notifications:[{to:connection.fromUserId,response:{text:"בקשת החיבור לא התאימה הפעם. אמשיך לחפש התאמות אחרות."}}]};
    // Item 6: the two sides become one group. At 4 both requests close; below 4 the owner's request stays open with the new count.
-   const R=await store.get(`request/${connection.requestId}`);let group="",openReq=null;
+   const R=await store.get(`request/${connection.requestId}`);let group="",openReq=null;const fullNotes=[];
+   // Tom 23.9 15:36: the game already filled (or was closed) -> no connection; the other side hears it kindly.
+   if(connection.status==="accepted"&&(!R||!R.active)){connection.status="closed";await store.set(`connection/${connection.id}`,connection);return{text:"הבקשה הזאת כבר סגורה, אז לא חיברתי.",notifications:[{to:connection.fromUserId,response:{text:"המשחק שביקשתם להצטרף אליו כבר התמלא. אמשיך לחפש לכם התאמות."}}]};}
    if(R&&R.active){const FR=(await userActiveRequests(store,connection.fromUserId,now)).find(x=>R.date&&appliesOn(x,R.date)&&timesCompatible(x,R))||null,sum=partyOf(R)+(FR?partyOf(FR):1),at=now.toISOString();
+     if(sum>4){connection.status="closed";await store.set(`connection/${connection.id}`,connection);return{text:`אין מספיק מקום: יחד הייתם ${sum}. לא חיברתי.`,notifications:[{to:connection.fromUserId,response:{text:`במשחק של ${R.displayName} כבר אין מספיק מקום בשבילכם. אמשיך לחפש לכם התאמות.`}}]};}
      if(FR)await store.set(`request/${FR.id}`,{...FR,active:false,closedAt:at,closedReason:"merged",mergedInto:R.id});
-     if(sum>=4){await store.set(`request/${R.id}`,{...R,active:false,closedAt:at,closedReason:"full"});group="\n\nיחד אתם 4 - רביעייה מלאה! הורדתי את הבקשות מהלוח.";}
+     if(sum>=4){await store.set(`request/${R.id}`,{...R,active:false,closedAt:at,closedReason:"full"});group="\n\nיחד אתם 4 - רביעייה מלאה! הורדתי את הבקשות מהלוח.";
+       for(const c of(await store.list("connection/")).map(x=>x.value))if(c?.status==="pending"&&c.requestId===R.id&&c.id!==connection.id){c.status="closed";await store.set(`connection/${c.id}`,c);fullNotes.push({to:c.fromUserId,response:{text:`המשחק של ${R.displayName} כבר התמלא. אמשיך לחפש לכם התאמות.`}});}}
      else{openReq={...R,partySize:sum,joined:[...(R.joined||[]),connection.fromUserId]};await store.set(`request/${R.id}`,openReq);group=`\n\nיחד אתם ${sum} מתוך 4. הבקשה נשארת בלוח (חסר ${4-sum}) ואמשיך לחפש.`;}}
    // Item 7: no court yet -> a booking button (opens the booking card), never a raw link.
    const bookBtn=R&&!R.hasCourt&&R.courtSlot&&R.date?{id:slotActionId(R.date,R.courtSlot),title:"להזמנת מגרש"}:null;
@@ -185,7 +197,8 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    const notes=[{to:connection.fromUserId,response:{text:`החיבור עם ${displayName} אושר! אפשר לשלוח הודעה בלחיצה.${group}`,ctaUrl:{displayText:"שלח הודעה",url:waLink(userId)}}}];
    if(openReq)notes.push({to:userId,response:btn("סגרתם משחק? אם כן, אוריד את הבקשה מהלוח.",[{id:`closed:${openReq.id}`,title:"כן, סגרנו"},...(bookBtn?[bookBtn]:[]),MENU].slice(0,3))});
    else if(bookBtn)notes.push({to:userId,response:btn("עוד אין לכם מגרש?",[bookBtn,MENU])});
-   return{text:`חיברתי ביניכם! אפשר לשלוח הודעה ${toName(connection.fromDisplayName)} בלחיצה.${group}`,ctaUrl:{displayText:"שלח הודעה",url:waLink(connection.fromUserId)},notifications:notes};}
+   if(R?.date)await store.set(`followup/${connection.id}`,{connectionId:connection.id,date:R.date,users:[{userId,name:displayName,other:connection.fromDisplayName},{userId:connection.fromUserId,name:connection.fromDisplayName,other:displayName}],createdAt:now.toISOString()});
+   return{text:`חיברתי ביניכם! אפשר לשלוח הודעה ${toName(connection.fromDisplayName)} בלחיצה.${group}`,ctaUrl:{displayText:"שלח הודעה",url:waLink(connection.fromUserId)},notifications:notes.concat(fullNotes)};}
  if(input==="oneoff"||input==="recurring"){if((await userActiveRequests(store,userId,now)).length>=MAX_ACTIVE_REQUESTS)return btn(CAP_TEXT,[MY_REQ,MENU]);const last=await lastRequest(store,userId),draft={recurring:input==="recurring",displayName};if(!last)return nextStep({},draft);draft.level=last.level;draft.durations=last.durations;return nextStep({prefilled:true},draft,`לקחתי מהבקשה הקודמת: רמה ${last.level}, ${last.durations.length>1?"משך גמיש":`${last.durations[0]} דקות`}.\n\n`);}
  if(input==="pfinish"&&state.flow==="players"&&state.draft)return finish(state,state.draft);
  if(state.flow==="players"&&state.step==="pc"&&input==="pc_reset")return nextStep({...state,prefilled:false},{...state.draft,level:undefined,durations:undefined});
