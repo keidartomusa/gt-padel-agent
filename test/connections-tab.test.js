@@ -42,6 +42,6 @@ test("recurring next date is the next matching weekday from today", () => {
 });
 test("dashboard has a חיבורים tab rendering one card per game with type, status and participants", async () => {
   const html = await (await (await import("../netlify/functions/admin.js")).default()).text();
-  assert.match(html, /data-v="live">חיבורים</); assert.match(html, /function liveView\(\)/); assert.match(html, /'קבוע':'חד-פעמי'/); assert.match(html, /מלא · 4\/4/);
+  assert.match(html, /data-v="live">בקשות וחיבורים</); assert.match(html, /function liveView\(\)/); assert.match(html, /'קבוע':'חד-פעמי'/); assert.match(html, /מלא · 4\/4/);
   const js = html.split("<script>")[1].split("</script>")[0]; assert.doesNotThrow(() => new Function(js));
 });
