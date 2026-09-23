@@ -189,6 +189,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
      if(sum>4){connection.status="closed";await store.set(`connection/${connection.id}`,connection);return{text:`אין מספיק מקום: יחד הייתם ${sum}. לא חיברתי.`,notifications:[{to:connection.fromUserId,response:{text:`במשחק של ${R.displayName} כבר אין מספיק מקום בשבילכם. אמשיך לחפש לכם התאמות.`}}]};}
      if(FR)await store.set(`request/${FR.id}`,{...FR,active:false,closedAt:at,closedReason:"merged",mergedInto:R.id});
      if(sum>=4){await store.set(`request/${R.id}`,{...R,active:false,closedAt:at,closedReason:"full"});group="\n\nיחד אתם 4 - רביעייה מלאה! הורדתי את הבקשות מהלוח.";
+       for(const j of R.joined||[])if(j!==connection.fromUserId)fullNotes.push({to:j,response:{text:`עדכון: המשחק של ${R.displayName} התמלא - יש 4 שחקנים. משחק מוצלח! 🎾`}});
        for(const c of(await store.list("connection/")).map(x=>x.value))if(c?.status==="pending"&&c.requestId===R.id&&c.id!==connection.id){c.status="closed";await store.set(`connection/${c.id}`,c);fullNotes.push({to:c.fromUserId,response:{text:`המשחק של ${R.displayName} כבר התמלא. אמשיך לחפש לכם התאמות.`}});}}
      else{openReq={...R,partySize:sum,joined:[...(R.joined||[]),connection.fromUserId]};await store.set(`request/${R.id}`,openReq);group=`\n\nיחד אתם ${sum} מתוך 4. הבקשה נשארת בלוח (חסר ${4-sum}) ואמשיך לחפש.`;}}
    // Item 7: no court yet -> a booking button (opens the booking card), never a raw link.

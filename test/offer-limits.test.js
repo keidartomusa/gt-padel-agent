@@ -74,3 +74,9 @@ test("accept never takes a group past 4 (a join that was fine when requested but
   const r = await accept(s, "o", "עומר", "b"); assert.match(r.text, /אין מספיק מקום/); assert.equal(r.ctaUrl, undefined);
   assert.equal((await reqOf(s, "b")).active, true); assert.equal((await reqOf(s, "o")).partySize, 3);
 });
+test("when the game fills, players who joined earlier hear it too", async () => {
+  const s = memoryStore(); await create(s, "o", "עומר", { pc: "pc:2:yes" });
+  await connectTo(s, "a", "אבי", "o"); await accept(s, "o", "עומר", "a");
+  await connectTo(s, "b", "בני", "o"); const r = await accept(s, "o", "עומר", "b");
+  assert.match(r.text, /רביעייה מלאה/); assert(r.notifications.some(n => n.to === "a" && /התמלא - יש 4 שחקנים/.test(n.response.text)));
+});
