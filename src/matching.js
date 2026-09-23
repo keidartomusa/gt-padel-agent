@@ -41,7 +41,7 @@ function namesFor(r,viewerId){const ids=[r.userId,...(r.joined||[])];return[r.di
 export function groupLabel(r,viewerId){const n=namesFor(r,viewerId);return n.length<2?(n[0]||""):`${n.slice(0,-1).join(", ")} ו${n.at(-1)}`;}
 export const groupShort=r=>{const n=groupNames(r);return n.length<2?(n[0]||""):`${n[0]} ועוד ${n.length-1}`;};
 export const appliesOn=(request,date)=>request.recurring?request.weekdays?.includes(weekdayIndex(date)):request.date===date;
-export async function findMatches(store,request,now=new Date()){const rows=await activeRequests(store,now);const out=[];for(const x of rows)if(x.id!==request.id&&x.userId!==request.userId&&appliesOn(x,request.date)&&overlap(x,request)&&!await isMuted(store,x.userId,now)&&!await skipped(store,x,request))out.push(x);return out;}
+export async function findMatches(store,request,now=new Date()){const rows=await activeRequests(store,now);const out=[];for(const x of rows)if(!x.full&&!request.full&&x.id!==request.id&&x.userId!==request.userId&&appliesOn(x,request.date)&&overlap(x,request)&&!await isMuted(store,x.userId,now)&&!await skipped(store,x,request))out.push(x);return out;}
 export async function publicBoard(store,{date,startMinute=0,endMinute=1440,now=new Date()}={}){return(await activeRequests(store,now)).filter(x=>(!date||appliesOn(x,date))&&x.startMinute<endMinute&&startMinute<x.endMinute).sort((a,b)=>a.startMinute-b.startMinute);}
 export function formatPhone(userId){const d=String(userId||"").replace(/\D/g,"");if(/^972\d{8,9}$/.test(d)){const l="0"+d.slice(3);return`${l.slice(0,3)}-${l.slice(3)}`;}return d?`+${d}`:"";}
 export const clockLabel=m=>clock(m);

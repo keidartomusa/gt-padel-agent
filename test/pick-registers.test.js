@@ -78,3 +78,23 @@ test("live 18:51: a pair sends to two singles - after the first approval (3 of 4
   const a = await H(s, "t", "תימור")({ actionId: `accept:${toT.id}` });
   assert.equal((await s.get(`connection/${toO.id}`)).status, "pending"); assert.ok(!a.notifications.some(n => n.to === "o"));
 });
+
+test("live 19:13: a full foursome stays on the board as מלא, is never offered, and any member can remove a player to reopen a seat", async () => {
+  const s = memoryStore(); const t = await seed(s, "t", "תימור"); await seed(s, "me", "תום", "מחר אחרי 19:00", "pc:3:yes");
+  await H(s, "me", "תום")({ actionId: `connect:${t.id}` });
+  const c = (await conns(s)).find(x => x.fromUserId === "me" && x.status === "pending");
+  const a = await H(s, "t", "תימור")({ actionId: `accept:${c.id}` }); assert.match(a.text, /רביעייה מלאה! המשחק נשאר בלוח כמלא/);
+  let R = await s.get(`request/${t.id}`); assert.equal(R.active, true); assert.equal(R.full, true);
+  const x = await seed(s, "x", "רון"); const xr = await H(s, "x", "רון")({ actionId: "board" }); const xb = await H(s, "x", "רון")({ actionId: "bwhen:2" });
+  assert.match(xb.text, /מלא/); assert.ok(!rows(xb).some(r => r.id === `connect:${t.id}`));
+  const { findMatches } = await import("../src/matching.js"); assert.ok(!(await findMatches(s, x, now)).some(m => m.id === t.id));
+  const mr = await H(s, "me", "תום")({ actionId: "my_requests" }); assert.ok(rows(mr).some(r => r.id === `req:${t.id}`));
+  const card = await H(s, "me", "תום")({ actionId: `req:${t.id}` }); assert.match(card.text, /בקבוצה: תימור, תום \(מלא\)/); assert.deepEqual(card.buttons.map(b => b.id), ["my_requests"]);
+  const tc = await H(s, "t", "תימור")({ actionId: `req:${t.id}` }); assert.ok(rows(tc).some(r => r.id === `rm:${t.id}`));
+  const who = await H(s, "t", "תימור")({ actionId: `rm:${t.id}` }); assert.deepEqual(rows(who).map(r => r.id), [`rmu:${t.id}:me`, `req:${t.id}`]);
+  const ask = await H(s, "t", "תימור")({ actionId: `rmu:${t.id}:me` }); assert.match(ask.text, /^להסיר את תום מהמשחק/);
+  const done = await H(s, "t", "תימור")({ actionId: `rmok:${t.id}:me` }); assert.match(done.text, /הסרתי את תום\. יש עכשיו 1 מתוך 4/);
+  R = await s.get(`request/${t.id}`); assert.equal(R.full, false); assert.equal(R.partySize, 1); assert.deepEqual(R.joined, []);
+  assert.ok(done.notifications.some(n => n.to === "me" && /הבקשה שלכם חזרה ללוח/.test(n.response.text)));
+  assert.equal((await reqs(s, "me")).length, 1); assert.ok((await findMatches(s, x, now)).some(m => m.id === t.id));
+});

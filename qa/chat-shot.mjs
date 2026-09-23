@@ -11,7 +11,7 @@ async function seed(u, n, when) { await named(s, u, n); const h = H(u, n); for (
 await seed("972500000001", "תימור", "היום אחרי 21:00 ל90 דקות"); await seed("972500000002", "אורנה", "היום אחרי 19:00 ל90 דקות");
 await named(s, "me", "תום"); const h = H("me", "תום", true), q = H("me", "תום");
 const sc = process.argv[3];
-if (sc === "register") { for (const a of ["oneoff", "level:3"]) await q({ actionId: a }); await h({ actionId: "pc:1:yes", label: "רק אני · יש מגרש" }); await h({ text: "היום ב-21:00" }); await h({ actionId: "duration:120", label: "120 דקות" }); }
+if (sc === "register") { for (const a of ["oneoff", "level:3"]) await q({ actionId: a }); await h({ actionId: "pc:1:yes", label: "רק אני · יש מגרש" }); await h({ text: "היום ב-21:00" }); }
 if (sc === "myreq") { for (const a of ["oneoff", "level:3", "pc:1:yes"]) await q({ actionId: a }); await q({ text: "היום ב-21:00 ל120 דקות" }); await h({ actionId: "my_requests", label: "הבקשות שלי" }); }
 if (sc === "pick") { await q({ actionId: "board" }); const b = await h({ actionId: "bwhen:0", label: "היום בערב" }); const ids = (b.list?.sections || []).flatMap(x => x.rows).filter(x => x.id.startsWith("connect:")); await h({ actionId: ids[0].id, label: ids[0].title }); }
 const esc = x => plainDashes(String(x ?? "")).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\*([^*\n]+)\*/g, "<b>$1</b>").replace(/\n/g, "<br>");

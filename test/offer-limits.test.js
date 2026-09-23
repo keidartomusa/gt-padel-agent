@@ -92,14 +92,14 @@ test("group: one join request to all members, any one approves; the listing leav
   const j = await connectTo(s, "c", "גל", "o"); assert.match(j.text, /לקבוצה של עומר ואבי/); assert.deepEqual(j.notifications.map(n => n.to).sort(), ["a", "o"]);
   assert.match(j.notifications[0].response.text, /מספיק שאחד מכם יאשר/);
 });
-test("group of 3 + 1: a member (not the opener) approves; full game stays listed until everyone approved", async () => {
+test("group of 3 + 1: a member (not the opener) approves; full game stays listed (מלא) even after everyone approved (Tom 19:13)", async () => {
   const s = memoryStore(); await create(s, "o", "עומר", { pc: "pc:2:yes" }); await connectTo(s, "a", "אבי", "o"); await accept(s, "o", "עומר", "a");
   await connectTo(s, "c", "גל", "o"); const c = (await conns(s)).find(x => x.fromUserId === "c");
   const byA = await H(s, "a", "אבי")({ actionId: `accept:${c.id}` });
-  assert.match(byA.text, /רביעייה מלאה! המשחק יירד מהלוח כשכל חברי הקבוצה יאשרו/); assert.equal(byA.ctaUrl.url.includes("wa.me"), true);
+  assert.match(byA.text, /רביעייה מלאה! המשחק נשאר בלוח כמלא, ולא אציע אותו לאחרים/); assert.equal(byA.ctaUrl.url.includes("wa.me"), true);
   assert(byA.notifications.some(n => n.to === "o" && /עדכון: גל הצטרף\/ה/.test(n.response.text)));
   assert.equal((await reqOf(s, "o")).active, true); assert.equal((await reqOf(s, "o")).full, true);
   const dup = await H(s, "a", "אבי")({ actionId: `decline:${c.id}` }); assert.match(dup.text, /כבר אישר/);
-  const byO = await H(s, "o", "עומר")({ actionId: `accept:${c.id}` }); assert.match(byO.text, /כולם אישרו, אז הורדתי את המשחק מהלוח/);
-  assert.equal((await reqOf(s, "o")).active, false);
+  const byO = await H(s, "o", "עומר")({ actionId: `accept:${c.id}` }); assert.match(byO.text, /^רשמתי שגם אתם מאשרים את גל\.$/);
+  assert.equal((await reqOf(s, "o")).active, true); assert.equal((await reqOf(s, "o")).full, true);
 });

@@ -88,7 +88,7 @@ test("item 6: sides that together exceed 4 never match", async () => {
   const s = memoryStore(); await create(s, "a", "דנה", { pc: "pc:3:yes" }); const r = await create(s, "b", "נועם", { pc: "pc:2:yes" });
   assert.equal((r.notifications || []).length, 0); assert.equal((await dailySweep(s, now)).length, 0);
 });
-test("item 6: accepting below 4 keeps the owner's request with the new count and closes the joiner's; at 4 both close", async () => {
+test("item 6: accepting below 4 keeps the owner's request with the new count and closes the joiner's; at 4 the joiner's closes and the full game stays listed (Tom 19:13)", async () => {
   const s = memoryStore(); await create(s, "a", "דנה"); await create(s, "b", "נועם");
   const [ra] = await mine(s, "a"), [rb] = await mine(s, "b");
   await H(s, "b", "נועם")({ actionId: `connect:${ra.id}` }); const c = (await s.list("connection/"))[0].value;
@@ -101,7 +101,7 @@ test("item 6: accepting below 4 keeps the owner's request with the new count and
   const [rx] = await mine(s2, "x"), [ry] = await mine(s2, "y");
   await H(s2, "y", "רון")({ actionId: `connect:${rx.id}` }); const c2 = (await s2.list("connection/"))[0].value;
   const full = await H(s2, "x", "גל")({ actionId: `accept:${c2.id}` }); assert.match(full.text, /יחד אתם 4 - רביעייה מלאה!/);
-  assert.equal((await s2.get(`request/${rx.id}`)).active, false); assert.equal((await s2.get(`request/${ry.id}`)).active, false); assert.ok(!full.notifications.some(n => n.to === "x"));
+  assert.equal((await s2.get(`request/${rx.id}`)).active, true); assert.equal((await s2.get(`request/${rx.id}`)).full, true); assert.equal((await s2.get(`request/${ry.id}`)).active, false); assert.ok(!full.notifications.some(n => n.to === "x"));
 });
 test("item 7 + Tom 15:01: after approval both sides get a 'שלח הודעה' wa.me button, no number in the text", async () => {
   const s = memoryStore(); await create(s, "972501110001", "דנה"); const [ra] = await mine(s, "972501110001");
