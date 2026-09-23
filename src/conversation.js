@@ -1,6 +1,7 @@
 import { UNCLEAR_WHEN } from "./timeres.js";
 import { MAX_ACTIVE_REQUESTS, reqTitle, reqDesc, userActiveRequests, lastRequest, dayLabel, timeLabel } from "./requests.js";
 import crypto from "node:crypto";
+import { addDays } from "./time.js";
 import { parseIntentLocal } from "./intent.js";
 import { parseWhen, whenLabel as whenEcho } from "./when.js";
 import { findAvailability } from "./availability.js";
@@ -108,11 +109,14 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  // Items 3 and 9: one routine decides the next missing field, so known answers are never asked again.
  const finish=async(st,d,prefix="")=>{if(!name)return askName({pending:"pfinish",resume:{...st,flow:"players",step:"ready",draft:d}},prefix);const request={...d,displayName,id:id(),userId,flexMinutes:d.flexMinutes??0,active:true,createdAt:now.toISOString()};
    if(!request.recurring&&!request.hasCourt){const availability=await availabilityFn({date:request.date,startMinute:request.startMinute,endMinute:request.endMinute,durationMinutes:request.durations[0]},{today:today()});if(!availability.slots?.length){await set({flow:"players",step:"when",draft:{...d,date:undefined,startMinute:undefined,endMinute:undefined}});return{text:"לא מצאתי מגרש פנוי שמתאים לחלון ולמשך שביקשתם. הבקשה לא פורסמה כדי שלא נחפש שחקנים למשחק שלא ניתן להזמין.",buttons:[{id:"retry_when",title:"לנסות זמן אחר"},{id:"availability",title:"בדיקת זמינות"}]};}request.courtSlot=availability.slots[0];}
-   await store.set(`request/${request.id}`,request);await set({});const matches=await findMatches(store,request,now),saved=`${prefix}הבקשה נשמרה ותופיע בלוח המשחקים.`;
+   // Live 23.9 18:45: several weekdays = one request per day, each matched, approved and closed on its own.
+   const days=request.recurring&&request.weekdays?.length>1?[...new Set(request.weekdays)].sort((a,b)=>a-b):null,saves=days?days.map((w,i)=>{const t=today(),tw=new Date(`${t}T12:00:00Z`).getUTCDay();return{...request,id:i?id():request.id,weekdays:[w],date:request.date?addDays(t,((w-tw+7)%7)||7):request.date};}):[request];
+   if(days){const have=(await userActiveRequests(store,userId,now)).length,room=Math.max(0,MAX_ACTIVE_REQUESTS-have);if(saves.length>room){await set({flow:"players",step:"schedule",draft:{...d,weekdays:undefined}});return{text:`כל יום נשמר כבקשה נפרדת, ואפשר עד ${MAX_ACTIVE_REQUESTS} בקשות פעילות. יש לכם כבר ${have}, אז אפשר להוסיף עוד ${room} ימים. כתבו שוב ימים ושעות, למשל: שישי ושבת ב-06:30`};}}
+   for(const r of saves)await store.set(`request/${r.id}`,r);await set({});const per=[];for(const r of saves)per.push([r,await findMatches(store,r,now)]);const seenM=new Set(),matches=per.flatMap(([,ms])=>ms).filter(m=>!seenM.has(m.id)&&seenM.add(m.id)),saved=days?`${prefix}נשמרו ${saves.length} בקשות נפרדות, אחת לכל יום (${saves.map(r=>dayLabel(r)).join(", ")}), והן יופיעו בלוח המשחקים.`:`${prefix}הבקשה נשמרה ותופיע בלוח המשחקים.`;
    if(!matches.length)return btn(`${saved}\n\nאעדכן כשאמצא התאמה.`,[MY_REQ,{id:"players",title:"בקשה נוספת"},MENU]);
    // Item 4: the matches as a list, each one connectable right away.
    const asked=await pendingTo(),top=matches.filter(m=>!asked.has(m.id)).slice(0,3);if(!top.length)return btn(`${saved}\n\nאעדכן כשאמצא התאמה.`,[MY_REQ,{id:"players",title:"בקשה נוספת"},MENU]);const response={text:`${saved}\n\n${top.length===1?"מצאתי התאמה אפשרית ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:":`מצאתי ${top.length} התאמות אפשריות ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:`}`,list:{button:"להתאמות",sections:[{title:"התאמות",rows:top.map(m=>({id:`connect:${m.id}`,title:`${groupShort(m)} · ${m.level}`.slice(0,24),description:`${groupNames(m).length>1?groupLabel(m)+" · ":""}${partyText(m.partySize)}${m.hasCourt?" · יש מגרש":""}${levelNote(request.level,m.level)}`.slice(0,72)})).concat(MY_REQ,MENU)}]}};
-   response.notifications=await matchNotifications(store,request,top,now);return response;};
+   response.notifications=[];for(const[r,ms]of per){const mine=top.filter(m=>ms.some(x=>x.id===m.id));if(mine.length)response.notifications.push(...await matchNotifications(store,r,mine,now));}return response;};
  // Board rows the user can still pick: not their own, not already asked (pending), not the one just picked.
  const pendingTo=async()=>new Set((await store.list("connection/")).map(x=>x.value).filter(c=>c?.status==="pending"&&c.fromUserId===userId).map(c=>c.requestId));
  const pickRow=x=>({id:`connect:${x.id}`,title:`${groupShort(x)} · ${x.level}`.slice(0,24),description:`${groupNames(x).length>1?groupLabel(x)+" · ":""}${timeLabel(x)} · ${partyText(x.partySize)}${x.hasCourt?" · יש מגרש":""}`.slice(0,72)});

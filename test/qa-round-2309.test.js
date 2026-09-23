@@ -115,7 +115,7 @@ test("every request-saved path offers the menu, never mute (Tom 13:15 + 13:47)",
   const { memoryStore: bare } = await import("../src/store.js"); const s2 = bare(), h2 = H(s2, "p5", "ה");
   for (const o of [{ actionId: "oneoff" }, { actionId: "level:3" }, { text: "מחר אחרי 19:00" }, { actionId: "duration:90" }, { actionId: "party:1" }, { actionId: "court:yes" }]) await quiet(() => h2(o));
   paths.push(await quiet(() => h2({ text: "הדס" })));
-  for (const p of paths) { assert.match(p.text, /הבקשה נשמרה/); assert.ok(!ids(withMenu(p)).some(x => /^mute/.test(x.id)), JSON.stringify(ids(p))); assert.ok(ids(withMenu(p)).some(x => x.id === "menu")); }
+  for (const p of paths) { assert.match(p.text, /הבקשה נשמרה|נשמרו \d+ בקשות/); assert.ok(!ids(withMenu(p)).some(x => /^mute/.test(x.id)), JSON.stringify(ids(p))); assert.ok(ids(withMenu(p)).some(x => x.id === "menu")); }
 });
 test("'לנסות זמן אחר' after a no-court request keeps the answers and asks only for a new time", async () => {
   const none = async i => ({ kind: "availability", date: i.date, slots: [] });
@@ -126,8 +126,8 @@ test("'לנסות זמן אחר' after a no-court request keeps the answers and 
   assert.match(no.text, /הבקשה לא פורסמה/); assert.ok(ids(no).some(x => x.id === "retry_when" && x.title === "לנסות זמן אחר"));
   const ask = await h({ actionId: "retry_when" }); assert.match(ask.text, /^מתי תרצו לשחק\?/);
   fn = available; let r = await quiet(() => h({ text: "ראשון אחרי 19:00" }));
-  for (let i = 0; i < 6 && !/הבקשה נשמרה/.test(r.text); i++) { const b = ids(r).find(x => /^(duration:90|party:1|court:no|flex:60)$/.test(x.id)); assert.ok(b, r.text); r = await quiet(() => h({ actionId: b.id })); }
-  assert.match(r.text, /הבקשה נשמרה/);
+  for (let i = 0; i < 6 && !/הבקשה נשמרה|נשמרו \d+ בקשות/.test(r.text); i++) { const b = ids(r).find(x => /^(duration:90|party:1|court:no|flex:60)$/.test(x.id)); assert.ok(b, r.text); r = await quiet(() => h({ actionId: b.id })); }
+  assert.match(r.text, /הבקשה נשמרה|נשמרו \d+ בקשות/);
   const req = (await s.list("request/")).map(x => x.value).find(x => x.active); assert.equal(req.level, "3–3.5"); assert.equal(req.date, "2026-09-27");
 });
 test("edit confirmation shows party size and court, so a party/court edit is visible", async () => {

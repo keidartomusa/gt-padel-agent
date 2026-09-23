@@ -5,7 +5,7 @@ import { provider, makeUser, turn, turnAll, options, rng, pick, view } from "./h
 const out = [], rand = rng(20260923);
 const TERMINAL = [
   ["cta", t => t.response.ctaUrl?.url?.includes("/go/book?")],
-  ["request_saved", t => /הבקשה נשמרה/.test(t.response.text || "")],
+  ["request_saved", t => /הבקשה נשמרה|נשמרו \d+ בקשות/.test(t.response.text || "")],
   ["not_published", t => /לא פורסמה/.test(t.response.text || "")],
   ["connected", t => /חיברתי ביניכם/.test(t.response.text || "")],
   ["declined", t => /סימנתי שלא מתאים/.test(t.response.text || "")],

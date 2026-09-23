@@ -25,7 +25,7 @@ test("'שלום' typed as the name is saved as the name, not the welcome", async
   const s = rawStore(), h = H(s, "n1");
   await h({ actionId: "oneoff" }); await h({ actionId: "level:3" }); await h({ actionId: "pc:1:yes" }); await h({ text: "מחר אחרי 19:00" });
   const ask = await h({ actionId: "duration:90" }); assert.equal(ask.text, NAME_ASK);
-  const r = await h({ text: "שלום" }); assert.match(r.text, /הבקשה נשמרה/); assert.equal((await s.get("profile/n1")).name, "שלום");
+  const r = await h({ text: "שלום" }); assert.match(r.text, /הבקשה נשמרה|נשמרו \d+ בקשות/); assert.equal((await s.get("profile/n1")).name, "שלום");
   assert.equal(cleanName("שלום"), null); assert.equal(cleanName("שלום", { asked: true }), "שלום");
 });
 test("'ביטול' at the name step clears it without saving a name", async () => {
@@ -58,7 +58,7 @@ test("item 9: a duration in the time text skips the duration question; last requ
   assert.deepEqual(durationFromText("מחר אחרי 19 ל-90 דקות"), [90]); assert.deepEqual(durationFromText("שעתיים"), [120]); assert.equal(durationFromText("מחר אחרי 19"), null);
   const s = memoryStore(), h = H(s, "d", "דנה"); await named(s, "d", "דנה");
   for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a });
-  const r = await h({ text: "מחר אחרי 19:00 ל120 דקות" }); assert.match(r.text, /הבקשה נשמרה/); assert.deepEqual((await mine(s, "d"))[0].durations, [120]);
+  const r = await h({ text: "מחר אחרי 19:00 ל120 דקות" }); assert.match(r.text, /הבקשה נשמרה|נשמרו \d+ בקשות/); assert.deepEqual((await mine(s, "d"))[0].durations, [120]);
   const again = await h({ actionId: "oneoff" }); assert.match(again.text, /^לקחתי מהבקשה הקודמת: רמה 3–3\.5, 120 דקות\.\n\nכמה אתם/); assert.deepEqual(rows(again).filter(x => x.id.startsWith("pc_")).map(x => [x.id, x.title]), [["pc_level", "עדכן רמה"], ["pc_dur", "עדכן משך זמן"]]);
 });
 test("item 10: day understood without an hour -> ask only the hour, then continue", async () => {
@@ -152,7 +152,7 @@ test("item 19: the WhatsApp profile name is offered with one tap", async () => {
   const s = rawStore(), h = H(s, "p", "Tom K");
   for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a }); await h({ text: "מחר אחרי 19:00" });
   const ask = await h({ actionId: "duration:90" }); assert.equal(ask.text, "להופיע בלוח המשחקים בתור Tom K?"); assert.deepEqual(ask.buttons.map(b => b.id), ["name_wa", "name_other"]);
-  const r = await h({ actionId: "name_wa" }); assert.match(r.text, /הבקשה נשמרה/); assert.equal((await s.get("profile/p")).name, "Tom K");
+  const r = await h({ actionId: "name_wa" }); assert.match(r.text, /הבקשה נשמרה|נשמרו \d+ בקשות/); assert.equal((await s.get("profile/p")).name, "Tom K");
   const s2 = rawStore(), h2 = H(s2, "p2", "Tom K"); for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h2({ actionId: a }); await h2({ text: "מחר אחרי 19:00" }); await h2({ actionId: "duration:90" });
   assert.equal((await h2({ actionId: "name_other" })).text, NAME_ASK); await h2({ text: "תום" }); assert.equal((await s2.get("profile/p2")).name, "תום");
 });
@@ -193,8 +193,8 @@ test("Tom 16:35: weekly game never asks about a court; menu copy says each week 
   r = await h({ actionId: "level:3" }); assert.equal(r.text, "כמה שחקנים אתם?"); assert.deepEqual(rows(r).map(x => x.id).filter(x => x.startsWith("party:")), ["party:1", "party:2", "party:3"]); assert.ok(!rows(r).some(x => /מגרש/.test(x.title + (x.description || ""))));
   r = await h({ actionId: "party:2" }); assert.doesNotMatch(r.text, /מגרש/);
   const st = await s.get("state/w"); assert.equal(st.draft.hasCourt, false); assert.notEqual(st.step, "court");
-  r = await h({ text: "שני ורביעי אחרי 20:00" }); for (let i = 0; i < 4 && !/נשמרה/.test(r.text); i++) { assert.doesNotMatch(r.text, /מגרש\?/); const id = (r.buttons?.[0] || rows(r)[0])?.id; r = await h({ actionId: id }); }
-  assert.match(r.text, /הבקשה נשמרה/);
+  r = await h({ text: "שני ורביעי אחרי 20:00" }); for (let i = 0; i < 4 && !/נשמרה|נשמרו/.test(r.text); i++) { assert.doesNotMatch(r.text, /מגרש\?/); const id = (r.buttons?.[0] || rows(r)[0])?.id; r = await h({ actionId: id }); }
+  assert.match(r.text, /הבקשה נשמרה|נשמרו \d+ בקשות/);
   const req = (await mine(s, "w"))[0]; const e = await h({ actionId: `edit:${req.id}` }); assert.ok(!rows(e).some(x => x.id.endsWith(":court")));
   const again = await h({ actionId: "recurring" }); assert.match(again.text, /לקחתי מהבקשה הקודמת[\s\S]*כמה שחקנים אתם\?$/); assert.ok(rows(again).some(x => x.id === "pc_level"));
 });
