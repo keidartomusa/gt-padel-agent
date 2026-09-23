@@ -1,12 +1,8 @@
 import { addDays, localDateParts, weekdayIndex } from "./time.js";
 
-const WINDOWS = [
-  { re: /(?:לפנות\s*בוקר|בוקר|הבוקר)/, range: [360, 720] },
-  { re: /(?:צהריים|בצהרים|בצהריים)/, range: [720, 1020] },
-  { re: /(?:אחה["״']?צ|אחרי?\s*הצהריים|אחרהצהריים)/, range: [960, 1200] },
-  { re: /(?:ערב|בערב)/, range: [1140, 1380] },
-  { re: /(?:לילה|בלילה)/, range: [1200, 1440] },
-];
+import { WINDOWS as TR_WINDOWS, resolveHour } from "./timeres.js";
+export { resolveHour };
+const WINDOWS = TR_WINDOWS;
 const HEBREW_WEEKDAYS = new Map([["ראשון",0],["א",0],["שני",1],["ב",1],["שלישי",2],["ג",2],["רביעי",3],["ד",3],["חמישי",4],["ה",4],["שישי",5],["ו",5],["שבת",6]]);
 const pad = n => String(n).padStart(2,"0");
 const validIso = iso => { const d=new Date(`${iso}T12:00:00Z`); return !Number.isNaN(d.valueOf()) && d.toISOString().slice(0,10)===iso; };
@@ -16,9 +12,7 @@ function dateFromDayOfMonth(day,today){
   return null;
 }
 function nextWeekday(today,target,nextWeek=false){ let delta=(target-weekdayIndex(today)+7)%7; if(delta===0||nextWeek) delta+=7; return addDays(today,delta); }
-// Tom 23.9 hour rules (no cue in the message): 1-7 -> evening; 8, 9, 10 -> ambiguous, ask; 11, 12 -> midday; 0 and 13-23 as written.
-// A zero-padded hour ("09:00") counts as written. Cues: בוקר keeps AM; ערב/לילה/צהריים/אחה"צ move 1-11 to PM (11/12 at noon stay).
-export function resolveHour(h,text,padded=false){if(h>23)return{h:null};if(/בוקר/.test(text)||padded||h===0||h>=12)return{h};if(/ערב|לילה/.test(text))return{h:h+12};if(/צהריים|אחה["״']?צ|אחרי?\s*הצהריים/.test(text))return{h:h===11?11:h+12};if(h<=7)return{h:h+12};if(h<=10)return{h,ambiguous:true};return{h};}
+// resolveHour lives in timeres.js (single source of truth).
 function parseClock(text){
   const m=text.match(/ב?שעה\s*(\d{1,2})(?::(\d{2}))?/)||text.match(/(?:סביב|בערך|בין|מ|אחרי|ב)(?:\s*ב)?\s*-?\s*(\d{1,2})(?::(\d{2}))?(?![\d/.])/)||text.match(/(?:^|\s)(\d{1,2}):(\d{2})(?![\d])/);
   if(!m) return [null,null]; const minute=Number(m[2]||0);if(minute>59)return[null,null];
