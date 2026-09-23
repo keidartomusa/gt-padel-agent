@@ -1,4 +1,5 @@
 // Netlify deploy event. Runs the parser eval only when the deployed commit title contains [parser-eval].
+// Eval trigger: the deployed commit title must contain [parser-eval] (squash subject, not PR title).
 import { internalToken } from "./parser-eval-background.js";
 export default async req=>{let body={};try{body=await req.json();}catch{}const d=body.payload||{};const title=`${d.title||""} ${d.commit_message||""}`;
  if(!/\[parser-eval\]/.test(title))return new Response("skip");
