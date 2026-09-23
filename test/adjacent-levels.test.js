@@ -1,0 +1,16 @@
+import test from "node:test";import assert from "node:assert/strict";
+import {handleConversation} from "../src/conversation.js";import {dailySweep,LEVELS,levelsCompatible,levelNote} from "../src/matching.js";import {memoryStore} from "../src/store.js";
+const now=new Date("2026-09-23T08:00:00+03:00");
+const available=async i=>({kind:"availability",date:i.date,slots:[{courtId:"c3",courtName:"3",start:"19:00",end:"20:30",durationMinutes:i.durationMinutes,price:null}]});
+async function flow(store,userId,name,level,recurring=false){const h=o=>handleConversation({userId,displayName:name,store,now,availabilityFn:available,...o});await h({actionId:recurring?"recurring":"oneoff"});await h({actionId:`level:${level}`});await h({text:recurring?"ימי חמישי אחרי 19:00":"מחר אחרי 19:00"});await h({actionId:"duration:90"});await h({actionId:"party:1"});await h({actionId:"court:no"});return h({actionId:"flex:60"});}
+
+test("level bands are exactly the six expected, in order",()=>assert.deepEqual(LEVELS,["1–2","2–2.5","2.5–3","3–3.5","3.5–4","4+"]));
+test("every band matches itself and the one directly above/below, nothing further",()=>{for(let i=0;i<LEVELS.length;i++)for(let j=0;j<LEVELS.length;j++)assert.equal(levelsCompatible(LEVELS[i],LEVELS[j]),Math.abs(i-j)<=1,`${LEVELS[i]} vs ${LEVELS[j]}`);});
+test("edge bands: 1–2 reaches only 2–2.5, 4+ reaches only 3.5–4",()=>{assert.deepEqual(LEVELS.filter(l=>l!=="1–2"&&levelsCompatible("1–2",l)),["2–2.5"]);assert.deepEqual(LEVELS.filter(l=>l!=="4+"&&levelsCompatible("4+",l)),["3.5–4"]);});
+test("Tom's example: 2.5–3 matches 2–2.5 and 3–3.5, not 1–2 or 3.5–4",()=>{for(const l of["2–2.5","3–3.5"])assert(levelsCompatible("2.5–3",l));for(const l of["1–2","3.5–4","4+"])assert(!levelsCompatible("2.5–3",l));});
+test("level note names direction, empty for same band",()=>{assert.equal(levelNote("2.5–3","2.5–3"),"");assert.match(levelNote("2.5–3","3–3.5"),/מעליכם/);assert.match(levelNote("2.5–3","2–2.5"),/מתחתיכם/);});
+
+test("one-off: adjacent band matches and both sides see the other's level with direction",async()=>{const s=memoryStore();await flow(s,"a","דנה","3–3.5");const r=await flow(s,"b","נועם","2.5–3");assert.match(r.text,/מצאתי 1 התאמות/);assert.match(r.text,/דנה · רמה 3–3\.5 \(רמה אחת מעליכם\)/);assert.equal(r.notifications.length,1);assert.equal(r.notifications[0].to,"a");assert.match(r.notifications[0].response.text,/רמה 2\.5–3 \(רמה אחת מתחתיכם\)/);});
+test("one-off: two bands apart does not match",async()=>{const s=memoryStore();await flow(s,"a","דנה","3.5–4");const r=await flow(s,"b","נועם","2.5–3");assert.doesNotMatch(r.text,/מצאתי/);assert.equal((r.notifications||[]).length,0);});
+test("one-off: same band match shows level without a direction note",async()=>{const s=memoryStore();await flow(s,"a","דנה","2.5–3");const r=await flow(s,"b","נועם","2.5–3");assert.match(r.text,/דנה · רמה 2\.5–3(?! \()/);assert.doesNotMatch(r.notifications[0].response.text,/מעליכם|מתחתיכם/);});
+test("recurring sweep: 4+ pairs with 3.5–4 but not 3–3.5",async()=>{const s=memoryStore();await flow(s,"a","דנה","4+",true);await flow(s,"b","נועם","3.5–4",true);await flow(s,"c","רון","3–3.5",true);const pairs=await dailySweep(s,now);const ids=pairs.map(p=>p.map(x=>x.userId).sort().join("-"));assert(ids.includes("a-b"));assert(!ids.includes("a-c"));assert(ids.includes("b-c"));});

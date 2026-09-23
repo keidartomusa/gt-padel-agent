@@ -4,7 +4,13 @@ export const LEVELS=["1–2","2–2.5","2.5–3","3–3.5","3.5–4","4+"];
 export const DURATIONS=[60,90,120];
 export const welcome=()=>({text:"*ברוכים הבאים ל־GT PADEL* 🎾\n\nאני כאן כדי לעזור לכם להגיע למגרש ולמשחק שמתאים לכם.\n\n*1. למצוא מגרש פנוי*\nבדיקת זמינות חיה לפי יום, שעה ומשך - וקישור ישיר להזמנה.\n\n*2. למצוא שחקנים למשחק*\nחיפוש משחק נקודתי ליום ושעה מסוימים, או הרשמה עם הזמינות הקבועה שלך - והבוט מחפש לך התאמות באופן שוטף.\n\nמה תרצו לעשות?",buttons:[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"}]});
 export function levelRange(label){const nums=(label.match(/\d(?:\.5)?/g)||[]).map(Number);return nums.length?[Math.min(...nums),Math.max(...nums)]:[1,5];}
-function overlap(a,b){const [al,ah]=levelRange(a.level),[bl,bh]=levelRange(b.level);return al<=bh&&bl<=ah&&a.startMinute<b.endMinute&&b.startMinute<a.endMinute&&a.durations.some(x=>b.durations.includes(x));}
+export function levelsCompatible(a,b){const i=LEVELS.indexOf(a),j=LEVELS.indexOf(b);if(i>=0&&j>=0)return Math.abs(i-j)<=1;const [al,ah]=levelRange(a),[bl,bh]=levelRange(b);return al<=bh&&bl<=ah;}
+export function levelNote(mine,theirs){const i=LEVELS.indexOf(mine),j=LEVELS.indexOf(theirs);if(i<0||j<0||i===j)return"";return j>i?" (רמה אחת מעליכם)":" (רמה אחת מתחתיכם)";}
+export const FLEX_ANY=1440;
+export function flexMinutesFor(v){if(v==="any")return FLEX_ANY;const n=Number(v);return Number.isFinite(n)&&n>0?n:0;}
+function widened(x){const f=Math.max(0,Number(x.flexMinutes)||0);return[Math.max(0,x.startMinute-f),Math.min(1440,x.endMinute+f)];}
+export function timesCompatible(a,b){const[as,ae]=widened(a),[bs,be]=widened(b);return as<be&&bs<ae;}
+function overlap(a,b){return levelsCompatible(a.level,b.level)&&timesCompatible(a,b)&&a.durations.some(x=>b.durations.includes(x));}
 export async function activeRequests(store,now=new Date()){const today=localDateParts(now).iso,rows=await store.list("request/");return rows.map(x=>x.value).filter(x=>x.active&&(x.recurring||!x.date||x.date>=today));}
 export const appliesOn=(request,date)=>request.recurring?request.weekdays?.includes(weekdayIndex(date)):request.date===date;
 export async function findMatches(store,request,now=new Date()){const rows=await activeRequests(store,now);const out=[];for(const x of rows)if(x.id!==request.id&&x.userId!==request.userId&&appliesOn(x,request.date)&&overlap(x,request)&&!await isMuted(store,x.userId,now))out.push(x);return out;}
