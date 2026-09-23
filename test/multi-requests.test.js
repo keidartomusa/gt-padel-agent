@@ -119,7 +119,7 @@ test("empty board opens a request: first time asks level, date is kept, never as
   assert.equal(r.text, "אין כרגע משחקים פתוחים ביום חמישי 24.9 אחרי 18:00, אז אני פותח לכם בקשה ואחפש לכם שחקנים.\n\nמה הרמה שלכם?\nלא בטוחים? בחרו את הקרובה ביותר, אפשר לשנות אחר כך.");
   assert.ok(ids(r).includes("cancel_req"));
   r = await h({ actionId: "level:2" }); assert.equal(r.text, "כמה אתם, והאם כבר יש לכם מגרש?"); assert.ok(ids(r).includes("cancel_req"));
-  r = await h({ actionId: "pc:1:yes" }); assert.equal(r.text, "כמה זמן תרצו לשחק?");
+  r = await h({ actionId: "pc:1:yes" }); assert.equal(r.text, "כמה זמן?");
   r = await h({ actionId: "duration:90" });
   assert.match(r.text, /הבקשה נשמרה/);
   const [q] = await mine(s, "n"); assert.equal(q.date, "2026-09-24"); assert.equal(q.startMinute, 1080);

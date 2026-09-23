@@ -223,3 +223,10 @@ test("Tom 17:12: 'די' and other stop words are never saved as a name", async (
   for (const w of ["די", "מספיק", "תודה", "סבבה", "רגע"]) assert.equal(cleanName(w, { asked: true }), null, w);
   assert.equal(cleanName("תום", { asked: true }), "תום");
 });
+
+test("Tom 18:37: with a court the duration question is just 'כמה זמן?'", async () => {
+  for (const [pc, re] of [["pc:1:yes", /^כמה זמן\?$/], ["pc:1:no", /^כמה זמן תרצו לשחק\?$/]]) {
+    const s = memoryStore(), h = H(s, "k", "דנה"); await named(s, "k", "דנה");
+    for (const a of ["oneoff", "level:3", pc]) await h({ actionId: a }); const r = await h({ text: "מחר אחרי 19:00" }); assert.match(r.text.split("\n\n").pop(), re);
+  }
+});
