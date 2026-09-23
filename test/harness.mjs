@@ -1,10 +1,10 @@
 // Production-path QA harness: every user turn goes through the same steps as
-// netlify/functions/whatsapp.js (reaction -> typing -> routeIncoming -> sendResponse),
+// netlify/functions/whatsapp.js (typing -> routeIncoming -> sendResponse; no reaction, Tom 23.9),
 // with Meta calls captured instead of sent, and Matchpointer called live and recorded.
 import { deliver } from "../src/notify.js";
 import { routeIncoming } from "../src/webhook.js";
 import { memoryStore } from "../src/store.js";
-import { sendReaction, sendTyping, sendResponse, sendTemplate } from "../src/whatsapp.js";
+import { sendTyping, sendResponse, sendTemplate } from "../src/whatsapp.js";
 process.env.DISABLE_OUTBOUND = "false";
 process.env.WHATSAPP_ACCESS_TOKEN = "qa-capture-only";
 process.env.WHATSAPP_PHONE_NUMBER_ID = "qa-phone";
@@ -24,12 +24,11 @@ export async function turn(user, step, { now = new Date() } = {}) {
   const msgId = `wamid.QA_${Date.now()}_${++seq}`, calls = [];
   const capture = async (url, init) => { calls.push(JSON.parse(init.body)); return { ok: true, json: async () => ({ messages: [{ id: `wamid.OUT_${seq}_${calls.length}` }] }), text: async () => "" }; };
   const input = step.actionId ? { actionId: step.actionId, text: step.title || "" } : { text: step.text || "" };
-  const reaction = await sendReaction(user.userId, msgId, "👍", undefined, capture);
   const typing = await sendTyping(msgId, undefined, capture);
   const response = await routeIncoming({ userId: user.userId, displayName: user.displayName, ...input, store: user.store, now });
   await sendResponse(user.userId, response, undefined, capture);
   for (const n of response.notifications || []) await deliver(user.store, n.to, n.response, { now, send: (to, r) => sendResponse(to, r, undefined, capture), sendTemplate: (to, t) => sendTemplate(to, t.name, t.language, t.payloads, undefined, capture) });
-  return { msgId, input: step.actionId ? { actionId: step.actionId, title: step.title } : { text: step.text }, reaction: reaction.sent && calls[0]?.type === "reaction" ? calls[0].reaction.emoji : null, typing: typing.sent && calls[1]?.typing_indicator?.type === "text", response, outbound: calls.slice(2) };
+  return { msgId, input: step.actionId ? { actionId: step.actionId, title: step.title } : { text: step.text }, reaction: calls.some(c => c.type === "reaction") ? "sent" : null, typing: typing.sent && calls[0]?.typing_indicator?.type === "text", response, outbound: calls.slice(1) };
 }
 export const options = r => [...(r.buttons || []).map(b => ({ id: b.id, title: b.title })), ...(r.list?.sections || []).flatMap(s => s.rows.map(x => ({ id: x.id, title: x.title, description: x.description })))];
 export function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 2 ** 32; }; }

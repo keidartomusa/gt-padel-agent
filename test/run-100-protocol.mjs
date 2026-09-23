@@ -72,7 +72,7 @@ for (const x of out) {
   if (!term) problems.push(`nonterminal: ${x.title}: ${(last?.response.text || "").slice(0, 120)}`);
   x.terminal = term;
   for (const t of x.turns) {
-    if (t.reaction !== "👍" || t.typing !== true) problems.push(`transport: ${x.title}`);
+    if (t.reaction !== null || t.typing !== true) problems.push(`transport: ${x.title}`);
     const rows = t.response.list?.sections.flatMap(s => s.rows) || [];
     if (rows.length > 10) problems.push(`>10 rows: ${x.title}`);
     for (const r of rows) if (r.title.length > 24 || (r.id.startsWith("book:") && !/^(\d{1,2}\.\d{1,2} )?\d\d:\d\d–\d\d:\d\d$/.test(r.title))) problems.push(`row title: ${x.title}: ${r.title}`);
