@@ -31,6 +31,9 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  // Tom 23.9: flow questions first; the name is asked only where it is needed (publishing a request / connecting).
  if(!name&&input.startsWith("connect:")){await set({step:"name",pending:input});return{text:NAME_ASK};}
  if(/^(היי|הי|שלום|תפריט|menu|start)$/i.test(input)||input==="menu"){if(state.step)await set({});return welcome(name);}
+ // Tom 23.9 hour rule: 8, 9, 10 with no morning/evening cue -> ask, never guess.
+ if(state.step==="ampm"&&(input==="ampm:am"||input==="ampm:pm")){await set(state.apResume||{});return handleConversation({userId,displayName,text:`${state.apText} ${input==="ampm:am"?"בבוקר":"בערב"}`,store,now,availabilityFn});}
+ if(text&&!actionId&&(state.step?["avail_when","board_when","when"].includes(state.step):true)){const p=parseIntentLocal(text,now),h=p.ambiguousHour;if(h&&(state.step||p.dateExplicit)){await set({step:"ampm",apResume:state,apText:text});return btn(`התכוונת ל-${h} בבוקר או ל-${h} בערב?`,[{id:"ampm:am",title:`${h} בבוקר`},{id:"ampm:pm",title:`${h} בערב`}]);}}
  // Tom 23.9 10:36: "בשבוע הבא אחרי 18:00" got "לא הבנתי". "Next week" is a week, not a day: ask which day (dates listed), keep the time part, then continue the same step.
  if(text&&!actionId&&NEXT_WEEK.test(text)&&!recurringDays(text.replace(NEXT_WEEK,"")).length&&(!state.step||["avail_when","board_when","when"].includes(state.step))){const days=nextWeekDays(now);await set({step:"nw_day",nwResume:state,nwRest:text.replace(NEXT_WEEK,"").replace(/\s+/g," ").trim(),nwDays:days});return list("באיזה יום בשבוע הבא?",days.map((d,i)=>({id:`nw:${i}`,title:d.label})));}
  if(state.step==="nw_day"&&input.startsWith("nw:")){const d=state.nwDays?.[Number(input.slice(3))];if(d){await set(state.nwResume||{});return handleConversation({userId,displayName,text:`${d.ddmm} ${state.nwRest}`.trim(),store,now,availabilityFn});}}
