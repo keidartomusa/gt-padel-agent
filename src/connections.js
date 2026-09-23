@@ -27,3 +27,17 @@ export function liveConnections({ requests = [], connections = [], profiles = {}
   }
   return Object.values(games).sort((a, b) => a.nextDate.localeCompare(b.nextDate) || a.startMinute - b.startMinute);
 }
+
+// Tom 23.9 17:12: the tab also shows open requests (still looking for a match) - active, game still ahead,
+// and no accepted connection yet. Same card shape, type "open".
+export function openRequests({ requests = [], connections = [], profiles = {}, now = new Date(), isOver = () => false }) {
+  const today = localDateParts(now).iso, connected = new Set(connections.filter(c => c?.status === "accepted").map(c => c.requestId)), out = [];
+  for (const r of requests) {
+    if (!r?.active || r.deletedAt || connected.has(r.id) || isOver(r)) continue;
+    const next = nextDate(r, today); if (!next || next < today) continue;
+    out.push({ requestId: r.id, kind: "open", type: r.recurring ? "recurring" : "oneoff", when: `${r.recurring ? "כל " : ""}${dayLabel(r)} · ${timeLabel(r)}`, nextDate: next, startMinute: r.startMinute ?? 0, level: r.level || "", durations: r.durations || [], hasCourt: Boolean(r.hasCourt),
+      court: r.courtSlot ? { name: r.courtSlot.courtName || r.courtSlot.courtId || "", start: r.courtSlot.start || "", price: r.courtSlot.price ?? null } : null, total: partyOf(r), full: false,
+      participants: [{ userId: r.userId, name: profiles[r.userId]?.name || r.displayName || null, party: partyOf(r), role: "owner" }], createdAt: r.createdAt || null });
+  }
+  return out.sort((a, b) => a.nextDate.localeCompare(b.nextDate) || a.startMinute - b.startMinute);
+}
