@@ -37,7 +37,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{background:#f7f8fa;c
 .b.in{background:#fff;margin-inline-start:0;margin-inline-end:auto;border-start-start-radius:0}
 .b.out{background:#d9fdd3;margin-inline-start:auto;margin-inline-end:0;border-start-end-radius:0}
 .b time{position:absolute;bottom:3px;inset-inline-end:8px;font-size:11px;color:#667781}
-.b .tag{font-size:11px;color:#8696a0;display:block;margin-bottom:2px}.b.fail{background:#fde8e8}.b .tag.bad{color:#d93025}
+.kpi.go{cursor:pointer}.kpi.go:hover{box-shadow:0 0 0 2px #25d366 inset}.b .tag{font-size:11px;color:#8696a0;display:block;margin-bottom:2px}.b.fail{background:#fde8e8}.b .tag.bad{color:#d93025}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.chips span{background:#ffffffb3;border:1px solid #cfe9c9;color:#027eb5;border-radius:14px;padding:2px 10px;font-size:13px}
 .empty{flex:1;display:flex;align-items:center;justify-content:center;color:#667781;background:#f0f2f5}
 @media(max-width:760px){.top{flex-wrap:wrap;gap:6px 10px}.tabs{margin-inline-start:0;width:100%;overflow-x:auto}.chat{height:calc(100vh - 92px)}.gh .cnt{margin-inline-start:0}.kpis{grid-template-columns:repeat(2,1fr)}.kpi b{font-size:24px}.top{padding:10px 12px}.top h1{font-size:15px}.tabs button{padding:6px 10px;font-size:14px}.page{padding:12px}
@@ -62,8 +62,8 @@ function tab(v){VIEW=v;render()}
 function render(){document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===VIEW));var a=$('#app');a.hidden=false;
  if(VIEW==='chats')a.innerHTML=chatsView();else if(VIEW==='overview')a.innerHTML=overview();else if(VIEW==='live')a.innerHTML=liveView();else a.innerHTML=clicksView();
  if(VIEW!=='chats'&&CUR===null)history.replaceState(null,'',location.pathname);if(VIEW==='chats'){drawUsers();var h=decodeURIComponent((location.hash.match(/u=(\d+)/)||[])[1]||'');if(h)showConv(h,true)}}
-function overview(){var s=D.summary,m=(D.messages||{}).totals||{};var k=[['משתמשים',(D.messages&&D.messages.users.length)||s.registrations,'כתבו לבוט לפחות פעם אחת'],['בקשות פעילות',s.activeRequests,'מופיעות עכשיו בלוח'],['הצעות התאמה',s.matches,''],['חיבורים שאושרו',s.acceptedMatches,'שני הצדדים הסכימו'],['לחיצות על "להזמנה"',s.bookingClicks,'פתחו את דף ההזמנה באתר'],['עלות הודעות',usd(m.estimatedUsd),(m.sent||0)+' נשלחו · '+(m.received||0)+' התקבלו']];
- return'<div class="page"><div class="kpis">'+k.map(x=>'<div class="kpi"><b>'+esc(x[1])+'</b><span>'+esc(x[0])+'</span>'+(x[2]?'<small>'+esc(x[2])+'</small>':'')+'</div>').join('')+'</div>'+(m.failed?'<p class="hint">'+m.failed+' הודעות לא נשלחו. אפשר לראות אותן בשיחה (מסומנות באדום).</p>':'')+'</div>'}
+function overview(){var s=D.summary,m=(D.messages||{}).totals||{};var k=[['משתמשים',(D.messages&&D.messages.users.length)||s.registrations,'כתבו לבוט לפחות פעם אחת','chats'],['בקשות פעילות',s.activeRequests,'מופיעות עכשיו בלוח','live'],['הצעות התאמה',s.matches,''],['חיבורים שאושרו',s.acceptedMatches,'שני הצדדים הסכימו','live'],['לחיצות על "להזמנה"',s.bookingClicks,'פתחו את דף ההזמנה באתר','clicks'],['עלות הודעות',usd(m.estimatedUsd),(m.sent||0)+' נשלחו · '+(m.received||0)+' התקבלו']];
+ return'<div class="page"><div class="kpis">'+k.map(x=>'<div class="kpi'+(x[3]?' go" data-v="'+x[3]+'" role="button" tabindex="0':'')+'"><b>'+esc(x[1])+'</b><span>'+esc(x[0])+'</span>'+(x[2]?'<small>'+esc(x[2])+'</small>':'')+'</div>').join('')+'</div>'+(m.failed?'<p class="hint">'+m.failed+' הודעות לא נשלחו. אפשר לראות אותן בשיחה (מסומנות באדום).</p>':'')+'</div>'}
 var SRC={availability:'מגרש פנוי',matching:'התאמה'};
 function clicksView(){var c=(D.bookingClicks||[]).slice().sort((a,b)=>String(b.clickedAt).localeCompare(String(a.clickedAt)));
  if(!c.length)return'<div class="page"><p class="hint">עוד אף אחד לא לחץ על "להזמנה".</p></div>';
@@ -104,7 +104,7 @@ $('#enter').onclick=enter;$('#password').onkeydown=e=>{if(e.key==='Enter')enter(
 var saved=sessionStorage.getItem('gt-admin-token');if(saved)load(saved).catch(e=>{$('#error').textContent=e.message;sessionStorage.removeItem('gt-admin-token')});
 `;
 export const html = '<!doctype html><html dir="rtl" lang="he"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GT PADEL - מערכת ניהול</title><style>' + CSS + '</style>'
- + '<header class="top"><h1>GT PADEL - מערכת ניהול</h1><nav class="tabs" id="tabs" hidden><button data-v="overview">סקירה</button><button data-v="chats">שיחות</button><button data-v="live">חיבורים</button><button data-v="clicks">לחיצות</button></nav></header>'
+ + '<header class="top"><h1>GT PADEL - מערכת ניהול</h1><nav class="tabs" id="tabs" hidden><button data-v="overview">סקירה</button><button data-v="chats">שיחות</button><button data-v="live">חיבורים</button><button data-v="clicks">הזמנות</button></nav></header>'
  + '<div id="login" class="login"><h2>כניסה</h2><label for="password">סיסמת ניהול</label><input id="password" type="password" autocomplete="current-password"><button id="enter" class="btn">כניסה</button><div id="error" class="err"></div></div><main id="app" hidden></main>'
  + '<script>' + JS + '</script></html>';
 export default async () => new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
