@@ -58,3 +58,23 @@ test("live 18:41: 'הבקשות שלי' lists the requests in the message body w
   assert.match(r.text, /^\*הבקשות שלי\* \(2\)/); assert.match(r.text, /1\. .*אחרי 19:00/); assert.match(r.text, /2\. .*אחרי 08:00/); assert.match(r.text, /רמה 3/); assert.match(r.text, /לחצו על 'לבקשות'/);
   assert.equal(r.list.button, "לבקשות");
 });
+
+const conns = async s => (await s.list("connection/")).map(x => x.value);
+test("live 18:51: a trio sends to two singles - the first to approve connects, the other request is cancelled with a kind notice", async () => {
+  const s = memoryStore(); const t = await seed(s, "t", "תימור"); const o = await seed(s, "o", "אורנה"); await seed(s, "me", "תום", "מחר אחרי 19:00 ל90 דקות", "pc:3:yes");
+  const h = H(s, "me", "תום"); await h({ actionId: `connect:${t.id}` }); await h({ actionId: `connect:${o.id}` });
+  const ps = (await conns(s)).filter(c => c.fromUserId === "me" && c.status === "pending"); assert.equal(ps.length, 2);
+  const toT = ps.find(c => c.toUserId === "t"), toO = ps.find(c => c.toUserId === "o");
+  const a = await H(s, "t", "תימור")({ actionId: `accept:${toT.id}` });
+  assert.match(a.text, /חיברתי ביניכם/);
+  assert.equal((await s.get(`connection/${toO.id}`)).status, "closed");
+  assert.ok(a.notifications.some(n => n.to === "o" && /הבקשה של תום להתחבר אליכם כבר לא רלוונטית/.test(n.response.text)));
+  const late = await H(s, "o", "אורנה")({ actionId: `accept:${toO.id}` }); assert.match(late.text, /כבר סגורה/);
+});
+test("live 18:51: a pair sends to two singles - after the first approval (3 of 4) the second request stays open", async () => {
+  const s = memoryStore(); const t = await seed(s, "t", "תימור"); const o = await seed(s, "o", "אורנה"); await seed(s, "me", "תום", "מחר אחרי 19:00 ל90 דקות", "pc:2:yes");
+  const h = H(s, "me", "תום"); await h({ actionId: `connect:${t.id}` }); await h({ actionId: `connect:${o.id}` });
+  const ps = (await conns(s)).filter(c => c.fromUserId === "me" && c.status === "pending"), toT = ps.find(c => c.toUserId === "t"), toO = ps.find(c => c.toUserId === "o");
+  const a = await H(s, "t", "תימור")({ actionId: `accept:${toT.id}` });
+  assert.equal((await s.get(`connection/${toO.id}`)).status, "pending"); assert.ok(!a.notifications.some(n => n.to === "o"));
+});
