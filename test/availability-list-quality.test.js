@@ -108,9 +108,9 @@ test("picking 'find a court' from the menu immediately asks when, and the answer
   assert.match(q.text, /מתי תרצו לשחק/);
   assert.doesNotMatch(q.text, /יש זמינות/);
   const rows = q.list.sections.flatMap(x => x.rows);
-  assert(rows.some(r => r.id === "when:מחר בערב"));
+  assert(rows.some(r => r.id === "when:2" && r.title === "מחר בערב"));
   assert(rows.some(r => r.id === "menu"));
-  const quick = await routeIncoming({ userId: "guide", actionId: "when:מחר בערב", text: "מחר בערב", store: s, now });
+  const quick = await routeIncoming({ userId: "guide", actionId: "when:2", text: "מחר בערב", store: s, now });
   assert.match(quick.text, /זמינות|אין מגרש פנוי/);
   await routeIncoming({ userId: "guide2", actionId: "availability", store: s, now });
   const free = await routeIncoming({ userId: "guide2", text: "בשבת", store: s, now });
@@ -119,7 +119,7 @@ test("picking 'find a court' from the menu immediately asks when, and the answer
 
 test("picking 'find players' from the menu immediately asks how to find a game", async () => {
   const r = await routeIncoming({ userId: "guide-p", actionId: "players", store: memoryStore(), now: new Date("2026-09-23T08:00:00+03:00") });
-  assert.equal(r.text, "רוצים להצטרף למשחק קיים, או לחפש שחקנים שישלימו לכם רביעייה? אפשר גם לרשום את הזמינות השבועית והמערכת תנסה לשדך שחקנים");
+  assert.match(r.text, /^מה בא לכם\?/); // exact copy pinned in live-list-taps.test.js
   assert.deepEqual(r.buttons.slice(0, 3).map(b => [b.id, b.title]), [["oneoff", "חסרים לי שחקנים"], ["board", "להצטרף למשחק חד-פעמי"], ["recurring", "משחק קבוע כל שבוע"]]);
   for (const b of r.buttons) assert(b.title.length <= 20, b.title);
 });
