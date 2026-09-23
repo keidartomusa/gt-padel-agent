@@ -40,4 +40,5 @@ export function view(t) { const r = t.response; return { text: r.text, buttons: 
 const NAMES = ["יוסי", "דנה", "אבי כהן", "מיכל", "רון", "נועה לוי", "איתי", "שירה", "עומר", "טל", "גיל", "ליאור", "מאיה", "אלון", "רותם", "Tom", "עדי", "נדב", "יעל", "אורי"];
 export const realName = u => u.realName || (/\d/.test(u.displayName || "") || !u.displayName ? NAMES[[...String(u.userId)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % NAMES.length] : u.displayName);
 // A real user answers the one-time name question with their name; both turns are recorded.
-export async function turnAll(user, step, opts) { const t = await turn(user, step, opts); if (/^מה השם שלך\?/.test(t.response.text || "")) return [t, await turn(user, { text: realName(user) }, opts)]; return [t]; }
+export async function turnAll(user, step, opts) { const t = await turn(user, step, opts); // The name question is either typed (NAME_ASK) or the WhatsApp-profile offer (critique item 19); a user who types their name answers both.
+  if (/^(באיזה שם להציג אתכם|להופיע בלוח המשחקים בתור)/m.test(t.response.text || "")) return [t, await turn(user, { text: realName(user) }, opts)]; return [t]; }

@@ -6,7 +6,7 @@ import { parseWhen, whenLabel as whenEcho } from "./when.js";
 import { findAvailability } from "./availability.js";
 
 import { activeRequests, DURATIONS, findMatches, formatBoard, LEVELS, levelTitle, levelNote, flexMinutesFor, publicBoard, welcome, formatPhone, clockLabel, appliesOn, timesCompatible, skipKey, matchAlert, partyOf } from "./matching.js";
-import { bookingUrl } from "./availability.js";
+import { slotActionId } from "./availability.js";
 // Row/button ids stay ASCII (index-based); Hebrew labels live only in titles. Tom 23.9: list taps went undelivered.
 const WHEN_OPTIONS=["היום בערב","מחר בבוקר","מחר בערב","שישי בבוקר","שבת בבוקר"];
 const whenLabel=v=>/^\d+$/.test(v)?WHEN_OPTIONS[Number(v)]||"":v;
@@ -17,7 +17,7 @@ const id=()=>crypto.randomUUID();
 const whenOf=r=>`${dayLabel(r.recurring&&r.date?{date:r.date}:r)} · ${timeLabel(r)}`;
 // Tom 23.9 14:13: no mute at all. A user who wants no more messages removes themselves from the list (confirm first).
 const LEAVE={id:"leave",title:"הסרה מהרשימה"};
-export const LEAVE_ASK="להסיר אתכם מהרשימה? כל הבקשות שלכם יימחקו ולא יישלחו אליך יותר הודעות על התאמות.";
+export const LEAVE_ASK="להסיר אתכם מהרשימה? כל הבקשות שלכם יימחקו ולא יישלחו אליכם יותר הודעות על התאמות.";
 export const LEAVE_DONE="הוסרתם מהרשימה. הבקשות שלכם נמחקו ולא יישלחו אליכם יותר הודעות על התאמות.\n\nאפשר לחזור בכל רגע - פשוט כותבים לי.";
 const LEAVE_TEXT=/^(?:הסר(?:ה)?(?: אותי)?(?: מהרשימה)?|תסיר(?:ו)? אותי(?: מהרשימה)?|להסיר אותי(?: מהרשימה)?|(?:אני )?(?:רוצה )?להפסיק לקבל (?:הודעות|התראות)|stop|unsubscribe)[.!]?$/i;
 const MY_REQ={id:"my_requests",title:"הבקשות שלי"},MENU={id:"menu",title:"לתפריט"};
@@ -25,7 +25,8 @@ const LEVEL_ROWS=()=>LEVELS.map((x,i)=>({id:`level:${i}`,title:levelTitle(x)}));
 const DURATION_ROWS=()=>DURATIONS.map(d=>({id:`duration:${d}`,title:`${d} דקות`})).concat({id:"duration:flex",title:"גמיש"});
 const PARTY_ROWS=()=>[{id:"party:1",title:"רק אני"},{id:"party:2",title:"אני ועוד אחד"},{id:"party:3",title:"שלושה, מחפשים רביעי"}];
 // Critique round 23.9 (Tom: "תתקן הכל"). Item 9: party size and court in one question.
-const PC_ROWS=()=>[1,2,3].flatMap(n=>[["yes","יש מגרש"],["no","בלי מגרש"]].map(([c,t])=>({id:`pc:${n}:${c}`,title:`${n===1?"רק אני":`אנחנו ${n}`} · ${t}`})));
+// Tom's party labels (רק אני / אני ועוד אחד / שלושה, מחפשים רביעי) kept; "שלושה" shortened in the title to fit 24 chars, "מחפשים רביעי" moves to the description.
+const PC_ROWS=()=>[[1,"רק אני"],[2,"אני ועוד אחד"],[3,"שלושה"]].flatMap(([n,l])=>[["yes","יש מגרש"],["no","בלי מגרש"]].map(([c,t])=>({id:`pc:${n}:${c}`,title:`${l} · ${t}`,...(n===3?{description:"מחפשים רביעי"}:{})})));
 const PC_ASK="כמה אתם, והאם כבר יש לכם מגרש?";
 // Item 16: a short hint under the level question. Item 17: one form of address (plural) everywhere.
 const LEVEL_ASK="מה הרמה שלכם?\nלא בטוחים? בחרו את הקרובה ביותר, אפשר לשנות אחר כך.";
@@ -35,6 +36,11 @@ const DURATION_ASK="כמה זמן תרצו לשחק?", FLEX_ASK="עד כמה א�
 const AVAIL_ASK="מתי תרצו לשחק? בחרו מהרשימה או כתבו יום, שעה ומשך, למשל: מחר אחרי 19:00 ל90 דקות", BOARD_ASK="מתי תרצו לשחק? בחרו מהרשימה או כתבו יום ושעה, למשל: מחר אחרי 19:00";
 const PLAYERS_BTNS=[{id:"oneoff",title:"חסרים לי שחקנים"},{id:"board",title:"להצטרף למשחק חד-פעמי"},{id:"recurring",title:"משחק קבוע כל שבוע"}];
 const CANCEL_ROW={id:"cancel_req",title:"ביטול"};
+// Tom 23.9 15:16: "תשים את המספר שלי בנתיים, ושזה גם יהיה בתפריט תמיד" - club contact is Tom's WhatsApp for now, and always in the menu.
+export const CLUB_URL="https://wa.me/972544819860";
+// No raw links in message text (links only behind buttons). The club button is the third menu button; when that slot holds "הבקשות שלי", the menu names the typed phrase instead.
+const CLUB_BTN={id:"club",title:"דבר עם המועדון"}, CLUB_HINT="\n\nלשאלות על המועדון כתבו: דבר עם המועדון";
+const clubCard=()=>({text:"אפשר לכתוב למועדון ישירות בוואטסאפ.",ctaUrl:{displayText:"דבר עם המועדון",url:CLUB_URL}});
 // Item 20: "לשנות את השם מתום לאבי?" - Hebrew names take the prefix directly, others with a hyphen.
 const heName=n=>/^[\u0590-\u05FF]/.test(n), fromName=n=>heName(n)?`מ${n}`:`מ-${n}`, toName=n=>heName(n)?`ל${n}`:`ל-${n}`;
 const partyText=n=>Number(n)===1?"שחקן אחד":`${n} שחקנים`;
@@ -62,7 +68,7 @@ const WD=new Map([["ראשון",0],["שני",1],["שלישי",2],["רביעי",3
 const recurringDays=text=>[...WD].filter(([name])=>text.includes(name)).map(([,n])=>n);
 export async function handleConversation({userId,displayName="שחקן/ית",text="",actionId,store,now=new Date(),availabilityFn=findAvailability}){
  const input=(actionId||text).trim(),state=await store.get(`state/${userId}`)||{}; const set=async s=>store.set(`state/${userId}`,s);
- const withMyRequests=async r=>(await userActiveRequests(store,userId,now)).length?{...r,buttons:[...(r.buttons||[]).slice(0,2),MY_REQ]}:r;
+ const withMyRequests=async r=>(await userActiveRequests(store,userId,now)).length?{...r,text:r.buttons?.some(b=>b.id==="club")?r.text+CLUB_HINT:r.text,buttons:[...(r.buttons||[]).slice(0,2),MY_REQ]}:r;
  const ownReq=async rid=>{const r=await store.get(`request/${rid}`);return r&&r.active&&r.userId===userId?r:null;};
  const today=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jerusalem"}).format(now);
  const seenKey=`seen/${userId}`,seen=await store.get(seenKey);if(!seen)await store.set(seenKey,{at:now.toISOString()});
@@ -83,7 +89,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  // Tom 23.9: flow questions first; the name is asked only where it is needed (publishing a request / connecting).
  if(!name&&input.startsWith("connect:"))return askName({pending:input});
  // Item 18: the full greeting once; later a short menu.
- const menuFor=async()=>{const p=await store.get(profileKey)||{userId};if(p.welcomedAt)return{text:name?`${name}, מה תרצו לעשות?`:"מה תרצו לעשות?",buttons:welcome(name).buttons};await store.set(profileKey,{...p,welcomedAt:now.toISOString()});return welcome(name);};
+ const menuFor=async()=>{const p=await store.get(profileKey)||{userId},w=welcome(name),buttons=[...w.buttons,CLUB_BTN];if(p.welcomedAt)return{text:name?`${name}, מה תרצו לעשות?`:"מה תרצו לעשות?",buttons};await store.set(profileKey,{...p,welcomedAt:now.toISOString()});return{...w,buttons};};
  const timeAsk=async(date,resume)=>{if(resume!==null)await set({step:"time_ask",tResume:resume,tDate:date});return btn(`${dayLabel({date})} - מאיזו שעה?`,[17,18,19].map(h=>({id:`tm:${h}`,title:`${h}:00`})));};
  const reask=async s=>{switch(s.step){case"avail_when":return list(AVAIL_ASK,WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));case"board_when":return list(BOARD_ASK,WHEN_OPTIONS.map((x,i)=>({id:`bwhen:${i}`,title:x})));case"when":case"edit_when":return{text:s.step==="edit_when"&&(await ownReq(s.editId))?.recurring?SCHEDULE_ASK:WHEN_ASK};case"schedule":return{text:SCHEDULE_ASK};
    case"level":case"edit_level":return list(LEVEL_ASK,LEVEL_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"pc":return list(PC_ASK,PC_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"duration":case"edit_duration":return list(DURATION_ASK,DURATION_ROWS());case"flex":case"edit_flex":return list(FLEX_ASK,FLEX_ROWS());case"edit_party":return list("כמה שחקנים אתם?",PARTY_ROWS());case"court":case"edit_court":return btn("כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);
@@ -135,7 +141,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  }
  if(text&&!actionId&&(state.step?["avail_when","board_when","when"].includes(state.step):true)){const p=parseIntentLocal(text,now),h=p.ambiguousHour;if(h&&(state.step||p.dateExplicit)){await set({step:"ampm",apResume:state,apText:text});return btn(`התכוונתם ל-${h} בבוקר או ל-${h} בערב?`,[{id:"ampm:am",title:`${h} בבוקר`},{id:"ampm:pm",title:`${h} בערב`}]);}}
  // Tom 23.9 10:36: "בשבוע הבא אחרי 18:00" got "לא הבנתי". "Next week" is a week, not a day: ask which day (dates listed), keep the time part, then continue the same step.
- if(text&&!actionId&&NEXT_WEEK.test(text)&&!recurringDays(text.replace(NEXT_WEEK,"")).length&&(!state.step||["avail_when","board_when","when"].includes(state.step))){const days=nextWeekDays(now);await set({step:"nw_day",nwResume:state,nwRest:text.replace(NEXT_WEEK,"").replace(/\s+/g," ").trim(),nwDays:days});return list("באיזה יום בשבוע הבא?",days.map((d,i)=>({id:`nw:${i}`,title:d.label})));}
+ if(text&&!actionId&&NEXT_WEEK.test(text)&&!recurringDays(text.replace(NEXT_WEEK,"")).length&&(!state.step||["avail_when","board_when","when"].includes(state.step)||(state.flow==="players"&&["level","pc","court","duration","flex"].includes(state.step)))){const days=nextWeekDays(now);await set({step:"nw_day",nwResume:state,nwRest:text.replace(NEXT_WEEK,"").replace(/\s+/g," ").trim(),nwDays:days});return list("באיזה יום בשבוע הבא?",days.map((d,i)=>({id:`nw:${i}`,title:d.label})));}
  if(state.step==="nw_day"&&input.startsWith("nw:")){const d=state.nwDays?.[Number(input.slice(3))];if(d){await set(state.nwResume||{});return handleConversation({userId,displayName,text:`${d.ddmm} ${state.nwRest}`.trim(),store,now,availabilityFn});}}
  if(input==="availability"){await set({flow:"availability",step:"avail_when"});return list(AVAIL_ASK,WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));}
  if(input.startsWith("when:")){await set({});return{mode:"availability",query:whenLabel(input.slice(5))};}
@@ -144,6 +150,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  if(input==="players"||/מציאת שחקנים/.test(input)){await set({flow:"players",step:"mode"});return btn(PLAYERS_MENU,PLAYERS_BTNS);}
  // QA 23.9: "לנסות זמן אחר" keeps level/party/court and asks only for a new time.
  if(input==="retry_when"&&state.flow==="players"&&state.step==="when")return btn(WHEN_ASK,[MENU]);
+ if(input==="club"||(!actionId&&/^(?:ל)?דבר(?:ו)? עם המועדון$/.test(text.trim())))return clubCard();
  if(input==="settings"||/הגדרות/.test(input))return btn("*ניהול הבקשות*",[{id:"my_requests",title:"הבקשות שלי"},LEAVE]);
  if(input==="leave"||(!actionId&&LEAVE_TEXT.test(text.trim()))){await set({step:"leave_confirm"});return btn(LEAVE_ASK,[{id:"leave_yes",title:"כן, להסיר"},{id:"leave_no",title:"לא"}]);}
  if(input==="leave_no"){await set({});return btn("בסדר, נשארתם ברשימה.",[MENU]);}
@@ -172,11 +179,13 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
      if(FR)await store.set(`request/${FR.id}`,{...FR,active:false,closedAt:at,closedReason:"merged",mergedInto:R.id});
      if(sum>=4){await store.set(`request/${R.id}`,{...R,active:false,closedAt:at,closedReason:"full"});group="\n\nיחד אתם 4 - רביעייה מלאה! הורדתי את הבקשות מהלוח.";}
      else{openReq={...R,partySize:sum,joined:[...(R.joined||[]),connection.fromUserId]};await store.set(`request/${R.id}`,openReq);group=`\n\nיחד אתם ${sum} מתוך 4. הבקשה נשארת בלוח (חסר ${4-sum}) ואמשיך לחפש.`;}}
-   const book=R&&!R.hasCourt&&R.courtSlot&&R.date?bookingUrl(R.date,R.courtSlot,{source:"connection"}):null,bookLine=book?`\n\nעוד אין לכם מגרש? להזמנה: ${book}`:"";
+   // Item 7: no court yet -> a booking button (opens the booking card), never a raw link.
+   const bookBtn=R&&!R.hasCourt&&R.courtSlot&&R.date?{id:slotActionId(R.date,R.courtSlot),title:"להזמנת מגרש"}:null;
    // Tom 23.9 15:01: a "שלח הודעה" button (wa.me link) instead of the phone number in the text.
    const notes=[{to:connection.fromUserId,response:{text:`החיבור עם ${displayName} אושר! אפשר לשלוח הודעה בלחיצה.${group}`,ctaUrl:{displayText:"שלח הודעה",url:waLink(userId)}}}];
-   if(openReq)notes.push({to:userId,response:btn(`סגרתם משחק? אם כן, אוריד את הבקשה מהלוח.${bookLine}`,[{id:`closed:${openReq.id}`,title:"כן, סגרנו"},MENU])});
-   return{text:`חיברתי ביניכם! אפשר לשלוח הודעה ${toName(connection.fromDisplayName)} בלחיצה.${group}${openReq?"":bookLine}`,ctaUrl:{displayText:"שלח הודעה",url:waLink(connection.fromUserId)},notifications:notes};}
+   if(openReq)notes.push({to:userId,response:btn("סגרתם משחק? אם כן, אוריד את הבקשה מהלוח.",[{id:`closed:${openReq.id}`,title:"כן, סגרנו"},...(bookBtn?[bookBtn]:[]),MENU].slice(0,3))});
+   else if(bookBtn)notes.push({to:userId,response:btn("עוד אין לכם מגרש?",[bookBtn,MENU])});
+   return{text:`חיברתי ביניכם! אפשר לשלוח הודעה ${toName(connection.fromDisplayName)} בלחיצה.${group}`,ctaUrl:{displayText:"שלח הודעה",url:waLink(connection.fromUserId)},notifications:notes};}
  if(input==="oneoff"||input==="recurring"){if((await userActiveRequests(store,userId,now)).length>=MAX_ACTIVE_REQUESTS)return btn(CAP_TEXT,[MY_REQ,MENU]);const last=await lastRequest(store,userId),draft={recurring:input==="recurring",displayName};if(!last)return nextStep({},draft);draft.level=last.level;draft.durations=last.durations;return nextStep({prefilled:true},draft,`לקחתי מהבקשה הקודמת: רמה ${last.level}, ${last.durations.length>1?"משך גמיש":`${last.durations[0]} דקות`}.\n\n`);}
  if(input==="pfinish"&&state.flow==="players"&&state.draft)return finish(state,state.draft);
  if(state.flow==="players"&&state.step==="pc"&&input==="pc_reset")return nextStep({...state,prefilled:false},{...state.draft,level:undefined,durations:undefined});
@@ -205,7 +214,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
 
  // Item 10 applies inside flows only: Tom 23.9 ~12:58 kept "לא הבנתי" for a no-step "מחר אחרי העבודה".
  // Item 11: a question the bot cannot answer gets the two things it can do (club contact needs a number from Tom).
- if(text.includes("?"))return btn("את זה אני עוד לא יודע לענות. אני יכול לבדוק מגרש פנוי או למצוא שחקנים.",[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"}]);
+ if(text.includes("?"))return btn("את זה אני עוד לא יודע לענות. אפשר לבדוק מגרש פנוי, למצוא שחקנים או לכתוב למועדון.",[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"},CLUB_BTN]);
  if(seen)return btn("לא הבנתי. אפשר לבחור מה לעשות:",[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"}]);
  return withMyRequests(await menuFor());
 }

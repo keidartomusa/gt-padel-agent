@@ -144,7 +144,8 @@ test("empty-board auto-open can be cancelled", async () => {
 });
 test("welcome shows הבקשות שלי only when the user has an active request", async () => {
   const s = memoryStore(); await named(s, "w", "דנה");
-  let r = await H(s, "w")({ text: "תפריט" }); assert.deepEqual(r.buttons.map(b => b.id), ["availability", "players"]);
+  // Tom 15:16: the club contact is always in the menu - the third button, or a typed-phrase hint when that slot holds הבקשות שלי.
+  let r = await H(s, "w")({ text: "תפריט" }); assert.deepEqual(r.buttons.map(b => b.id), ["availability", "players", "club"]); assert.doesNotMatch(r.text, /https?:/);
   await create(s, "w"); r = await H(s, "w")({ text: "תפריט" });
-  assert.deepEqual(r.buttons.map(b => b.id), ["availability", "players", "my_requests"]);
+  assert.deepEqual(r.buttons.map(b => b.id), ["availability", "players", "my_requests"]); assert.match(r.text, /לשאלות על המועדון כתבו: דבר עם המועדון$/);
 });
