@@ -14,3 +14,5 @@ export async function sendResponse(to,response,phoneNumberId,fetchImpl=fetch){
  if(response.list){return post(to,{type:"interactive",interactive:{type:"list",body:{text:response.text},action:{button:response.list.button,sections:response.list.sections.map(s=>({...s,rows:s.rows.map(r=>({id:r.id,title:r.title.slice(0,24),...(r.description?{description:r.description.slice(0,72)}:{})}))}))}}},phoneNumberId,fetchImpl);}
  return sendText(to,response.text||String(response),phoneNumberId,fetchImpl);
 }
+// Approved utility template for users outside the 24h customer-service window. Quick-reply payloads route back into the bot.
+export const sendTemplate=(to,name,language,payloads=[],phoneNumberId,fetchImpl=fetch)=>post(to,{type:"template",template:{name,language:{code:language},components:payloads.map((payload,i)=>({type:"button",sub_type:"quick_reply",index:String(i),parameters:[{type:"payload",payload}]}))}},phoneNumberId,fetchImpl);
