@@ -76,3 +76,49 @@ test("time answers inside the players flow stay in registration even when they l
   assert.doesNotMatch(r.text, /יש זמינות|אין מגרש פנוי/);
   assert((await s.get("state/flow")).step !== "when");
 });
+
+test("returning users with unrecognized input get a short prompt with menu buttons, not the full welcome again", async () => {
+  const s = memoryStore(), now = new Date("2026-09-23T08:00:00+03:00");
+  const first = await routeIncoming({ userId: "odd", text: "בננה", store: s, now });
+  assert.match(first.text, /ברוכים הבאים/);
+  for (const text of ["אממ", "123", "👍"]) {
+    const r = await routeIncoming({ userId: "odd", text, store: s, now });
+    assert.doesNotMatch(r.text, /ברוכים הבאים/, text);
+    assert.match(r.text, /לא הבנתי/);
+    assert.deepEqual(r.buttons.map(b => b.id).slice(0, 2), ["availability", "players"]);
+  }
+  const menu = await routeIncoming({ userId: "odd", text: "תפריט", store: s, now });
+  assert.match(menu.text, /ברוכים הבאים/);
+});
+
+test("recurring availability requires weekdays and does not accept a one-off date", async () => {
+  const s = memoryStore(), now = new Date("2026-09-23T08:00:00+03:00");
+  for (const actionId of ["players", "recurring", "level:3–3.5"]) await routeIncoming({ userId: "rec", actionId, store: s, now });
+  const bad = await routeIncoming({ userId: "rec", text: "מחר אחרי 19:00", store: s, now });
+  assert.match(bad.text, /ימים בשבוע/);
+  assert.equal((await s.get("state/rec")).step, "schedule");
+  const ok = await routeIncoming({ userId: "rec", text: "שני ורביעי אחרי 20:00", store: s, now });
+  assert.match(ok.text, /כמה זמן/);
+});
+
+test("picking 'find a court' from the menu immediately asks when, and the answer goes to availability", async () => {
+  const s = memoryStore(), now = new Date("2026-09-23T08:00:00+03:00");
+  await routeIncoming({ userId: "guide", text: "שלום", store: s, now });
+  const q = await routeIncoming({ userId: "guide", actionId: "availability", text: "מגרש פנוי", store: s, now });
+  assert.match(q.text, /מתי תרצו לשחק/);
+  assert.doesNotMatch(q.text, /יש זמינות/);
+  const rows = q.list.sections.flatMap(x => x.rows);
+  assert(rows.some(r => r.id === "when:מחר בערב"));
+  assert(rows.some(r => r.id === "menu"));
+  const quick = await routeIncoming({ userId: "guide", actionId: "when:מחר בערב", text: "מחר בערב", store: s, now });
+  assert.match(quick.text, /זמינות|אין מגרש פנוי/);
+  await routeIncoming({ userId: "guide2", actionId: "availability", store: s, now });
+  const free = await routeIncoming({ userId: "guide2", text: "בשבת", store: s, now });
+  assert.match(free.text, /זמינות|אין מגרש פנוי/);
+});
+
+test("picking 'find players' from the menu immediately asks how to find a game", async () => {
+  const r = await routeIncoming({ userId: "guide-p", actionId: "players", store: memoryStore(), now: new Date("2026-09-23T08:00:00+03:00") });
+  assert.match(r.text, /איך תרצו למצוא משחק/);
+  assert(r.buttons.length >= 2);
+});

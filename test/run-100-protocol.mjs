@@ -35,8 +35,8 @@ async function menuJourney(n) {
   const first = options(t.response).find(o => o.id === goal); t = await push({ actionId: first.id, title: first.title });
   for (let guard = 0; guard < 14 && !terminalOf(t); guard++) {
     const opts = options(t.response).filter(o => o.id !== "menu");
-    if (goal === "availability") { const slot = opts.filter(o => o.id.startsWith("book:")); t = slot.length ? await push((r => ({ actionId: r.id, title: r.title }))(pick(rand, slot))) : await push({ text: pick(rand, ["מחר בערב ל90 דקות", "שישי בצהריים לשעה", "שבת בבוקר לשעתיים", "ראשון אחרי 19:00 ל90 דק"]) }); continue; }
-    if (opts.length) { const o = pick(rand, opts); t = await push({ actionId: o.id, title: o.title }); } else t = await push({ text: pick(rand, regText) });
+    if (goal === "availability") { const slot = opts.filter(o => o.id.startsWith("book:")), whenRows = opts.filter(o => o.id.startsWith("when:")); if (!slot.length && whenRows.length && rand() < 0.5) { const w = pick(rand, whenRows); t = await push({ actionId: w.id, title: w.title }); continue; } t = slot.length ? await push((r => ({ actionId: r.id, title: r.title }))(pick(rand, slot))) : await push({ text: pick(rand, ["מחר בערב ל90 דקות", "שישי בצהריים לשעה", "שבת בבוקר לשעתיים", "ראשון אחרי 19:00 ל90 דק"]) }); continue; }
+    if (opts.length) { const o = pick(rand, opts); t = await push({ actionId: o.id, title: o.title }); } else t = await push({ text: /ימים|בדרך כלל/.test(t.response.text || "") ? pick(rand, ["ימי שני ורביעי אחרי 20:00", "ראשון וחמישי בבוקר", "שלישי אחרי 18:00"]) : pick(rand, ["מחר אחרי 19:00", "שישי בבוקר", "מחר ב18:00"]) });
   }
   out.push({ title: `${n}. תפריט ראשי אקראי → ${goal === "availability" ? "מגרש פנוי" : "מציאת שחקנים"} (${wander} צעדי שיטוט)`, type: "menu", identity: { userId: user.userId, displayName: user.displayName }, turns });
 }
@@ -65,6 +65,7 @@ await convo("99. תפריט באמצע רישום ואז בדיקת מגרש מ�
 await convo("100. תפריט בשלב גמישות ואז רישום חדש עד הסוף", "menu", makeUser("972503000911", "מאיה"), [...reg({}, "2.5–3", "מחר ב18:00").slice(0, 7), { text: "תפריט" }, ...reg({}, "2.5–3", "מחר ב18:00")]);
 // validation
 const problems = [];
+for (const x of out) for (let i = 0; i < x.turns.length - 1; i++) if (x.turns[i].input.actionId === "availability" && !/מתי תרצו לשחק/.test(x.turns[i].response.text || "")) problems.push(`no guiding question after availability pick: ${x.title}`);
 if (out.length !== 100) problems.push(`expected 100 got ${out.length}`);
 for (const x of out) {
   const last = x.turns.at(-1), term = last && terminalOf(last);
