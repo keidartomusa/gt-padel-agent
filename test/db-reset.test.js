@@ -16,3 +16,7 @@ test("db reset keeps booking clicks (not in Tom's 17:21 list)", async () => {
   const s = memoryStore(); await s.set("booking-click/x", { a: 1 }); await s.set("request/a", {}); const r = await resetStore(s);
   assert.equal(r.keptClicks, 1); assert.equal(r.left, 1); assert.deepEqual(await s.get("booking-click/x"), { a: 1 }); assert.equal(await s.get("request/a"), null);
 });
+test("db reset with clicks:true empties everything", async () => {
+  const s = memoryStore(); await s.set("booking-click/x", {}); await s.set("profile/1", {}); const r = await resetStore(s, new Date(), null, { clicks: true });
+  assert.equal(r.keptClicks, 0); assert.equal(r.left, 0); assert.deepEqual(await s.keys(""), ["meta/last-reset"]);
+});
