@@ -15,3 +15,16 @@ export async function evalProvider(name,adapter,corpus,{today,concurrency=6,time
   latencyMs:{p50:pct(ms,0.5),p95:pct(ms,0.95),max:ms.length?Math.max(...ms):null},tokens:usage,priceUsdPerM:price,costUsd:Number(cost.toFixed(6)),costPer1kMessagesUsd:Number((cost/corpus.length*1000).toFixed(4)),
   misses:rows.filter(r=>!(r.dateOk&&r.startOk)).map(r=>{const c=corpus.find(x=>x[0]===r.text);return{text:r.text,want:[c[1],c[2]],got:[r.date??null,r.start??null],clar:r.clar||undefined,error:r.error};})};}
 export function evalLocal(corpus,now){const rows=corpus.map(([t,d,s])=>{const p=parseIntentLocal(t,now);return p.date===d&&p.startMinute===s;});return{provider:"local",n:corpus.length,bothCorrect:rows.filter(Boolean).length};}
+// Tom 23.9: Jev verifies gpt. Both run in parallel per message; agreement on date+start = answer,
+// disagreement (or Jev confidence under the threshold) = ask the user. Wrong answers are the number that matters.
+export async function evalCombo(gpt,jev,corpus,{today,concurrency=6,timeoutMs=15000,thresholds=[0,0.5,0.7,0.9]}={}){
+ const rows=[];let i=0;const tok={openai:{input:0,output:0},jev:{input:0,output:0}};
+ const call=async(name,ad,text)=>{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),timeoutMs),t0=Date.now();try{const p=await ad(text,today,{signal:ctl.signal,onUsage:u=>{tok[name].input+=u.input;tok[name].output+=u.output;}});return{p,ms:Date.now()-t0};}catch(e){return{err:String(e?.message||e),ms:Date.now()-t0};}finally{clearTimeout(t);}};
+ async function worker(){while(i<corpus.length){const [text,date,start]=corpus[i++],t0=Date.now();const [g,j]=await Promise.all([call("openai",gpt,text),call("jev",jev,text)]);
+  const agree=!g.err&&!j.err&&g.p.date!=null&&g.p.date===j.p.date&&g.p.startMinute===j.p.startMinute;
+  rows.push({text,ms:Date.now()-t0,agree,correct:agree&&g.p.date===date&&g.p.startMinute===start,conf:j.p?.confidence??0,g:g.p&&[g.p.date,g.p.startMinute],j:j.p&&[j.p.date,j.p.startMinute],want:[date,start]});}}
+ await Promise.all(Array.from({length:concurrency},worker));
+ const ms=rows.map(r=>r.ms),cost=(tok.openai.input*PRICES.openai.input+tok.openai.output*PRICES.openai.output+tok.jev.input*PRICES.jev.input+tok.jev.output*PRICES.jev.output)/1e6;
+ const byThreshold=thresholds.map(th=>{const ans=rows.filter(r=>r.agree&&r.conf>=th);return{jevConfidenceMin:th,answered:ans.length,answeredCorrect:ans.filter(r=>r.correct).length,wrongAnswers:ans.filter(r=>!r.correct).length,askedUser:rows.length-ans.length};});
+ return{provider:"combo",n:rows.length,agree:rows.filter(r=>r.agree).length,byThreshold,latencyMs:{p50:pct(ms,0.5),p95:pct(ms,0.95),max:Math.max(...ms)},tokens:tok,costUsd:Number(cost.toFixed(6)),costPer1kMessagesUsd:Number((cost/rows.length*1000).toFixed(4)),
+  misses:rows.filter(r=>r.agree&&!r.correct).map(r=>({text:r.text,want:r.want,got:r.g,conf:r.conf,wrongAgree:true})).concat(rows.filter(r=>!r.agree).map(r=>({text:r.text,want:r.want,gpt:r.g,jev:r.j})))};}
