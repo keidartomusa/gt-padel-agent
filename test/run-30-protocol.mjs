@@ -2,7 +2,7 @@ import {answer} from '../src/agent.js';
 import {handleConversation} from '../src/conversation.js';
 import {routeIncoming} from '../src/webhook.js';
 import {dailySweep} from '../src/matching.js';
-import {memoryStore} from '../src/store.js';
+import {memoryStore} from './named-store.mjs';
 const now=new Date('2026-09-23T00:10:00+03:00'), transcripts=[];
 const view=r=>({text:r.text,buttons:r.buttons?.map(x=>x.title),list:r.list?.sections?.flatMap(s=>s.rows.map(x=>x.title)),notifications:r.notifications?.map(x=>({to:x.to,text:x.response.text,buttons:x.response.buttons?.map(b=>b.title)}))});
 async function availability(title,users){const turns=[];for(const user of Array.isArray(users)?users:[users]){turns.push({from:'user',text:user});const bot=await answer(user,{now});turns.push({from:'bot',...view({text:bot})});}transcripts.push({title,type:'availability',turns});}

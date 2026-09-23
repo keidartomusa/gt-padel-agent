@@ -1,8 +1,8 @@
 import test from "node:test";import assert from "node:assert/strict";
-import {handleConversation} from "../src/conversation.js";import {flexMinutesFor,timesCompatible,FLEX_ANY} from "../src/matching.js";import {memoryStore} from "../src/store.js";
+import {handleConversation} from "../src/conversation.js";import {flexMinutesFor,timesCompatible,FLEX_ANY} from "../src/matching.js";import {memoryStore,named} from "./named-store.mjs";
 const now=new Date("2026-09-23T08:00:00+03:00");
 const available=async i=>({kind:"availability",date:i.date,slots:[{courtId:"c3",courtName:"3",start:"19:00",end:"20:30",durationMinutes:i.durationMinutes,price:null}]});
-async function flow(store,userId,name,when,flex){const h=o=>handleConversation({userId,displayName:name,store,now,availabilityFn:available,...o});await h({actionId:"oneoff"});await h({actionId:"level:3–3.5"});await h({text:when});await h({actionId:"duration:90"});await h({actionId:"party:1"});const f=await h({actionId:"court:yes"});return{options:f,final:await h({actionId:`flex:${flex}`})};}
+async function flow(store,userId,name,when,flex){await named(store,userId,name);const h=o=>handleConversation({userId,displayName:name,store,now,availabilityFn:available,...o});await h({actionId:"oneoff"});await h({actionId:"level:3–3.5"});await h({text:when});await h({actionId:"duration:90"});await h({actionId:"party:1"});const f=await h({actionId:"court:yes"});return{options:f,final:await h({actionId:`flex:${flex}`})};}
 
 test("flex list is exactly: שעה מדויקת, שעה, גמיש (no חצי שעה)",async()=>{const {options}=await flow(memoryStore(),"a","דנה","מחר אחרי 19:00","0");assert.equal(options.text,"עד כמה אתם גמישים בשעה?");assert.deepEqual(options.list.sections.flatMap(x=>x.rows).filter(r=>r.id.startsWith("flex:")).map(r=>[r.id,r.title]),[["flex:0","שעה מדויקת"],["flex:60","שעה"],["flex:any","גמיש"]]);});
 test("flex values: any = whole day, numbers pass through, junk = 0",()=>{assert.equal(flexMinutesFor("any"),FLEX_ANY);assert.equal(flexMinutesFor("60"),60);assert.equal(flexMinutesFor("0"),0);assert.equal(flexMinutesFor("x"),0);});

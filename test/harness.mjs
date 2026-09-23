@@ -34,3 +34,7 @@ export const options = r => [...(r.buttons || []).map(b => ({ id: b.id, title: b
 export function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 2 ** 32; }; }
 export const pick = (rand, arr) => arr[Math.floor(rand() * arr.length)];
 export function view(t) { const r = t.response; return { text: r.text, buttons: r.buttons?.map(b => b.title), list: r.list ? { button: r.list.button, rows: r.list.sections.flatMap(s => s.rows.map(x => ({ title: x.title, description: x.description || "" }))) } : undefined, cta: r.ctaUrl ? { label: r.ctaUrl.displayText, url: r.ctaUrl.url } : undefined, notifications: r.notifications?.map(n => ({ to: n.to, text: n.response.text })) }; }
+const NAMES = ["יוסי", "דנה", "אבי כהן", "מיכל", "רון", "נועה לוי", "איתי", "שירה", "עומר", "טל", "גיל", "ליאור", "מאיה", "אלון", "רותם", "Tom", "עדי", "נדב", "יעל", "אורי"];
+export const realName = u => u.realName || (/\d/.test(u.displayName || "") || !u.displayName ? NAMES[[...String(u.userId)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % NAMES.length] : u.displayName);
+// A real user answers the one-time name question with their name; both turns are recorded.
+export async function turnAll(user, step, opts) { const t = await turn(user, step, opts); if (/^מה השם שלך\?/.test(t.response.text || "")) return [t, await turn(user, { text: realName(user) }, opts)]; return [t]; }

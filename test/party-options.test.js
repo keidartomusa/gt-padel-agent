@@ -1,5 +1,5 @@
 import test from "node:test";import assert from "node:assert/strict";
-import {handleConversation} from "../src/conversation.js";import {memoryStore} from "../src/store.js";
+import {handleConversation} from "../src/conversation.js";import {memoryStore,named} from "./named-store.mjs";
 const now=new Date("2026-09-23T08:00:00+03:00");
 const available=async i=>({kind:"availability",date:i.date,slots:[{courtId:"c3",courtName:"3",start:"19:00",end:"20:30",durationMinutes:i.durationMinutes,price:null}]});
 async function upTo(store,userId){const h=o=>handleConversation({userId,displayName:"דנה",store,now,availabilityFn:available,...o});await h({actionId:"oneoff"});await h({actionId:"level:3–3.5"});await h({text:"מחר אחרי 19:00"});return{h,party:await h({actionId:"duration:90"})};}

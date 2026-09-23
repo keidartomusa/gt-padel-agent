@@ -1,7 +1,7 @@
 // 100 availability / menu / board conversations through the production path, live Matchpointer.
 import fs from "node:fs";
 import { memoryStore } from "../src/store.js";
-import { provider, makeUser, turn, options, rng, pick, view } from "./harness.mjs";
+import { provider, makeUser, turn, turnAll, options, rng, pick, view } from "./harness.mjs";
 const out = [], rand = rng(20260923);
 const TERMINAL = [
   ["cta", t => t.response.ctaUrl?.url?.includes("/go/book?")],
@@ -16,7 +16,7 @@ const TERMINAL = [
   ["day_full", t => /אין מגרש פנוי .* וגם לא בשאר היום/.test(t.response.text || "")]
 ];
 const terminalOf = t => TERMINAL.find(([, f]) => f(t))?.[0] || null;
-async function convo(title, type, user, steps) { const turns = []; for (const s of steps) { const s2 = typeof s === "function" ? s(turns.at(-1)) : s; if (!s2) break; turns.push(await turn(user, s2)); } out.push({ title, type, identity: { userId: user.userId, displayName: user.displayName }, turns }); return turns; }
+async function convo(title, type, user, steps) { const turns = []; for (const s of steps) { const s2 = typeof s === "function" ? s(turns.at(-1)) : s; if (!s2) break; turns.push(...await turnAll(user, s2)); } out.push({ title, type, identity: { userId: user.userId, displayName: user.displayName }, turns }); return turns; }
 const pickSlot = last => { const rows = options(last.response).filter(o => o.id.startsWith("book:")); if (!rows.length) return null; const r = pick(rand, rows); return { actionId: r.id, title: r.title }; };
 const Q = ["יש מגרש היום בערב ל90 דקות?","מה פנוי מחר בערב לשעה?","תבדוק שישי בצהריים לשעתיים","שבת בבוקר, מגרש לשעה וחצי","יש משהו ביום ראשון אחרי 19:00?","מה פנוי ביום שני לפני 18:00 ל90 דק","שלישי בלילה לשעה וחצי","רביעי הבא בערב ל90 דקות","מגרש ב25/9 בשעה 17:00 ל90 דקות","מתי יש מגרש ב30 לחודש בערב?","יש מגרש מחר אחהצ לשעה וחצי","מתי יש מגרשים פנויים אחרי 20:30 בערב ל90 דק","מגרש מחר לפני 08:00 ל60 דק","אפשר מחר ב16:00 לשעתיים?","יש מגרש מחר בערב?","מגרש היום בצהריים ל60 דקות","חמישי בבוקר לשעתיים","שישי בערב ל90 דקות","שבת בצהריים לשעה וחצי","ראשון בבוקר לשעה","שני בערב לשעתיים","שלישי אחר הצהריים לשעה וחצי","רביעי בבוקר ל60 דקות","25/9 בצהריים ל120 דקות","26/9 בשעה 12:00 ל90 דקות","27/9 אחרי 21:00 ל90 דקות","28/9 לפני 09:00 לשעה","29/9 ב16:00 לשעתיים","30/9 אחרי 17:00 לשעה וחצי","מחר ב17:30 ל90 דק","מחר אחרי 18:30 לשעה","מחר לפני 19:00 לשעתיים","שישי ב12:30 ל60 דקות","שבת אחרי 12 ל120 דקות","ראשון ב21:00 ל90 דקות","שני ב06:00 לשעה","שלישי ב16:30 לשעה וחצי","רביעי ב17:00 לשעתיים","יש זמינות מחר בערב?","איזה מגרשים פנויים בשישי בצהריים?","מה פנוי בשבת בצהריים ל90 דקות?","איפה מזמינים מגרש בראשון בערב?","יש מגרשים ביום שני בבוקר?","מגרש ביום שלישי אחהצ ל60 דקות","מגרש היום לפני 06:00 לשעה"];
 // 1-45: availability question -> slot list -> random row -> CTA (or a clear full-day statement)
@@ -26,7 +26,7 @@ const odd = ["בננה", "?", "👍", "מה?", "אממ", "תפריט", "סתם",
 const regText = ["מחר אחרי 19:00", "שישי בבוקר", "ימי שני ורביעי אחרי 20:00", "מחר ב18:00"];
 async function menuJourney(n) {
   const user = makeUser(`97250200${String(n).padStart(4, "0")}`, `שחקן ${n}`), turns = [];
-  const push = async s => { const t = await turn(user, s); turns.push(t); return t; };
+  const push = async s => { const ts = await turnAll(user, s); turns.push(...ts); return ts.at(-1); };
   let t = await push({ text: pick(rand, ["שלום", "היי", "hi", "מה קורה", "בוקר טוב"]) });
   const wander = Math.floor(rand() * 4);
   for (let k = 0; k < wander; k++) { const opts = options(t.response).filter(o => !o.id.startsWith("book:")); t = rand() < 0.35 || !opts.length ? await push({ text: pick(rand, odd) }) : await push({ actionId: (o => o.id)(pick(rand, opts)), title: "" }); }
@@ -47,18 +47,18 @@ for (let j = 0; j < 20; j++) { const n = 71 + j, recurring = j % 4 === 3, u = ma
 // 91-100: public board, brokered connection, settings
 const reg = (u, lvl = "3–3.5", when = "מחר אחרי 19:00") => [{ actionId: "players" }, { actionId: "oneoff" }, { actionId: `level:${lvl}` }, { text: when }, { actionId: "duration:90" }, { actionId: "party:1" }, { actionId: "court:yes" }, { actionId: "flex:60" }];
 const board = memoryStore(); const owner = makeUser("972503000901", "דנה", board), viewer = makeUser("972503000902", "נועם", board);
-for (const s of reg(owner)) await turn(owner, s);
+for (const s of reg(owner)) await turnAll(owner, s);
 const req = (await board.list("request/"))[0].value;
 await convo("91. לוח ציבורי ובקשת חיבור", "board", viewer, [{ text: "מי מחפש משחק מחר בערב?" }, { actionId: `connect:${req.id}` }]);
 const conn = (await board.list("connection/"))[0].value;
 await convo("92. אישור חיבור מתווך", "board", owner, [{ actionId: `accept:${conn.id}` }]);
 const b2 = memoryStore(), o2 = makeUser("972503000903", "רוני", b2), v2 = makeUser("972503000904", "גל", b2);
-for (const s of reg(o2)) await turn(o2, s); const r2 = (await b2.list("request/"))[0].value; await turn(v2, { actionId: `connect:${r2.id}` }); const c2 = (await b2.list("connection/"))[0].value;
+for (const s of reg(o2)) await turnAll(o2, s); const r2 = (await b2.list("request/"))[0].value; await turnAll(v2, { actionId: `connect:${r2.id}` }); const c2 = (await b2.list("connection/"))[0].value;
 await convo("93. דחיית חיבור בלי חשיפת טלפון", "board", o2, [{ actionId: `decline:${c2.id}` }]);
 await convo("94. השתקה לשבוע", "settings", makeUser("972503000905", "עדי"), [{ actionId: "mute_week" }]);
 await convo("95. השתקה מותאמת", "settings", makeUser("972503000906", "עדי"), [{ actionId: "mute_custom" }, { actionId: "mute_14" }]);
 await convo("96. אין בקשות פעילות", "settings", makeUser("972503000907", "עדי"), [{ actionId: "my_requests" }]);
-const mine = memoryStore(), me = makeUser("972503000908", "תמר", mine); for (const s of reg(me)) await turn(me, s);
+const mine = memoryStore(), me = makeUser("972503000908", "תמר", mine); for (const s of reg(me)) await turnAll(me, s);
 await convo("97. הצגת הבקשות שלי", "settings", me, [{ actionId: "my_requests" }]);
 await convo("98. לוח ריק בחלון זמן", "board", makeUser("972503000909", "יואב"), [{ text: "מי מחפש משחק מחר בערב?" }]);
 await convo("99. תפריט באמצע רישום ואז בדיקת מגרש מלאה", "menu", makeUser("972503000910", "ליאור"), [{ actionId: "players" }, { actionId: "oneoff" }, { actionId: "level:3–3.5" }, { text: "מחר אחרי 19:00" }, { text: "תפריט" }, { text: "מגרש בשבת בצהריים ל90 דקות" }, pickSlot]);
