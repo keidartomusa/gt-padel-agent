@@ -23,13 +23,15 @@ const noKey = async f => { const k = process.env.OPENAI_API_KEY; delete process.
 
 test("one match: 'מצאתי התאמה אפשרית', never 'מצאתי 1 התאמות'", async () => {
   const s = memoryStore(); await create(s, "a", "דנה"); const r = await create(s, "b", "נועם");
-  assert.match(r.text, /מצאתי התאמה אפשרית ושלחתי הצעה:/); assert.doesNotMatch(r.text, /מצאתי 1 /);
+  assert.match(r.text, /מצאתי התאמה אפשרית ושלחתי הצעה\./); assert.doesNotMatch(r.text, /מצאתי 1 /);
 });
-test("match notification: weekday + date + window, no ISO date; only the connect button (Tom 14:13: no mute)", async () => {
+test("match notification: weekday + date + window, no ISO date; connect + לא הפעם, no mute (Tom 14:13, critique item 8)", async () => {
   const s = memoryStore(); await create(s, "a", "דנה"); const r = await create(s, "b", "נועם");
   const n = r.notifications[0].response;
   assert.match(n.text, /נועם · חמישי 24\.9 · אחרי 19:00 · רמה 3–3\.5/); assert.doesNotMatch(n.text, /2026-/);
-  assert.deepEqual(ids(n).map(x => x.title), ["רוצה להתחבר"]);
+  assert.deepEqual(ids(n).map(x => x.title), ["רוצה להתחבר", "לא הפעם"]);
+  // Critique item 5: party, court, duration and the combined count.
+  assert.match(n.text, /\nשחקן אחד · יש מגרש · 90 דק׳\nיחד: 2 מתוך 4\n/);
 });
 test("connect request to the owner has no mute button", async () => {
   const s = memoryStore(); await create(s, "a", "יוסי"); const req = (await s.list("request/"))[0].value;
@@ -46,11 +48,11 @@ test("leave the list: from settings, from 'הבקשות שלי', or by typing; c
   const h = H(s, "a", "דנה");
   assert.ok(ids(await h({ text: "הגדרות" })).some(x => x.id === "leave" && x.title === "הסרה מהרשימה"));
   assert.ok(ids(await h({ actionId: "my_requests" })).some(x => x.id === "leave"));
-  for (const t of ["תסירו אותי מהרשימה", "הסר אותי", "אני רוצה להפסיק לקבל הודעות", "stop"]) { const q = await h({ text: t }); assert.match(q.text, /^להסיר אותך מהרשימה\?/, t); }
-  const no = await h({ actionId: "leave_no" }); assert.equal(no.text, "בסדר, נשארת ברשימה.");
+  for (const t of ["תסירו אותי מהרשימה", "הסר אותי", "אני רוצה להפסיק לקבל הודעות", "stop"]) { const q = await h({ text: t }); assert.match(q.text, /^להסיר אתכם מהרשימה\?/, t); }
+  const no = await h({ actionId: "leave_no" }); assert.equal(no.text, "בסדר, נשארתם ברשימה.");
   assert.equal((await s.list("request/")).filter(x => x.value.active).length, 2);
   const ask = await h({ actionId: "leave" }); assert.deepEqual(ids(ask).map(x => x.id), ["leave_yes", "leave_no"]);
-  const done = await h({ actionId: "leave_yes" }); assert.match(done.text, /^הוסרת מהרשימה\. הבקשות שלך נמחקו/);
+  const done = await h({ actionId: "leave_yes" }); assert.match(done.text, /^הוסרתם מהרשימה\. הבקשות שלכם נמחקו/);
   assert.equal((await s.list("request/")).filter(x => x.value.active && x.value.userId === "a").length, 0);
   assert.ok((await s.get("profile/a")).optedOutAt);
   const other = await create(s, "b", "נועם"); assert.ok(!(other.notifications || []).some(n => n.to === "a"));
@@ -69,9 +71,9 @@ test("connect request and answers: weekday date, gender-neutral copy", async () 
   await named(s, "b", "דנה"); const sent = await H(s, "b", "דנה")({ actionId: `connect:${req.id}` });
   assert.equal(sent.text, "שלחתי בקשת חיבור ליוסי. אעדכן כשתגיע תשובה.");
   const ask = sent.notifications[0].response.text;
-  assert.match(ask, /^דנה רוצה להתחבר לבקשה שלך: חמישי 24\.9 · אחרי 19:00 · רמה 3–3\.5\./); assert.doesNotMatch(ask, /2026-/);
+  assert.match(ask, /^דנה רוצה להתחבר לבקשה שלכם: חמישי 24\.9 · אחרי 19:00 · רמה 3–3\.5\./); assert.doesNotMatch(ask, /2026-/);
   const c = (await s.list("connection/"))[0].value, acc = await H(s, "a", "יוסי")({ actionId: `accept:${c.id}` });
-  assert.match(acc.notifications[0].response.text, /^החיבור עם יוסי אושר! אפשר ליצור קשר: /);
+  assert.match(acc.notifications[0].response.text, /^החיבור עם יוסי אושר! אפשר לשלוח הודעה בלחיצה\./);
   for (const t of [sent.text, ask, acc.text, acc.notifications[0].response.text]) assert.doesNotMatch(t, /\/ה|\/תאשר/);
 });
 test("board: 'שחקן אחד', open-ended window as 'אחרי 19:00', at most 9 requests + menu row", async () => {
@@ -131,7 +133,7 @@ test("'לנסות זמן אחר' after a no-court request keeps the answers and 
 test("edit confirmation shows party size and court, so a party/court edit is visible", async () => {
   const s = memoryStore(); await create(s, "a", "אלון"); const req = (await s.list("request/"))[0].value, h = H(s, "a", "אלון");
   await h({ actionId: `ef:${req.id}:party` }); const r = await quiet(() => h({ actionId: "party:3" }));
-  assert.match(r.text, /^עדכנתי: .* · 3 שחקנים · יש מגרש\.$/m);
+  assert.match(r.text, /^חד-פעמית · .* · 3 שחקנים · יש מגרש$/m);
 });
 test("Tom 14:12: board never shows phones; they pass only after the owner approves the connection", async () => {
   const s = memoryStore(); await create(s, "972501110021", "טל");
@@ -142,5 +144,7 @@ test("Tom 14:12: board never shows phones; they pass only after the owner approv
   await named(s, "972501110022", "גיל"); const sent = await H(s, "972501110022", "גיל")({ actionId: row.id });
   assert.doesNotMatch(JSON.stringify(sent), /050-1110021/); assert.doesNotMatch(sent.notifications[0].response.text, /050-1110022/);
   const c = (await s.list("connection/"))[0].value, acc = await H(s, "972501110021", "טל")({ actionId: `accept:${c.id}` });
-  assert.match(acc.text, /050-1110022/); assert.match(acc.notifications[0].response.text, /050-1110021/);
+  // Tom 15:01: a "שלח הודעה" button instead of the number in the text.
+  assert.equal(acc.ctaUrl.url, "https://wa.me/972501110022"); assert.equal(acc.notifications[0].response.ctaUrl.url, "https://wa.me/972501110021");
+  assert.doesNotMatch(acc.text + acc.notifications[0].response.text, /050-111002/);
 });

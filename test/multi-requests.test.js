@@ -36,7 +36,7 @@ test("a second request is allowed and both are listed", async () => {
 test("typed 'הבקשות שלי' opens the list; empty state offers a new request", async () => {
   const s = memoryStore(); await named(s, "e", "דנה");
   const r = await H(s, "e")({ text: "הבקשות שלי" });
-  assert.equal(r.text, "אין לך כרגע בקשות פעילות.");
+  assert.equal(r.text, "אין לכם כרגע בקשות פעילות.");
   assert.deepEqual(r.buttons.map(b => b.id), ["players", "menu"]);
 });
 test("tap a request -> עריכה | מחיקה | חזרה", async () => {
@@ -74,7 +74,8 @@ for (const [field, answer, check] of [
   const s = memoryStore(); await create(s, "a"); const [before] = await mine(s, "a"), h = H(s, "a");
   await h({ actionId: `ef:${before.id}:${field}` });
   const r = await h(answer);
-  assert.match(r.text, /^עדכנתי: /); assert.deepEqual(r.buttons.map(b => b.id), ["my_requests", "menu"]);
+  // Critique item 15: after an edit the request card is shown again with "עריכה נוספת".
+  assert.match(r.text, /^עדכנתי\.\n\n\*/); assert.deepEqual(r.buttons.map(b => b.id), [`edit:${before.id}`, "menu"]);
   const [after] = await mine(s, "a"); check(after);
   for (const k of ["level", "durations", "partySize", "date", "startMinute", "hasCourt"]) if (!{ level: ["level"], duration: ["durations"], party: ["partySize"], when: ["date", "startMinute"], court: ["hasCourt"] }[field].includes(k)) assert.deepEqual(after[k], before[k], k);
 });
@@ -92,7 +93,7 @@ test("edit when with an ambiguous hour asks am/pm and then saves", async () => {
   const s = memoryStore(); await create(s, "a"); const [q] = await mine(s, "a"), h = H(s, "a");
   await h({ actionId: `ef:${q.id}:when` });
   let r = await h({ text: "שישי ב-9" }); assert.match(r.text, /בבוקר או/);
-  r = await h({ actionId: "ampm:pm" }); assert.match(r.text, /^עדכנתי: /);
+  r = await h({ actionId: "ampm:pm" }); assert.match(r.text, /^עדכנתי\.\n/);
   const [a] = await mine(s, "a"); assert.equal(a.date, "2026-09-25"); assert.equal(a.startMinute, 1260);
 });
 test("editing a request with an approved connection sends the other player nothing", async () => {
@@ -107,7 +108,7 @@ test("cap: a 6th request is refused with the cap text", async () => {
   for (const w of ["מחר אחרי 19:00", "שישי בבוקר", "שבת בבוקר", "ראשון בערב", "שני בערב"]) await create(s, "a", { when: w });
   assert.equal((await mine(s, "a")).length, 5);
   const r = await H(s, "a")({ actionId: "oneoff" });
-  assert.equal(r.text, "יש לך כבר 5 בקשות פעילות. אפשר למחוק אחת דרך 'הבקשות שלי'.");
+  assert.equal(r.text, "יש לכם כבר 5 בקשות פעילות. אפשר למחוק אחת דרך 'הבקשות שלי'.");
   const l = await H(s, "a")({ actionId: "my_requests" });
   assert.ok(!l.list.sections[0].rows.some(x => x.id === "players"));
 });
@@ -115,10 +116,11 @@ test("empty board opens a request: first time asks level, date is kept, never as
   const s = memoryStore(); await named(s, "n", "נועם"); const h = H(s, "n", "נועם");
   await h({ actionId: "board" });
   let r = await h({ text: "מחר אחרי 18:00" });
-  assert.equal(r.text, "אין כרגע משחקים פתוחים ביום חמישי 24.9 אחרי 18:00, אז אני פותח לך בקשה ואחפש לך שחקנים. מה הרמה שלך?");
+  assert.equal(r.text, "אין כרגע משחקים פתוחים ביום חמישי 24.9 אחרי 18:00, אז אני פותח לכם בקשה ואחפש לכם שחקנים.\n\nמה הרמה שלכם?\nלא בטוחים? בחרו את הקרובה ביותר, אפשר לשנות אחר כך.");
   assert.ok(ids(r).includes("cancel_req"));
-  r = await h({ actionId: "level:2" }); assert.equal(r.text, "כמה זמן תרצו לשחק?");
-  r = await h({ actionId: "duration:90" }); r = await h({ actionId: "party:1" }); r = await h({ actionId: "court:yes" });
+  r = await h({ actionId: "level:2" }); assert.equal(r.text, "כמה אתם, והאם כבר יש לכם מגרש?"); assert.ok(ids(r).includes("cancel_req"));
+  r = await h({ actionId: "pc:1:yes" }); assert.equal(r.text, "כמה זמן תרצו לשחק?");
+  r = await h({ actionId: "duration:90" });
   assert.match(r.text, /הבקשה נשמרה/);
   const [q] = await mine(s, "n"); assert.equal(q.date, "2026-09-24"); assert.equal(q.startMinute, 1080);
 });
@@ -126,10 +128,10 @@ test("empty board reuses level and duration from the last request", async () => 
   const s = memoryStore(); await create(s, "a", { when: "שבת בבוקר", level: "level:4" }); const [prev] = await mine(s, "a"), h = H(s, "a");
   await h({ actionId: "board" });
   const r = await h({ text: "מחר אחרי 18:00" });
-  assert.match(r.text, /^אין כרגע משחקים פתוחים ביום חמישי 24\.9 אחרי 18:00, אז אני פותח לך בקשה ואחפש לך שחקנים\./);
+  assert.match(r.text, /^אין כרגע משחקים פתוחים ביום חמישי 24\.9 אחרי 18:00, אז אני פותח לכם בקשה ואחפש לכם שחקנים\./);
   assert.match(r.text, new RegExp(`לקחתי מהבקשה הקודמת: רמה ${prev.level.replace(/[.+]/g, "\\$&")}, 90 דקות`));
-  assert.match(r.text, /כמה שחקנים אתם\?$/);
-  await h({ actionId: "party:2" }); const done = await h({ actionId: "court:yes" });
+  assert.match(r.text, /כמה אתם, והאם כבר יש לכם מגרש\?$/);
+  const done = await h({ actionId: "pc:2:yes" });
   assert.match(done.text, /הבקשה נשמרה/);
   const qs = await mine(s, "a"); const q = qs.find(x => x.id !== prev.id);
   assert.equal(q.level, prev.level); assert.deepEqual(q.durations, [90]); assert.equal(q.partySize, 2);
@@ -142,7 +144,8 @@ test("empty-board auto-open can be cancelled", async () => {
 });
 test("welcome shows הבקשות שלי only when the user has an active request", async () => {
   const s = memoryStore(); await named(s, "w", "דנה");
-  let r = await H(s, "w")({ text: "תפריט" }); assert.deepEqual(r.buttons.map(b => b.id), ["availability", "players"]);
+  // Tom 15:16: the club contact is always in the menu - the third button, or a typed-phrase hint when that slot holds הבקשות שלי.
+  let r = await H(s, "w")({ text: "תפריט" }); assert.deepEqual(r.buttons.map(b => b.id), ["availability", "players", "club"]); assert.doesNotMatch(r.text, /https?:/);
   await create(s, "w"); r = await H(s, "w")({ text: "תפריט" });
-  assert.deepEqual(r.buttons.map(b => b.id), ["availability", "players", "my_requests"]);
+  assert.deepEqual(r.buttons.map(b => b.id), ["availability", "players", "my_requests"]); assert.match(r.text, /לשאלות על המועדון כתבו: דבר עם המועדון$/);
 });

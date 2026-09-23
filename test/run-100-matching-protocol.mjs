@@ -11,15 +11,18 @@ async function registration(store, n, { recurring, level, when, duration, party,
   if (!saved && !notPublished) problems.push(`nonterminal ${n}: ${text.slice(0, 120)}`);
   if (saved && expectMatch !== found) problems.push(`match expectation ${n}: expected ${expectMatch}, got ${found}`);
   for (const t of turns) { if (t.reaction !== null || t.typing !== true) problems.push(`transport ${n}`); if (!t.outbound.length) problems.push(`no outbound ${n}`); }
-  if (found && expectNote !== null && /רמה אחת (מעליכם|מתחתיכם)/.test(text) !== expectNote) problems.push(`level note ${n}: expected ${expectNote}`);
-  if (found && !/· רמה /.test(text)) problems.push(`match without level ${n}`);
+  // Critique item 4: matches come as connectable list rows ("name · level", note in the description).
+  const rows = (last.response.list?.sections || []).flatMap(x => x.rows).filter(r => r.id.startsWith("connect:")), rowText = rows.map(r => `${r.title} ${r.description || ""}`).join("\n");
+  if (found && expectNote !== null && /רמה אחת (מעליכם|מתחתיכם)/.test(rowText) !== expectNote) problems.push(`level note ${n}: expected ${expectNote}`);
+  if (found && (!rows.length || !rows.every(r => /· \d/.test(r.title)))) problems.push(`match without level ${n}`);
   if (/\?\s*$/.test(text)) problems.push(`dangling ${n}`);
   out.push({ title: `${n}. ${recurring ? "מנוי קבוע" : "רישום חד-פעמי"} · ${level} · ${notPublished ? "לא פורסם (אין מגרש)" : found ? "יש התאמה" : "אין התאמה"}`, type: "matching-registration", identity: { userId: user.userId, displayName: user.displayName }, expectMatch, found, notifications: last.response.notifications?.length || 0, turns });
 }
 for (let pair = 0; pair < 50; pair++) {
   const store = memoryStore(), n = pair * 2 + 1, recurring = pair % 2 === 1, level = levels[pair % 6], when = recurring ? "ימי חמישי אחרי 19:00" : "מחר אחרי 19:00", duration = [60, 90, 120][pair % 3], party = [1, 2, 3][pair % 3], court = pair % 4 !== 0, flex = [0, 60, "any"][pair % 3];
   await registration(store, n, { recurring, level, when, duration, party, court, flex, expectMatch: false });
-  const matching = pair % 3 !== 0;
+  // Critique item 6: two sides match only when together they are at most 4 (party 3 + 3 cannot).
+  const matching = pair % 3 !== 0 && party * 2 <= 4;
   // matching pairs: every other one uses the adjacent level band (Tom: one band above/below matches).
   // non-matching pairs alternate: two bands apart at the same time, or three bands apart at a different time.
   const i = pair % 6, adjacent = matching && pair % 2 === 1, twoApart = !matching && pair % 2 === 0;

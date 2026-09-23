@@ -10,9 +10,9 @@ const TERMINAL = [
   ["connected", t => /חיברתי ביניכם/.test(t.response.text || "")],
   ["declined", t => /סימנתי שלא מתאים/.test(t.response.text || "")],
   ["connect_sent", t => /שלחתי בקשת חיבור/.test(t.response.text || "")],
-  ["left", t => /הוסרת מהרשימה/.test(t.response.text || "")],
-  ["stayed", t => /נשארת ברשימה/.test(t.response.text || "")],
-  ["my_requests", t => /אין לך כרגע בקשות|\*הבקשות שלי\*/.test(t.response.text || "")],
+  ["left", t => /הוסרתם? מהרשימה/.test(t.response.text || "")],
+  ["stayed", t => /נשארתם? ברשימה/.test(t.response.text || "")],
+  ["my_requests", t => /אין (?:לך|לכם) כרגע בקשות|\*הבקשות שלי\*/.test(t.response.text || "")],
   ["board_empty", t => /לא מצאתי כרגע בקשות פתוחות/.test(t.response.text || "")],
   ["day_full", t => /אין מגרש פנוי .* וגם לא בשאר היום/.test(t.response.text || "")]
 ];

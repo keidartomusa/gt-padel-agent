@@ -27,7 +27,7 @@ test("slot list plus menu row never exceeds Meta's 10-row limit", async () => {
 
 test("summary text counts the extra list rows instead of asking the user to narrow", () => {
   const text = formatHebrew(many());
-  assert.match(text, /ועוד \d+ שעות ברשימה/);
+  assert.match(text, /ועוד \d+ אפשרויות ברשימה/);
   assert.doesNotMatch(text, /כתוב לי/);
 });
 
@@ -87,18 +87,19 @@ test("returning users with unrecognized input get a short prompt with menu butto
     assert.match(r.text, /לא הבנתי/);
     assert.deepEqual(r.buttons.map(b => b.id).slice(0, 2), ["availability", "players"]);
   }
+  // Critique item 18: after the first greeting, "תפריט" shows the short menu.
   const menu = await routeIncoming({ userId: "odd", text: "תפריט", store: s, now });
-  assert.match(menu.text, /ברוכים הבאים/);
+  assert.match(menu.text, /מה תרצו לעשות\?/); assert.doesNotMatch(menu.text, /ברוכים הבאים/);
 });
 
 test("recurring availability requires weekdays and does not accept a one-off date", async () => {
   const s = memoryStore(), now = new Date("2026-09-23T08:00:00+03:00");
-  for (const actionId of ["players", "recurring", "level:3–3.5"]) await routeIncoming({ userId: "rec", actionId, store: s, now });
+  for (const actionId of ["players", "recurring", "level:3–3.5", "pc:1:yes"]) await routeIncoming({ userId: "rec", actionId, store: s, now });
   const bad = await routeIncoming({ userId: "rec", text: "מחר אחרי 19:00", store: s, now });
   assert.match(bad.text, /ימים בשבוע/);
   assert.equal((await s.get("state/rec")).step, "schedule");
   const ok = await routeIncoming({ userId: "rec", text: "שני ורביעי אחרי 20:00", store: s, now });
-  assert.match(ok.text, /כמה זמן/);
+  assert.match(ok.text, /^רשמתי: כל שני ורביעי, אחרי 20:00\.\n\nכמה זמן/);
 });
 
 test("picking 'find a court' from the menu immediately asks when, and the answer goes to availability", async () => {
