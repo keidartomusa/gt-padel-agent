@@ -60,7 +60,7 @@ await convo("95. השתקה מותאמת", "settings", makeUser("972503000906", 
 await convo("96. אין בקשות פעילות", "settings", makeUser("972503000907", "עדי"), [{ actionId: "my_requests" }]);
 const mine = memoryStore(), me = makeUser("972503000908", "תמר", mine); for (const s of reg(me)) await turnAll(me, s);
 await convo("97. הצגת הבקשות שלי", "settings", me, [{ actionId: "my_requests" }]);
-await convo("98. לוח ריק בחלון זמן", "board", makeUser("972503000909", "יואב"), [{ text: "מי מחפש משחק מחר בערב?" }]);
+await convo("98. לוח ריק בחלון זמן", "board", makeUser("972503000909", "יואב"), [{ text: "מי מחפש משחק מחר בערב?" }, { actionId: "level:2" }, { actionId: "duration:90" }, { actionId: "party:1" }, { actionId: "court:yes" }]);
 await convo("99. תפריט באמצע רישום ואז בדיקת מגרש מלאה", "menu", makeUser("972503000910", "ליאור"), [{ actionId: "players" }, { actionId: "oneoff" }, { actionId: "level:3–3.5" }, { text: "מחר אחרי 19:00" }, { text: "תפריט" }, { text: "מגרש בשבת בצהריים ל90 דקות" }, pickSlot]);
 await convo("100. תפריט בשלב גמישות ואז רישום חדש עד הסוף", "menu", makeUser("972503000911", "מאיה"), [...reg({}, "2.5–3", "מחר ב18:00").slice(0, 7), { text: "תפריט" }, ...reg({}, "2.5–3", "מחר ב18:00")]);
 // validation
