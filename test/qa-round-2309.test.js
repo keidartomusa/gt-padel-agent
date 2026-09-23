@@ -122,3 +122,14 @@ test("edit confirmation shows party size and court, so a party/court edit is vis
   await h({ actionId: `ef:${req.id}:party` }); const r = await quiet(() => h({ actionId: "party:3" }));
   assert.match(r.text, /^עדכנתי: .* · 3 שחקנים · יש מגרש\.$/m);
 });
+test("Tom 14:12: board never shows phones; they pass only after the owner approves the connection", async () => {
+  const s = memoryStore(); await create(s, "972501110021", "טל");
+  const b = withMenu(await quiet(() => H(s, "972501110022", "גיל")({ text: "מי מחפש משחק מחר בערב?" })));
+  const all = JSON.stringify({ t: b.text, r: b.list.sections.flatMap(x => x.rows).map(r => [r.title, r.description]) });
+  assert.doesNotMatch(all, /050-1110021|0501110021|972501110021(?!")/);
+  const row = b.list.sections.flatMap(x => x.rows).find(r => r.id.startsWith("connect:"));
+  await named(s, "972501110022", "גיל"); const sent = await H(s, "972501110022", "גיל")({ actionId: row.id });
+  assert.doesNotMatch(JSON.stringify(sent), /050-1110021/); assert.doesNotMatch(sent.notifications[0].response.text, /050-1110022/);
+  const c = (await s.list("connection/"))[0].value, acc = await H(s, "972501110021", "טל")({ actionId: `accept:${c.id}` });
+  assert.match(acc.text, /050-1110022/); assert.match(acc.notifications[0].response.text, /050-1110021/);
+});
