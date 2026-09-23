@@ -57,7 +57,7 @@ function gameDay(s){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');if(!m)return s
 function usd(n){return'$'+Number(n||0).toFixed(2)}
 function initials(u){var n=(u.name||'').trim();return n?n[0]:'#'}
 function phone(p){p=String(p||'');return p.indexOf('972')===0?'0'+p.slice(3):p}
-async function api(q){const r=await fetch('/.netlify/functions/admin-data'+(q||''),{headers:{authorization:'Bearer '+TOKEN}});if(!r.ok)throw Error(r.status===401?'סיסמה שגויה':await r.text()||'שגיאת שרת');return r.json()}
+async function api(q){const r=await fetch('/.netlify/functions/admin-data'+(q||''),{headers:{authorization:'Bearer '+TOKEN}});if(r.status===429){var j={};try{j=await r.json()}catch(e){}throw Error('יותר מדי ניסיונות כניסה. נסו שוב בעוד '+(j.retryAfterMinutes||15)+' דקות.')}if(!r.ok)throw Error(r.status===401?'סיסמה שגויה':await r.text()||'שגיאת שרת');return r.json()}
 async function load(token){TOKEN=token;D=await api();sessionStorage.setItem('gt-admin-token',token);$('#login').hidden=true;$('#tabs').hidden=false;render()}
 function tab(v){VIEW=v;render()}
 function render(){document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===VIEW));var a=$('#app');a.hidden=false;
