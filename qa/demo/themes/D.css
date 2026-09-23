@@ -1,0 +1,15 @@
+/* D - Sporty brand: court-blue hero band, ball-yellow accents, bold dense cards */
+:root{--ink:#0b1b3f;--ink2:#3b4a6b;--ink3:#7a88a8;--line:#dbe3f3;--bg:#eef3fb;--card:#fff;--brand:#1d4ed8;--brand2:#0b1b3f}
+body{display:block;background:#eef3fb}
+.top{position:relative;height:auto;flex-direction:row;align-items:center;gap:24px;padding:18px 36px 70px;color:#fff;background:linear-gradient(120deg,#1e40af,#1d4ed8 55%,#2563eb);overflow:hidden}
+.top::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 49.6%,rgba(255,255,255,.18) 49.6%,rgba(255,255,255,.18) 50.4%,transparent 50.4%),linear-gradient(0deg,transparent 60%,rgba(255,255,255,.12) 60%,rgba(255,255,255,.12) 61%,transparent 61%);pointer-events:none}
+.top h1{margin:0;font-size:20px;font-weight:900;display:flex;align-items:center;gap:12px;position:relative;z-index:1}.top h1::before{margin:0;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fef08a,#facc15 60%,#ca8a04)}
+.tabs{flex-direction:row;gap:6px;position:relative;z-index:1;margin-inline-start:auto}.tabs button{color:#dbeafe;border:1px solid rgba(255,255,255,.25);padding:8px 16px;border-radius:99px}.tabs button::before{display:none}.tabs button.on{background:#facc15;color:#0b1b3f;border-color:#facc15;box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.page{margin-top:-52px;position:relative;z-index:2}.ptitle h2{color:#fff}.ptitle p,.ptitle .stamp{color:#dbeafe}
+.kpis{gap:10px}.kpi{border-radius:14px;padding:16px;border:0;box-shadow:0 8px 24px rgba(29,78,216,.12)}.kpi::after{inset-inline-start:auto;inset-inline-end:0;width:100%;height:4px;top:auto;bottom:0}.kpi b{color:#1d4ed8;font-weight:900}
+.card,.game,.panel{border:0;box-shadow:0 8px 24px rgba(29,78,216,.10)}.fr i{background:linear-gradient(90deg,#1d4ed8,#facc15)}.ur .d{background:#1d4ed8;color:#fff}.seats i.f{background:#facc15;box-shadow:0 0 0 1px #ca8a04}
+.game.conn{border-top:4px solid #facc15}.game.open{border-top:4px dashed #93c5fd}.kind.conn{background:#fef9c3;color:#854d0e}.av{background:#1d4ed8;color:#fff}
+.chat{height:calc(100vh - 120px);margin-top:-52px;position:relative;z-index:2;border-radius:16px 16px 0 0;overflow:hidden;box-shadow:0 8px 24px rgba(29,78,216,.12)}.u.on{background:#eff6ff;box-shadow:inset -4px 0 0 #facc15}
+#login,#app{grid-column:auto}
+.top{padding-bottom:120px}.page{margin-top:-104px}.ptitle h2{color:#fff}.chat{margin-top:-104px;height:calc(100vh - 80px)}
+.top{padding:22px 36px}.page{margin-top:0}.ptitle h2{color:#0b1b3f}.ptitle p,.ptitle .stamp{color:#3b4a6b}.chat{margin-top:0;height:calc(100vh - 78px);border-radius:0}

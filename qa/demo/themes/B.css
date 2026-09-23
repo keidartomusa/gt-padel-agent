@@ -1,0 +1,16 @@
+/* B - Dark analytics: dark slate, lime accent, top nav */
+:root{--ink:#e5e7eb;--ink2:#9ca3af;--ink3:#6b7280;--line:#1f2937;--bg:#0b1120;--card:#111827;--brand:#a3e635;--brand2:#0b1120;--green:#a3e635;--sh:0 0 0 1px #1f2937}
+body{display:block;background:radial-gradient(1200px 600px at 80% -10%,#1e293b 0,#0b1120 60%)}
+.top{position:sticky;height:auto;flex-direction:row;align-items:center;gap:28px;padding:14px 32px;background:rgba(11,17,32,.85);backdrop-filter:blur(8px);border-bottom:1px solid #1f2937}
+.top h1{margin:0;font-size:16px;display:flex;align-items:center;gap:10px}.top h1::before{width:26px;height:26px;margin:0;border-radius:50%}
+.tabs{flex-direction:row;gap:6px}.tabs button{color:#9ca3af;padding:8px 14px}.tabs button.on{background:#a3e635;color:#0b1120;box-shadow:none}
+.kpi,.card,.game,.panel{background:#111827;border:1px solid #1f2937}.kpi b{color:#f9fafb}.kpi::after{display:none}.kpi{border-top:2px solid #a3e635}
+.fb{background:#1f2937}.fr i{background:linear-gradient(90deg,#65a30d,#a3e635)}.ur{border-color:#1f2937}.ur .d{background:#1a2e05;color:#a3e635}
+.seats i{background:#374151}.seats i.f{background:#a3e635}.pp{background:#0f172a;border-color:#1f2937;color:#e5e7eb!important}.av{background:#1f2937;color:#a3e635}
+th{background:#0f172a;color:#9ca3af}th,td{border-color:#1f2937}tbody tr:hover{background:#0f172a}.page a{color:#a3e635}
+.pill{background:#1f2937;color:#d1d5db}.pill.ok{background:#1a2e05;color:#a3e635}.pill.rec{background:#2e1065;color:#c4b5fd}.pill.one{background:#422006;color:#fcd34d}.kind.open{background:#431407;color:#fdba74}.kind.conn{background:#1a2e05;color:#a3e635}
+.gf{border-color:#1f2937}h2.sec::after{background:#1f2937}
+.chat{background:#111827;height:calc(100vh - 56px)}.list{border-color:#1f2937}.search input{background:#0f172a;border-color:#1f2937;color:#e5e7eb}.u{border-color:#1f2937}.u:hover,.u.on{background:#0f172a}.u.on{box-shadow:inset -3px 0 0 #a3e635}
+.ph{background:#111827;border-color:#1f2937}.ph button{background:#0f172a;border-color:#1f2937;color:#9ca3af}.msgs{background-color:#0b1120;background-image:radial-gradient(#ffffff08 1px,transparent 1px)}
+.b.in{background:#1f2937;color:#e5e7eb}.b.out{background:#365314;color:#ecfccb}.b time{color:#9ca3af}.chips span{background:#0f172a;border-color:#365314;color:#a3e635}.day span{background:#1f2937;color:#9ca3af}
+#login,#app{grid-column:auto}
