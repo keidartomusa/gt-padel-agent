@@ -34,7 +34,7 @@ test("'ביטול' at the name step clears it without saving a name", async () =
   const r = await h({ text: "ביטול" }); assert.equal(r.text, "בסדר, לא שמרתי את הבקשה."); assert.equal((await s.get("profile/n2"))?.name ?? null, null); assert.equal((await mine(s, "n2")).length, 0);
 });
 for (const [label, steps, re] of [
-  ["time question", [{ actionId: "players" }, { actionId: "oneoff" }, { actionId: "level:3" }, { actionId: "pc:1:yes" }], /^מתי תרצו לשחק/],
+  ["time question", [{ actionId: "players" }, { actionId: "oneoff" }, { actionId: "level:3" }, { actionId: "pc:1:yes" }], /^באיזה שעה\?/],
   ["recurring days question", [{ actionId: "players" }, { actionId: "recurring" }, { actionId: "level:3" }, { actionId: "pc:1:yes" }], /^באילו ימים ושעות/],
   ["level question", [{ actionId: "players" }, { actionId: "oneoff" }], /^מה הרמה שלכם/],
   ["party+court question", [{ actionId: "players" }, { actionId: "oneoff" }, { actionId: "level:3" }], /^כמה אתם, והאם/],
@@ -197,4 +197,29 @@ test("Tom 16:35: weekly game never asks about a court; menu copy says each week 
   assert.match(r.text, /הבקשה נשמרה/);
   const req = (await mine(s, "w"))[0]; const e = await h({ actionId: `edit:${req.id}` }); assert.ok(!rows(e).some(x => x.id.endsWith(":court")));
   const again = await h({ actionId: "recurring" }); assert.match(again.text, /לקחתי מהבקשה הקודמת[\s\S]*כמה שחקנים אתם\?$/); assert.ok(rows(again).some(x => x.id === "pc_level"));
+});
+
+test("Tom 17:04: own board requests are marked (אתה) and cannot be picked", async () => {
+  const s = memoryStore(); await named(s, "me", "תום"); await named(s, "o", "דנה");
+  for (const [u, n, t] of [["me", "תום", "מחר אחרי 21:00 ל90 דקות"], ["o", "דנה", "מחר אחרי 20:00 ל90 דקות"]]) { const h = H(s, u, n); for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a }); await h({ text: t }); }
+  const h = H(s, "me", "תום"); const b = await h({ actionId: "bwhen:2" });
+  assert.match(b.text, /תום \(אתה\)/); assert.doesNotMatch(b.text, /דנה \(אתה\)/);
+  const mineId = (await mine(s, "me"))[0].id; assert.ok(!rows(b).some(x => x.id === `connect:${mineId}`)); assert.ok(rows(b).some(x => x.id.startsWith("connect:")));
+  // only own request on the board -> text with (אתה), no list, buttons instead
+  const s2 = memoryStore(); await named(s2, "me", "תום"); const h2 = H(s2, "me", "תום"); for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h2({ actionId: a }); await h2({ text: "מחר אחרי 21:00 ל90 דקות" });
+  const b2 = await h2({ actionId: "bwhen:2" }); assert.match(b2.text, /תום \(אתה\)/); assert.ok(!b2.list); assert.doesNotMatch(b2.text, /בחרו בקשה/); assert.ok(b2.buttons.some(x => x.id === "my_requests"));
+});
+
+test("Tom 17:09: with a court the time question is 'באיזה שעה?', without a court it stays 'מתי תרצו לשחק?'", async () => {
+  for (const [pc, re] of [["pc:1:yes", /^באיזה שעה\? אפשר לכתוב למשל: מחר ב-19:00$/], ["pc:1:no", /^מתי תרצו לשחק\?/]]) {
+    const s = memoryStore(), h = H(s, "c", "דנה"); await named(s, "c", "דנה");
+    await h({ actionId: "oneoff" }); await h({ actionId: "level:3" }); const r = await h({ actionId: pc }); assert.match(r.text, re);
+  }
+  const s = memoryStore(), h = H(s, "c", "דנה"); await named(s, "c", "דנה");
+  for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a }); const r = await h({ text: "מחר ב-19:00 ל90 דקות" }); assert.match(r.text, /הבקשה נשמרה|רשמתי/);
+});
+
+test("Tom 17:12: 'די' and other stop words are never saved as a name", async () => {
+  for (const w of ["די", "מספיק", "תודה", "סבבה", "רגע"]) assert.equal(cleanName(w, { asked: true }), null, w);
+  assert.equal(cleanName("תום", { asked: true }), "תום");
 });
