@@ -5,5 +5,5 @@ import { resetStore } from "../../src/reset.js";
 import { internalToken } from "./parser-eval-background.js";
 export default async req=>{const auth=req.headers.get("authorization")||"";
  if(auth!==`Bearer ${internalToken()}`){console.log(JSON.stringify({event:"db_reset",status:"unauthorized"}));return new Response("unauthorized",{status:401});}
- const r=await resetStore(netlifyStore(getStore({name:"gt-padel-matching",consistency:"strong"})),new Date(),process.env.COMMIT_REF||null);
+ const r=await resetStore(netlifyStore(getStore({name:"gt-padel-matching",consistency:"strong"})),new Date(),process.env.COMMIT_REF||null,{clicks:new URL(req.url).searchParams.get("all")==="1"});
  console.log(JSON.stringify({event:"db_reset",status:"done",...r}));return new Response("ok");};
