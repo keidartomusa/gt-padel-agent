@@ -1,0 +1,8 @@
+import test from "node:test";import assert from "node:assert/strict";
+import {handleConversation} from "../src/conversation.js";import {memoryStore} from "../src/store.js";
+const now=new Date("2026-09-23T08:00:00+03:00");
+const available=async i=>({kind:"availability",date:i.date,slots:[{courtId:"c3",courtName:"3",start:"19:00",end:"20:30",durationMinutes:i.durationMinutes,price:null}]});
+async function upTo(store,userId){const h=o=>handleConversation({userId,displayName:"דנה",store,now,availabilityFn:available,...o});await h({actionId:"oneoff"});await h({actionId:"level:3–3.5"});await h({text:"מחר אחרי 19:00"});return{h,party:await h({actionId:"duration:90"})};}
+test("party question and answers are Tom's exact copy, mapped to 1/2/3",async()=>{const {party}=await upTo(memoryStore(),"a");assert.equal(party.text,"כמה שחקנים אתם?");const rows=party.list.sections.flatMap(x=>x.rows).filter(r=>r.id.startsWith("party:"));assert.deepEqual(rows.map(r=>[r.id,r.title]),[["party:1","רק אני"],["party:2","אני ועוד אחד"],["party:3","שלושה, מחפשים רביעי"]]);for(const r of rows)assert(r.title.length<=24);});
+for(const [n,label] of [[1,"רק אני"],[2,"אני ועוד אחד"],[3,"שלושה, מחפשים רביעי"]])test(`"${label}" stores partySize ${n}`,async()=>{const s=memoryStore(),{h}=await upTo(s,"u"+n);await h({actionId:`party:${n}`});await h({actionId:"court:yes"});await h({actionId:"flex:0"});const reqs=(await s.list("request/")).map(x=>x.value);assert.equal(reqs.length,1);assert.equal(reqs[0].partySize,n);});
+test("old party prompt is gone",async()=>{const src=(await import("node:fs")).readFileSync(new URL("../src/conversation.js",import.meta.url),"utf8");assert(!src.includes("כמה שחקנים כבר יש בבקשה"));});
