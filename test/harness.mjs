@@ -3,6 +3,7 @@
 // with Meta calls captured instead of sent, and Matchpointer called live and recorded.
 import { deliver } from "../src/notify.js";
 import { routeIncoming } from "../src/webhook.js";
+import { logInbound, logOutbound } from "../src/messagelog.js";
 import { memoryStore } from "../src/store.js";
 import { sendTyping, sendResponse, sendTemplate } from "../src/whatsapp.js";
 process.env.DISABLE_OUTBOUND = "false";
@@ -25,8 +26,10 @@ export async function turn(user, step, { now = new Date() } = {}) {
   const capture = async (url, init) => { calls.push(JSON.parse(init.body)); return { ok: true, json: async () => ({ messages: [{ id: `wamid.OUT_${seq}_${calls.length}` }] }), text: async () => "" }; };
   const input = step.actionId ? { actionId: step.actionId, text: step.title || "" } : { text: step.text || "" };
   const typing = await sendTyping(msgId, undefined, capture);
+  await logInbound(user.store, user.userId, { id: msgId, type: step.actionId ? "interactive" : "text" }, input, now);
   const response = await routeIncoming({ userId: user.userId, displayName: user.displayName, ...input, store: user.store, now });
-  await sendResponse(user.userId, response, undefined, capture);
+  const sentMain = await sendResponse(user.userId, response, undefined, capture);
+  await logOutbound(user.store, user.userId, response, sentMain, now);
   for (const n of response.notifications || []) await deliver(user.store, n.to, n.response, { now, send: (to, r) => sendResponse(to, r, undefined, capture), sendTemplate: (to, t) => sendTemplate(to, t.name, t.language, t.payloads, undefined, capture) });
   return { msgId, input: step.actionId ? { actionId: step.actionId, title: step.title } : { text: step.text }, reaction: calls.some(c => c.type === "reaction") ? "sent" : null, typing: typing.sent && calls[0]?.typing_indicator?.type === "text", response, outbound: calls.slice(1) };
 }
