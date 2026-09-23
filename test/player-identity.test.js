@@ -4,7 +4,7 @@ const now=new Date("2026-09-23T08:00:00+03:00");
 const available=async i=>({kind:"availability",date:i.date,slots:[{courtId:"c3",courtName:"3",start:"19:00",end:"20:30",durationMinutes:i.durationMinutes,price:null}]});
 const PHONE="972501234567";
 const say=(store,o,userId=PHONE)=>routeIncoming({userId,displayName:"Tom Keidar",store,now,availabilityFn:available,...o});
-async function register(store,userId=PHONE){for(const o of [{actionId:"level:3–3.5"},{text:"מחר אחרי 19:00"},{actionId:"duration:90"},{actionId:"party:1"},{actionId:"court:yes"}])await say(store,o,userId);return say(store,{actionId:"flex:0"},userId);}
+async function register(store,userId=PHONE){for(const o of [{actionId:"level:3–3.5"},{text:"מחר אחרי 19:00"},{actionId:"duration:90"},{actionId:"party:1"},])await say(store,o,userId);return say(store,{actionId:"court:yes"},userId);}
 const setName=(s,n,u=PHONE)=>s.set(`profile/${u}`,{userId:u,name:n});
 const nameOf=async(s,u=PHONE)=>(await s.get(`profile/${u}`))?.name||null;
 
