@@ -11,3 +11,11 @@ test("admin shows per-user counts and conversation view, escaping user text",asy
 // Defect found 23.9: \' inside the template literal rendered as a bare quote, so the admin script failed to parse and login never worked.
 test("admin inline script parses",async()=>{const html=await(await adminPage()).text();const js=html.split("<script>")[1].split("</script>")[0];assert.doesNotThrow(()=>new Function(js));});
 test("admin-data validates user param and requires auth",()=>{const src=fs.readFileSync(new URL("../netlify/functions/admin-data.js",import.meta.url),"utf8");assert.match(src,/\^\\d\{6,15\}\$/);assert.ok(src.indexOf("unauthorized")<src.indexOf("searchParams.get(\"user\")"));});
+
+// Tom 23.9 15:32-15:33: dashboard redesign - WhatsApp-style chats, easy switching, clear booking labels.
+test("dashboard: chat list + bubbles + prev/next, clear booking labels, no raw ids", async () => {
+  const html = await (await adminPage()).text();
+  assert.match(html, /class="b '\+\(x\.direction==='in'\?'in':'out'\)/); assert.match(html, /data-step="-1"/); assert.match(html, /data-step="1"/); assert.match(html, /id="q"/);
+  assert.doesNotMatch(html, />אישור משתמש<|>אימות ספק<|>clicked</); assert.match(html, /המשתמש אישר שהזמין/); assert.match(html, /מופיע ביומן המועדון/);
+  assert.doesNotMatch(html, /[–—]/);
+});

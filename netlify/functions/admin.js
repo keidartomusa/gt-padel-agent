@@ -12,7 +12,7 @@ button{font:inherit;cursor:pointer}
 .login h2{margin:0 0 16px;font-size:20px}.login input{width:100%;padding:12px;border:1px solid #d1d7db;border-radius:10px;font-size:16px;margin:8px 0 14px}
 .btn{background:#00a884;color:#fff;border:0;border-radius:10px;padding:11px 18px;font-weight:700}.err{color:#d93025;margin-top:10px;min-height:1em}
 .page{max-width:1200px;margin:0 auto;padding:20px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .kpi{background:#fff;border-radius:14px;padding:16px;box-shadow:0 1px 3px #0000000f}.kpi b{display:block;font-size:28px;color:#008069}.kpi span{color:#54656f;font-size:14px}.kpi small{display:block;color:#8696a0;font-size:12px;margin-top:4px}
 h2.sec{font-size:16px;color:#54656f;margin:24px 0 10px}
 .panel{background:#fff;border-radius:14px;box-shadow:0 1px 3px #0000000f;overflow:hidden}
@@ -40,7 +40,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{background:#f7f8fa;c
 .b .tag{font-size:11px;color:#8696a0;display:block;margin-bottom:2px}.b.fail{background:#fde8e8}.b .tag.bad{color:#d93025}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.chips span{background:#ffffffb3;border:1px solid #cfe9c9;color:#027eb5;border-radius:14px;padding:2px 10px;font-size:13px}
 .empty{flex:1;display:flex;align-items:center;justify-content:center;color:#667781;background:#f0f2f5}
-@media(max-width:760px){.top{padding:10px 12px}.top h1{font-size:15px}.tabs button{padding:6px 10px;font-size:14px}.page{padding:12px}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}.kpi b{font-size:24px}.top{padding:10px 12px}.top h1{font-size:15px}.tabs button{padding:6px 10px;font-size:14px}.page{padding:12px}
 .chat{grid-template-columns:1fr}.chat.open .list{display:none}.chat:not(.open) .pane{display:none}.back{display:block}.b{max-width:88%}.wide{display:none}.msgs{padding:12px 10px}
 table.clicks thead{display:none}table.clicks tr{display:block;border-bottom:1px solid #eef0f2;padding:8px 0}table.clicks td{display:flex;justify-content:space-between;border:0;padding:4px 12px}table.clicks td::before{content:attr(data-l);color:#8696a0}}
 `;
@@ -51,6 +51,8 @@ var TZ={timeZone:'Asia/Jerusalem'};
 function hm(v){return v?new Date(v).toLocaleTimeString('he-IL',Object.assign({hour:'2-digit',minute:'2-digit'},TZ)):''}
 function dayOf(v){return new Date(v).toLocaleDateString('he-IL',Object.assign({weekday:'long',day:'numeric',month:'numeric'},TZ))}
 function when(v){if(!v)return'';var d=new Date(v),n=new Date();return d.toDateString()===n.toDateString()?hm(v):d.toLocaleDateString('he-IL',Object.assign({day:'numeric',month:'numeric'},TZ))}
+function stamp(v){if(!v)return'-';var d=new Date(v),n=new Date(),y=new Date(n.getTime()-864e5);var ds=function(x){return x.toLocaleDateString('he-IL',TZ)};return(ds(d)===ds(n)?'היום':ds(d)===ds(y)?'אתמול':when(v))+' '+hm(v)}
+function gameDay(s){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');if(!m)return s||'';var d=new Date(Date.UTC(+m[1],+m[2]-1,+m[3],12));return d.toLocaleDateString('he-IL',{weekday:'long',timeZone:'UTC'})+' '+(+m[3])+'.'+(+m[2])}
 function usd(n){return'$'+Number(n||0).toFixed(2)}
 function initials(u){var n=(u.name||'').trim();return n?n[0]:'#'}
 function phone(p){p=String(p||'');return p.indexOf('972')===0?'0'+p.slice(3):p}
@@ -65,7 +67,7 @@ function overview(){var s=D.summary,m=(D.messages||{}).totals||{};var k=[['מש�
 var ST={clicked:['לחיצה בלבד',''],user_confirmed:['המשתמש אישר שהזמין','ok'],provider_verified:['מופיע ביומן המועדון','ok']},SRC={availability:'מגרש פנוי',matching:'התאמה'};
 function clicksView(){var c=(D.bookingClicks||[]).slice().sort((a,b)=>String(b.clickedAt).localeCompare(String(a.clickedAt)));
  if(!c.length)return'<div class="page"><p class="hint">עוד אין לחיצות על הזמנה.</p></div>';
- return'<div class="page"><p class="hint">כל לחיצה על "להזמנה" נרשמת כאן. היא נספרת כהזמנה רק אחרי שמסמנים שהמשתמש אישר או שההזמנה מופיעה ביומן המועדון.</p><div class="panel"><table class="clicks"><thead><tr><th>נלחץ</th><th>מקור</th><th>משחק</th><th>מחיר</th><th>סטטוס</th><th></th></tr></thead><tbody>'+c.map(x=>{var st=ST[x.status]||[x.status,''];return'<tr><td data-l="נלחץ">'+esc(when(x.clickedAt)+' '+hm(x.clickedAt))+'</td><td data-l="מקור">'+esc(SRC[x.source]||x.source)+'</td><td data-l="משחק">'+esc(x.date+' · '+x.time+' · '+x.duration+' דק׳')+'</td><td data-l="מחיר">'+(x.price==null?'-':'₪'+esc(x.price))+'</td><td data-l="סטטוס"><span class="pill '+st[1]+'">'+esc(st[0])+'</span></td><td>'+(x.status==='clicked'?'<button class="mini" data-verify="user_confirmed" data-id="'+esc(x.id)+'">המשתמש אישר</button><button class="mini" data-verify="provider_verified" data-id="'+esc(x.id)+'">מופיע ביומן</button>':'')+'</td></tr>'}).join('')+'</tbody></table></div></div>'}
+ return'<div class="page"><p class="hint">כל לחיצה על "להזמנה" נרשמת כאן. היא נספרת כהזמנה רק אחרי שמסמנים שהמשתמש אישר או שההזמנה מופיעה ביומן המועדון.</p><div class="panel"><table class="clicks"><thead><tr><th>נלחץ</th><th>מקור</th><th>משחק</th><th>מחיר</th><th>סטטוס</th><th>סימון הזמנה</th></tr></thead><tbody>'+c.map(x=>{var st=ST[x.status]||[x.status,''];return'<tr><td data-l="נלחץ">'+esc(stamp(x.clickedAt))+'</td><td data-l="מקור">'+esc(SRC[x.source]||x.source)+'</td><td data-l="משחק">'+esc(gameDay(x.date)+' · '+x.time+' · '+x.duration+' דק׳')+'</td><td data-l="מחיר">'+(x.price==null?'-':'₪'+esc(x.price))+'</td><td data-l="סטטוס"><span class="pill '+st[1]+'">'+esc(st[0])+'</span></td><td>'+(x.status==='clicked'?'<button class="mini" data-verify="user_confirmed" data-id="'+esc(x.id)+'">המשתמש אישר</button><button class="mini" data-verify="provider_verified" data-id="'+esc(x.id)+'">מופיע ביומן</button>':'')+'</td></tr>'}).join('')+'</tbody></table></div></div>'}
 function chatsView(){return'<div class="chat" id="chat"><div class="list"><div class="search"><input id="q" placeholder="חיפוש לפי שם או מספר" autocomplete="off"></div><div class="users" id="users"></div></div><div class="pane" id="pane"><div class="empty">בחרו שיחה מהרשימה</div></div></div>'}
 function users(){return(D.messages&&D.messages.users)||[]}
 function drawUsers(){var q=($('#q')&&$('#q').value||'').trim().toLowerCase();var l=users().filter(u=>!q||(u.name||'').toLowerCase().indexOf(q)>=0||phone(u.userId).indexOf(q)>=0||u.userId.indexOf(q)>=0);
