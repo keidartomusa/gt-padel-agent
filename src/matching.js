@@ -31,5 +31,20 @@ export const clockLabel=m=>clock(m);
 export function formatBoard(rows){if(!rows.length)return"לא מצאתי כרגע בקשות פתוחות בחלון הזה. אפשר לפתוח בקשה חדשה ואחפש התאמות.";return`*בקשות פתוחות*\n${rows.slice(0,9).map((x,i)=>`${i+1}. ${x.displayName} · רמה ${x.level} · ${timeLabel(x)} · ${Number(x.partySize)===1?"שחקן אחד":`${x.partySize} שחקנים`}${x.hasCourt?" · יש מגרש":""}`).join("\n")}\n\nלהתחברות בחרו בקשה מהרשימה.`;}
 export async function mute(store,userId,until){const p=await store.get(`profile/${userId}`)||{userId};p.mutedUntil=until;await store.set(`profile/${userId}`,p);return p;}
 export async function isMuted(store,userId,now=new Date()){const p=await store.get(`profile/${userId}`);return Boolean(p?.mutedUntil&&new Date(p.mutedUntil)>now);}
-export async function dailySweep(store,now=new Date()){const req=await activeRequests(store,now),pairs=[],today=localDateParts(now).iso;for(let day=0;day<14;day++){const date=addDays(today,day),candidates=req.filter(x=>appliesOn(x,date));for(let i=0;i<candidates.length;i++)for(let j=i+1;j<candidates.length;j++)if(candidates[i].userId!==candidates[j].userId&&overlap(candidates[i],candidates[j])&&!await isMuted(store,candidates[i].userId,now)&&!await isMuted(store,candidates[j].userId,now)&&!await skipped(store,candidates[i],candidates[j])){const key=[candidates[i].id,candidates[j].id,date].sort().join("~");if(!await store.get(`notification/${key}`)){pairs.push([{...candidates[i],date},{...candidates[j],date}]);await store.set(`notification/${key}`,{sentAt:now.toISOString()});}}}return pairs;}
+export async function dailySweep(store,now=new Date()){const req=await activeRequests(store,now),pairs=[],today=localDateParts(now).iso;for(let day=0;day<14;day++){const date=addDays(today,day),candidates=req.filter(x=>appliesOn(x,date));for(let i=0;i<candidates.length;i++)for(let j=i+1;j<candidates.length;j++)if(candidates[i].userId!==candidates[j].userId&&overlap(candidates[i],candidates[j])&&!await isMuted(store,candidates[i].userId,now)&&!await isMuted(store,candidates[j].userId,now)&&!await skipped(store,candidates[i],candidates[j])){const key=pairKey(candidates[i],candidates[j]);if(!await store.get(key)){pairs.push([{...candidates[i],date},{...candidates[j],date}]);await store.set(key,{sentAt:now.toISOString()});}}}return pairs;}
 export function expiryFor(date,endMinute=1440){return new Date(`${addDays(date,1)}T00:00:00+03:00`).toISOString();}
+
+// Tom 23.9 15:36 - offer limits. One alert per pair of requests, ever (instant or daily, one-off or recurring),
+// and at most ALERTS_PER_DAY match alerts per person per day. The rest still see the board.
+export const ALERTS_PER_DAY=3;
+export const pairKey=(a,b)=>`notification/${[a.id,b.id].sort().join("~")}`;
+export async function allowAlert(store,userId,now=new Date()){const key=`alertcap/${userId}/${localDateParts(now).iso}`,n=(await store.get(key))?.n||0;if(n>=ALERTS_PER_DAY)return false;await store.set(key,{n:n+1});return true;}
+// Tom 23.9 15:36 closing flow: the morning after a connection (daily sweep), everyone in it who still has an open
+// request for that game day is asked whether the game worked out. "כן, סגרנו" closes their request; "עוד לא" keeps it.
+// Asked once per connection; past games are dropped silently (their requests expire anyway).
+export async function dueFollowups(store,now=new Date()){const today=localDateParts(now).iso,out=[],active=await activeRequests(store,now);
+ for(const {key,value:f} of await store.list("followup/")){if(!f||f.sentAt)continue;if(f.date<today){await store.delete(key);continue;}if(localDateParts(new Date(f.createdAt)).iso>=today)continue;
+  for(const u of f.users){const r=active.find(x=>x.userId===u.userId&&appliesOn(x,f.date));if(!r)continue;
+   out.push({to:u.userId,response:{text:`הסתדר משחק עם ${u.other} ל${dayLabel({date:f.date})}? אם כן, אוריד את הבקשה שלכם מהלוח.`,buttons:[{id:`closed:${r.id}`,title:"כן, סגרנו"},{id:`notyet:${r.id}`,title:"עוד לא"}]}});}
+  await store.set(key,{...f,sentAt:now.toISOString()});}
+ return out;}
