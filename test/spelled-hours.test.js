@@ -1,0 +1,7 @@
+import test from "node:test";import assert from "node:assert/strict";import {parseIntentLocal,spelledHours} from "../src/intent.js";import {handleConversation} from "../src/conversation.js";import {memoryStore} from "../src/store.js";
+// Live 23.9 10:36: Tom typed "ביום חמישי הבא בשעה שש" (hour as a word). It parsed as next Thursday with no time.
+const now=new Date("2026-09-23T10:36:00+03:00");
+test("Tom's exact string: next Thursday 1.10 at 18:00",()=>{const p=parseIntentLocal("ביום חמישי הבא בשעה שש",now);assert.equal(p.date,"2026-10-01");assert.equal(p.startMinute,1080);});
+test("spelled hours default to evening, morning cue keeps morning",()=>{assert.equal(parseIntentLocal("מחר בשש",now).startMinute,1080);assert.equal(parseIntentLocal("שבת אחרי חמש",now).startMinute,1020);assert.equal(parseIntentLocal("חמישי בשבע בבוקר",now).startMinute,420);});
+test("counting words are not hours",()=>{assert.equal(spelledHours("אנחנו שלושה שחקנים"),"אנחנו שלושה שחקנים");assert.equal(spelledHours("מחר בערב"),"מחר בערב");});
+test("Tom's exact string at the מגרש פנוי question goes to availability for 1.10 18:00",async()=>{const s=memoryStore();await handleConversation({userId:"t",actionId:"availability",store:s,now});const r=await handleConversation({userId:"t",text:"ביום חמישי הבא בשעה שש",store:s,now});assert.equal(r.mode,"availability");const p=parseIntentLocal(r.query,now);assert.equal(p.date,"2026-10-01");assert.equal(p.startMinute,1080);});

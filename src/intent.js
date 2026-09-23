@@ -23,7 +23,10 @@ function parseClock(text){
   if(h<=6 && /ערב|לילה/.test(text)) h+=12; else if(h<12 && /(?:צהריים|אחה["״']?צ|אחר\s*הצהריים)/.test(text)) h+=12;
   return [h*60+minute,h*60+minute+180];
 }
-export function parseIntentLocal(raw,now=new Date()){
+// Tom 23.9 10:36: "ביום חמישי הבא בשעה שש" - hours written as words. Words 1-11 default to the evening (padel context) unless a morning cue is present.
+const HOUR_WORDS=[["שתים עשרה",12],["שתיים עשרה",12],["אחת עשרה",11],["אחת",1],["שתיים",2],["שתים",2],["שלוש",3],["ארבע",4],["חמש",5],["שש",6],["שבע",7],["שמונה",8],["תשע",9],["עשר",10]];
+export function spelledHours(text){const t=String(text||""),morning=/בוקר/.test(t);return t.replace(new RegExp(`(בשעה|אחרי|לפני|מ-?|ב-?)\\s*(${HOUR_WORDS.map(x=>x[0]).join("|")})(?=\\s|$|[.,!?])`,"g"),(m,pre,w)=>{let h=HOUR_WORDS.find(x=>x[0]===w)[1];if(h<12&&!morning)h+=12;return `${pre} ${String(h).padStart(2,"0")}:00`;});}
+export function parseIntentLocal(raw,now=new Date()){raw=spelledHours(raw);
   const text=String(raw||"").normalize("NFKC").replace(/[־–—]/g,"-").replace(/\s+/g," ").trim();
   const today=localDateParts(now).iso; let date=today, dateExplicit=false;
   if(/מחרתיים/.test(text)){date=addDays(today,2);dateExplicit=true;} else if(/מחר/.test(text)){date=addDays(today,1);dateExplicit=true;} else if(/(?:היום|הערב)/.test(text)){dateExplicit=true;}
