@@ -61,7 +61,7 @@ const matchLines=(request,matches)=>matches.length?`\n\n${matches.length===1?"מ
 // Tom 23.9 15:36: each pair is offered once; a person gets at most ALERTS_PER_DAY alerts a day.
 const matchNotifications=async(store,request,matches,now)=>{const out=[];for(const m of matches.slice(0,3)){const k=pairKey(m,request);if(await store.get(k))continue;await store.set(k,{sentAt:now.toISOString()});if(await allowAlert(store,m.userId,now))out.push({to:m.userId,response:matchAlert(m,request)});}return out;};
 // Tom-approved copy 23.9 10:28 (+emoji per option).
-export const PLAYERS_MENU="מה בא לכם?\n\n👥 חסרים לי שחקנים - מחפשים שחקנים להשלמת רביעייה, עם מגרש או בלי.\n\n⚡ להצטרף למשחק חד-פעמי - רוצים לראות משחקים פתוחים ולהצטרף.\n\n🔁 משחק קבוע כל שבוע - רושמים פעם אחת את הזמנים שנוחים, וכל שבוע המערכת תנסה לשדך לכם שחקנים. בלי התחייבות - אפשר לעדכן או להסיר בכל רגע.";
+export const PLAYERS_MENU="מה בא לכם?\n\n👥 חסרים לי שחקנים - מחפשים שחקנים להשלמת רביעייה, עם מגרש או בלי.\n\n⚡ להצטרף למשחק חד-פעמי - רוצים לראות משחקים פתוחים ולהצטרף.\n\n🔁 משחק קבוע כל שבוע - רושמים פעם אחת את הזמנים שנוחים, וכל שבוע המערכת תנסה לשדך לכם שחקנים. בלי התחייבות - כל שבוע תקבלו הצעה ותצטרכו לאשר אותה מחדש.";
 export const NAME_ASK="באיזה שם להציג אתכם בלוח המשחקים?";
 // Tom 23.9 14:58: when the name was asked, the answer wins over menu words ("שלום" is a real name). Commands are never names.
 export function cleanName(raw,{asked=false}={}){if(asked&&/^\s*שלום\s*[.!]?\s*$/.test(String(raw||"")))return "שלום";let t=String(raw||"").replace(/^(אני\s+)?(קוראים לי|שמי|השם שלי(?:\s+הוא)?|תקרא(?:ו)? לי|תקראי לי)\s*/,"").replace(/[.!?,"'״׳:;()]/g," ").replace(/\s+/g," ").trim();if(!t||t.length>30||/\d|@/.test(t)||t.split(" ").length>3)return null;if(/^(לא|כן|תפריט|שלום|היי|הי|אוקי|בסדר|menu|hi|hello|start|stop|עזרה|הגדרות|ביטול|הבקשות שלי|הסר|הסר אותי)$/i.test(t))return null;if(t.split(" ").some(w=>/^(מה|איך|מתי|כמה|איפה|למה|מי|יש|אין|רוצה|רוצים|מגרש|מגרשים|משחק|שחקן|שחקנים|פנוי|מחר|היום|בערב|בבוקר|תודה|אפשר|צריך|בוקר|ערב|טוב|קורה|שלום)$/.test(w)))return null;return t;}
@@ -112,6 +112,9 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    if(!d.level){await set({...base,step:"level"});return list(prefix+LEVEL_ASK,LEVEL_ROWS().concat(cancel));}
    // Live 23.9 16:32: "לשנות רמה ומשך" asks both, in a row - duration right after the level.
    if(st.redoDuration&&!d.durations){await set({...base,step:"duration"});return list(prefix+DURATION_ASK,DURATION_ROWS());}
+   // Tom 23.9 16:35: a weekly game never asks about a court.
+   if(d.recurring&&d.partySize==null){await set({...base,step:"party"});return list(prefix+"כמה שחקנים אתם?",PARTY_ROWS().concat(st.prefilled?PREFILL_ROWS(d):[],cancel));}
+   if(d.recurring&&d.hasCourt==null){d.hasCourt=false;d.flexMinutes??=0;}
    if(d.partySize==null){await set({...base,step:"pc"});return list(prefix+PC_ASK,PC_ROWS().concat(st.prefilled?PREFILL_ROWS(d):[],cancel));}
    if(d.hasCourt==null){await set({...base,step:"court"});return btn(prefix+"כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);}
    if(d.recurring?!d.weekdays?.length:!d.date){await set({...base,step:d.recurring?"schedule":"when"});return{text:prefix+(d.recurring?SCHEDULE_ASK:WHEN_ASK)};}
@@ -130,7 +133,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  if(input.startsWith("req:")){const r=await ownReq(input.slice(4));if(!r)return btn("הבקשה כבר לא פעילה.",[MY_REQ,MENU]);return btn(`*${reqTitle(r)}*\n${reqDesc(r)}`,[{id:`edit:${r.id}`,title:"עריכה"},{id:`del:${r.id}`,title:"מחיקה"},{id:"my_requests",title:"חזרה"}]);}
  if(input.startsWith("del:")){const r=await ownReq(input.slice(4));if(!r)return btn("הבקשה כבר לא פעילה.",[MY_REQ,MENU]);return btn(`למחוק את הבקשה ל${reqTitle(r)}?`,[{id:`delok:${r.id}`,title:"כן, למחוק"},{id:"my_requests",title:"לא"}]);}
  if(input.startsWith("delok:")){const r=await ownReq(input.slice(6));if(!r)return btn("הבקשה כבר לא פעילה.",[MY_REQ,MENU]);await store.set(`request/${r.id}`,{...r,active:false,deletedAt:now.toISOString()});await set({});return btn("מחקתי את הבקשה.",[MY_REQ,MENU]);}
- if(input.startsWith("edit:")){const r=await ownReq(input.slice(5));if(!r)return btn("הבקשה כבר לא פעילה.",[MY_REQ,MENU]);const f=[["when","יום ושעה"],["level","רמה"],["duration","משך"],["party","מספר שחקנים"],["court","מגרש"]].concat(r.hasCourt?[]:[["flex","גמישות"]]);return list(`מה לשנות ב${reqTitle(r)}?`,f.map(([k,t])=>({id:`ef:${r.id}:${k}`,title:t})).concat({id:"my_requests",title:"חזרה"}));}
+ if(input.startsWith("edit:")){const r=await ownReq(input.slice(5));if(!r)return btn("הבקשה כבר לא פעילה.",[MY_REQ,MENU]);const f=[["when","יום ושעה"],["level","רמה"],["duration","משך"],["party","מספר שחקנים"],["court","מגרש"]].filter(([k])=>!(r.recurring&&k==="court")).concat(r.hasCourt?[]:[["flex","גמישות"]]);return list(`מה לשנות ב${reqTitle(r)}?`,f.map(([k,t])=>({id:`ef:${r.id}:${k}`,title:t})).concat({id:"my_requests",title:"חזרה"}));}
  if(input.startsWith("ef:")){const [,rid,field]=input.split(":"),r=await ownReq(rid);if(!r)return btn("הבקשה כבר לא פעילה.",[MY_REQ,MENU]);await set({flow:"edit",step:`edit_${field}`,editId:r.id});
    if(field==="when")return{text:r.recurring?SCHEDULE_ASK:WHEN_ASK};
    if(field==="level")return list(LEVEL_ASK,LEVEL_ROWS());if(field==="duration")return list("כמה זמן תרצו לשחק?",DURATION_ROWS());if(field==="party")return list("כמה שחקנים אתם?",PARTY_ROWS());
@@ -219,7 +222,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    return{text:`חיברתי ביניכם! אפשר לשלוח הודעה ${toName(connection.fromDisplayName)} בלחיצה.${group}`,ctaUrl:{displayText:"שלח הודעה",url:waLink(connection.fromUserId)},notifications:notes.concat(fullNotes)};}
  if(input==="oneoff"||input==="recurring"){if((await userActiveRequests(store,userId,now)).length>=MAX_ACTIVE_REQUESTS)return btn(CAP_TEXT,[MY_REQ,MENU]);const last=await lastRequest(store,userId),draft={recurring:input==="recurring",displayName};if(!last)return nextStep({},draft);draft.level=last.level;draft.durations=last.durations;return nextStep({prefilled:true},draft,`לקחתי מהבקשה הקודמת: רמה ${last.level}, ${last.durations.length>1?"משך גמיש":`${last.durations[0]} דקות`}.\n\n`);}
  if(input==="pfinish"&&state.flow==="players"&&state.draft)return finish(state,state.draft);
- if(state.flow==="players"&&state.step==="pc"&&input==="pc_reset")return nextStep({...state,redoDuration:true},{...state.draft,level:undefined,durations:undefined,flexMinutes:undefined});
+ if(state.flow==="players"&&["pc","party"].includes(state.step)&&input==="pc_reset")return nextStep({...state,redoDuration:true},{...state.draft,level:undefined,durations:undefined,flexMinutes:undefined});
  {const REG=["level","pc","party","court","when","schedule","duration","flex"],fe=state.flow==="players"&&state.draft&&REG.includes(state.step)?(input==="pc_level"?"level":input==="pc_dur"?"duration":!actionId?fieldEditIntent(text):null):null;
   if(fe==="level")return nextStep(state,{...state.draft,level:undefined});
   if(fe==="both")return nextStep({...state,redoDuration:true},{...state.draft,level:undefined,durations:undefined,flexMinutes:undefined});

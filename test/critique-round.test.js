@@ -186,3 +186,15 @@ test("live 16:32: 'לשנות רמה ומשך' (text or the old row) asks level 
     assert.deepEqual((await s.get("state/f")).draft.durations, [90]);
   }
 });
+
+test("Tom 16:35: weekly game never asks about a court; menu copy says each week needs a new approval", async () => {
+  const s = memoryStore(), h = H(s, "w", "דנה"); await named(s, "w", "דנה");
+  let r = await h({ actionId: "recurring" }); assert.match(r.text, /^מה הרמה/);
+  r = await h({ actionId: "level:3" }); assert.equal(r.text, "כמה שחקנים אתם?"); assert.deepEqual(rows(r).map(x => x.id).filter(x => x.startsWith("party:")), ["party:1", "party:2", "party:3"]); assert.ok(!rows(r).some(x => /מגרש/.test(x.title + (x.description || ""))));
+  r = await h({ actionId: "party:2" }); assert.doesNotMatch(r.text, /מגרש/);
+  const st = await s.get("state/w"); assert.equal(st.draft.hasCourt, false); assert.notEqual(st.step, "court");
+  r = await h({ text: "שני ורביעי אחרי 20:00" }); for (let i = 0; i < 4 && !/נשמרה/.test(r.text); i++) { assert.doesNotMatch(r.text, /מגרש\?/); const id = (r.buttons?.[0] || rows(r)[0])?.id; r = await h({ actionId: id }); }
+  assert.match(r.text, /הבקשה נשמרה/);
+  const req = (await mine(s, "w"))[0]; const e = await h({ actionId: `edit:${req.id}` }); assert.ok(!rows(e).some(x => x.id.endsWith(":court")));
+  const again = await h({ actionId: "recurring" }); assert.match(again.text, /לקחתי מהבקשה הקודמת[\s\S]*כמה שחקנים אתם\?$/); assert.ok(rows(again).some(x => x.id === "pc_level"));
+});

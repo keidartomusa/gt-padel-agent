@@ -109,8 +109,8 @@ test("every request-saved path offers the menu, never mute (Tom 13:15 + 13:47)",
   ];
   // recurring
   await named(s, "p4", "ד"); const h = H(s, "p4", "ד"); let r;
-  for (const o of [{ actionId: "recurring" }, { actionId: "level:3" }, { text: "שני ורביעי אחרי 20:00" }, { actionId: "duration:90" }, { actionId: "party:1" }]) r = await quiet(() => h(o));
-  r = await quiet(() => h({ actionId: "court:yes" })); paths.push(r);
+  for (const o of [{ actionId: "recurring" }, { actionId: "level:3" }, { actionId: "party:1" }, { text: "שני ורביעי אחרי 20:00" }]) r = await quiet(() => h(o));
+  r = await quiet(() => h({ actionId: "duration:90" })); paths.push(r);
   // name asked first (no stored name)
   const { memoryStore: bare } = await import("../src/store.js"); const s2 = bare(), h2 = H(s2, "p5", "ה");
   for (const o of [{ actionId: "oneoff" }, { actionId: "level:3" }, { text: "מחר אחרי 19:00" }, { actionId: "duration:90" }, { actionId: "party:1" }, { actionId: "court:yes" }]) await quiet(() => h2(o));
