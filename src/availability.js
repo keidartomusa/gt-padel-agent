@@ -21,7 +21,11 @@ export function formatHebrewSeries(results,options={}){if(results.length===1)ret
 export const MAX_SLOT_ROWS=9;
 const courtsLabel=g=>g.courts.length===3?"כל 3 המגרשים":g.courts.length===1?`מגרש ${g.courts[0]}`:`מגרשים ${g.courts.join(", ")}`;
 const shortDate=iso=>`${Number(iso.slice(8,10))}.${Number(iso.slice(5,7))}`;
-export function availabilityChoices(results,{maxRows=MAX_SLOT_ROWS,groupsFor}={}){const rows=[];const multi=results.filter(r=>r.kind==="availability"&&r.slots.length).length>1;for(const result of results){if(result.kind!=="availability")continue;const groups=groupsFor?groupsFor(result):grouped(result.slots);for(const g of groups){if(rows.length>=maxRows)return rows;const url=bookingUrl(result.date,g.bookingSlot);if(!url)continue;const title=`${multi?shortDate(result.date)+" ":""}${g.start}–${g.end}`;rows.push({id:`book:${Buffer.from(url).toString("base64url")}`,title:title.slice(0,24),description:`${courtsLabel(g)}${g.price!=null?` · ₪${g.price}`:""}`.slice(0,72),start:g.start,url});}}return rows;}
+// Live 23.9 12:45: base64 of the tracking URL made row ids 455 chars; Meta rejects list row ids over 200 (#131009) and the reply was silently lost.
+// Compact ASCII id instead; the URL is rebuilt on tap. Always well under 200.
+export function slotActionId(date,slot){return `bk:${date}.${slot.courtId}.${String(slot.start).replace(":","")}.${slot.durationMinutes}.${slot.price??""}`;}
+export function slotFromActionId(id){const m=/^bk:(\d{4}-\d{2}-\d{2})\.([^.]+)\.(\d{4})\.(\d+)\.(\d*(?:\.\d+)?)$/.exec(id||"");if(!m)return null;return{date:m[1],slot:{courtId:m[2],start:`${m[3].slice(0,2)}:${m[3].slice(2)}`,durationMinutes:Number(m[4]),price:m[5]===""?undefined:Number(m[5])}};}
+export function availabilityChoices(results,{maxRows=MAX_SLOT_ROWS,groupsFor}={}){const rows=[];const multi=results.filter(r=>r.kind==="availability"&&r.slots.length).length>1;for(const result of results){if(result.kind!=="availability")continue;const groups=groupsFor?groupsFor(result):grouped(result.slots);for(const g of groups){if(rows.length>=maxRows)return rows;const url=bookingUrl(result.date,g.bookingSlot);if(!url)continue;const title=`${multi?shortDate(result.date)+" ":""}${g.start}–${g.end}`;rows.push({id:slotActionId(result.date,g.bookingSlot),title:title.slice(0,24),description:`${courtsLabel(g)}${g.price!=null?` · ₪${g.price}`:""}`.slice(0,72),start:g.start,url});}}return rows;}
 export function groupedSlots(slots){return grouped(slots);}
 
 
