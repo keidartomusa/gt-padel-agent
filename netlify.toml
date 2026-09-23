@@ -1,4 +1,6 @@
 [build]
+  # Stamps the deployed commit so /health shows which build is live.
+  command = "printf 'export const BUILD = \"%s\";\\n' \"$COMMIT_REF\" > src/build-info.js"
   functions = "netlify/functions"
 [functions]
   node_bundler = "esbuild"
