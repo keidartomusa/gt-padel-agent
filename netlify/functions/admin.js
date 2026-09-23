@@ -8,6 +8,7 @@ button{font:inherit;cursor:pointer}
 .tabs{display:flex;gap:4px;margin-inline-start:auto}
 .tabs button{background:transparent;border:0;color:#d1f4ec;padding:8px 14px;border-radius:18px;font-size:15px}
 .tabs button.on{background:#fff;color:#075e54;font-weight:700}
+.authing #login{display:none}
 .login{max-width:360px;margin:12vh auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 12px #0001}
 .login h2{margin:0 0 16px;font-size:20px}.login input{width:100%;padding:12px;border:1px solid #d1d7db;border-radius:10px;font-size:16px;margin:8px 0 14px}
 .btn{background:#00a884;color:#fff;border:0;border-radius:10px;padding:11px 18px;font-weight:700}.err{color:#d93025;margin-top:10px;min-height:1em}
@@ -101,10 +102,11 @@ document.addEventListener('input',function(e){if(e.target.id==='q')drawUsers()})
 document.addEventListener('keydown',function(e){if(VIEW!=='chats'||!CUR||e.target.id==='q')return;if(e.key==='ArrowDown'||e.key==='ArrowUp'){var l=users(),i=l.findIndex(x=>x.userId===CUR)+(e.key==='ArrowDown'?1:-1);if(l[i]){e.preventDefault();showConv(l[i].userId)}}});
 async function enter(){$('#error').textContent='';try{await load($('#password').value)}catch(e){$('#error').textContent=e.message;sessionStorage.removeItem('gt-admin-token')}}
 $('#enter').onclick=enter;$('#password').onkeydown=e=>{if(e.key==='Enter')enter()};
-var saved=sessionStorage.getItem('gt-admin-token');if(saved)load(saved).catch(e=>{$('#error').textContent=e.message;sessionStorage.removeItem('gt-admin-token')});
+var saved=sessionStorage.getItem('gt-admin-token');if(saved)load(saved).catch(e=>{document.documentElement.classList.remove('authing');$('#error').textContent=e.message;sessionStorage.removeItem('gt-admin-token')});
 `;
 export const html = '<!doctype html><html dir="rtl" lang="he"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GT PADEL - מערכת ניהול</title><style>' + CSS + '</style>'
  + '<header class="top"><h1>GT PADEL - מערכת ניהול</h1><nav class="tabs" id="tabs" hidden><button data-v="overview">סקירה</button><button data-v="chats">שיחות</button><button data-v="live">בקשות וחיבורים</button><button data-v="clicks">הזמנות</button></nav></header>'
+ + '<script>try{if(sessionStorage.getItem("gt-admin-token"))document.documentElement.classList.add("authing")}catch(e){}</script>'
  + '<div id="login" class="login"><h2>כניסה</h2><label for="password">סיסמת ניהול</label><input id="password" type="password" autocomplete="current-password"><button id="enter" class="btn">כניסה</button><div id="error" class="err"></div></div><main id="app" hidden></main>'
  + '<script>' + JS + '</script></html>';
 export default async () => new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });

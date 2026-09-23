@@ -1,3 +1,4 @@
+import { bearerOk } from "../../src/auth.js";
 // Background function (15 min limit): corpus eval of the when-parser providers inside the deployed env.
 // Triggered by deploy-succeeded for commits tagged [parser-eval], or manually with the admin token. Output: function log only.
 import { createHash } from "node:crypto";
@@ -10,7 +11,7 @@ export const internalToken=()=>createHash("sha256").update(`parser-eval:${proces
 // Corpus expectations are anchored to this moment; evaluating against it keeps results comparable on any day.
 export const CORPUS_NOW=new Date("2026-09-23T10:36:00+03:00"),CORPUS_TODAY="2026-09-23";
 export default async req=>{const auth=req.headers.get("authorization")||"";
- if(auth!==`Bearer ${internalToken()}`&&!(process.env.ADMIN_DASHBOARD_TOKEN&&auth===`Bearer ${process.env.ADMIN_DASHBOARD_TOKEN}`)){console.log(JSON.stringify({event:"parser_eval",status:"unauthorized"}));return new Response("unauthorized",{status:401});}
+ if(auth!==`Bearer ${internalToken()}`&&!bearerOk(req)){console.log(JSON.stringify({event:"parser_eval",status:"unauthorized"}));return new Response("unauthorized",{status:401});}
  console.log(JSON.stringify({event:"parser_eval",status:"start",n:corpus.length,openai:!!process.env.OPENAI_API_KEY,jev:!!process.env.TYPESAFE_API_KEY}));
  const out=[evalLocal(corpus,CORPUS_NOW)];
  if(process.env.OPENAI_API_KEY)out.push(await evalProvider("openai",openaiAdapter,corpus,{today:CORPUS_TODAY}));
