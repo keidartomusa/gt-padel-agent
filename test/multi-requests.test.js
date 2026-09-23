@@ -1,3 +1,4 @@
+import { noDur } from "./no-duration.mjs";
 // Tom 23.9 13:12 + 13:18 ("a. כן / B. כן / C. כן"): empty board opens a request (reusing level/duration), several requests per user,
 // list / edit one field / delete, cap 5, no notice to the other player on edit.
 import test from "node:test";
@@ -7,7 +8,7 @@ import { memoryStore, named } from "./named-store.mjs";
 const now = new Date("2026-09-23T08:00:00+03:00");
 const available = async i => ({ kind: "availability", date: i.date, slots: [{ courtId: "c1", courtName: "1", start: "19:00", end: "20:30", durationMinutes: i.durationMinutes || 90, price: 300 }] });
 const none = async i => ({ kind: "availability", date: i.date, slots: [] });
-const H = (s, u, name = "דנה", fn = available) => o => handleConversation({ userId: u, displayName: name, store: s, now, availabilityFn: fn, ...o });
+const H = (s, u, name = "דנה", fn = available) => noDur(o => handleConversation({ userId: u, displayName: name, store: s, now, availabilityFn: fn, ...o }));
 const ids = r => [...(r.buttons || []).map(b => b.id), ...(r.list?.sections || []).flatMap(x => x.rows.map(y => y.id))];
 async function create(s, u, { when = "מחר אחרי 19:00", level = "level:2", court = "yes", name = "דנה" } = {}) {
   await named(s, u, name); const h = H(s, u, name);
@@ -31,7 +32,7 @@ test("a second request is allowed and both are listed", async () => {
   assert.ok(rows.some(x => x.id === "menu"));
   for (const x of rows) { assert.ok(x.title.length <= 24, x.title); assert.ok(x.id.length <= 200); assert.match(x.id, /^[\x20-\x7e]+$/); }
   assert.match(rows[0].title, /^חמישי 24\.9 · אחרי 19:00$/);
-  assert.match(rows[0].description, /חד-פעמית · רמה .* · 90 דק׳/);
+  assert.match(rows[0].description, /^חד-פעמית · רמה [^·]+$/);
 });
 test("typed 'הבקשות שלי' opens the list; empty state offers a new request", async () => {
   const s = memoryStore(); await named(s, "e", "דנה");
@@ -60,13 +61,12 @@ test("edit menu hides גמישות when the request has a court", async () => {
   const s = memoryStore(); await create(s, "a"); const [q] = await mine(s, "a");
   const r = await H(s, "a")({ actionId: `edit:${q.id}` });
   const titles = r.list.sections[0].rows.map(x => x.title);
-  assert.deepEqual(titles, ["יום ושעה", "רמה", "משך", "מספר שחקנים", "מגרש", "חזרה"]);
+  assert.deepEqual(titles, ["יום ושעה", "רמה", "מספר שחקנים", "מגרש", "חזרה"]);
   const s2 = memoryStore(); await create(s2, "b", { court: "no" }); const [q2] = await mine(s2, "b");
   assert.ok((await H(s2, "b")({ actionId: `edit:${q2.id}` })).list.sections[0].rows.some(x => x.title === "גמישות"));
 });
 for (const [field, answer, check] of [
   ["level", { actionId: "level:4" }, q => assert.notEqual(q.level, undefined)],
-  ["duration", { actionId: "duration:120" }, q => assert.deepEqual(q.durations, [120])],
   ["party", { actionId: "party:3" }, q => assert.equal(q.partySize, 3)],
   ["when", { text: "שישי אחרי 20:00" }, q => { assert.equal(q.date, "2026-09-25"); assert.equal(q.startMinute, 1200); }],
   ["court", { actionId: "court:no" }, q => assert.equal(q.hasCourt, false)],
@@ -103,12 +103,12 @@ test("editing a request with an approved connection sends the other player nothi
   assert.ok(!(r.notifications || []).some(n => n.to === "b"));
   assert.equal((await s.get("connection/c1")).status, "accepted");
 });
-test("cap: a 6th request is refused with the cap text", async () => {
+test("cap: an 8th request is refused with the cap text (Tom 19:01: 7)", async () => {
   const s = memoryStore();
-  for (const w of ["מחר אחרי 19:00", "שישי בבוקר", "שבת בבוקר", "ראשון בערב", "שני בערב"]) await create(s, "a", { when: w });
-  assert.equal((await mine(s, "a")).length, 5);
+  for (const w of ["מחר אחרי 19:00", "שישי בבוקר", "שבת בבוקר", "ראשון בערב", "שני בערב", "שלישי בערב", "רביעי בערב"]) await create(s, "a", { when: w });
+  assert.equal((await mine(s, "a")).length, 7);
   const r = await H(s, "a")({ actionId: "oneoff" });
-  assert.equal(r.text, "יש לכם כבר 5 בקשות פעילות. אפשר למחוק אחת דרך 'הבקשות שלי'.");
+  assert.equal(r.text, "יש לכם כבר 7 בקשות פעילות. אפשר למחוק אחת דרך 'הבקשות שלי'.");
   const l = await H(s, "a")({ actionId: "my_requests" });
   assert.ok(!l.list.sections[0].rows.some(x => x.id === "players"));
 });
@@ -119,22 +119,21 @@ test("empty board opens a request: first time asks level, date is kept, never as
   assert.equal(r.text, "אין כרגע משחקים פתוחים ביום חמישי 24.9 אחרי 18:00, אז אני פותח לכם בקשה ואחפש לכם שחקנים.\n\nמה הרמה שלכם?\nלא בטוחים? בחרו את הקרובה ביותר, אפשר לשנות אחר כך.");
   assert.ok(ids(r).includes("cancel_req"));
   r = await h({ actionId: "level:2" }); assert.equal(r.text, "כמה אתם, והאם כבר יש לכם מגרש?"); assert.ok(ids(r).includes("cancel_req"));
-  r = await h({ actionId: "pc:1:yes" }); assert.equal(r.text, "כמה זמן?");
-  r = await h({ actionId: "duration:90" });
+  r = await h({ actionId: "pc:1:yes" }); assert.doesNotMatch(r.text, /כמה זמן/);
   assert.match(r.text, /הבקשה נשמרה/);
   const [q] = await mine(s, "n"); assert.equal(q.date, "2026-09-24"); assert.equal(q.startMinute, 1080);
 });
-test("empty board reuses level and duration from the last request", async () => {
+test("empty board reuses the level from the last request (no duration since 18:51)", async () => {
   const s = memoryStore(); await create(s, "a", { when: "שבת בבוקר", level: "level:4" }); const [prev] = await mine(s, "a"), h = H(s, "a");
   await h({ actionId: "board" });
   const r = await h({ text: "מחר אחרי 18:00" });
   assert.match(r.text, /^אין כרגע משחקים פתוחים ביום חמישי 24\.9 אחרי 18:00, אז אני פותח לכם בקשה ואחפש לכם שחקנים\./);
-  assert.match(r.text, new RegExp(`לקחתי מהבקשה הקודמת: רמה ${prev.level.replace(/[.+]/g, "\\$&")}, 90 דקות`));
+  assert.match(r.text, new RegExp(`לקחתי מהבקשה הקודמת: רמה ${prev.level.replace(/[.+]/g, "\\$&")}\\.\\n`));
   assert.match(r.text, /כמה אתם, והאם כבר יש לכם מגרש\?$/);
   const done = await h({ actionId: "pc:2:yes" });
   assert.match(done.text, /הבקשה נשמרה/);
   const qs = await mine(s, "a"); const q = qs.find(x => x.id !== prev.id);
-  assert.equal(q.level, prev.level); assert.deepEqual(q.durations, [90]); assert.equal(q.partySize, 2);
+  assert.equal(q.level, prev.level); assert.equal(q.partySize, 2);
 });
 test("empty-board auto-open can be cancelled", async () => {
   const s = memoryStore(); await named(s, "c", "רון"); const h = H(s, "c", "רון");

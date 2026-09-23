@@ -99,7 +99,7 @@ test("recurring availability requires weekdays and does not accept a one-off dat
   assert.match(bad.text, /ימים בשבוע/);
   assert.equal((await s.get("state/rec")).step, "schedule");
   const ok = await routeIncoming({ userId: "rec", text: "שני ורביעי אחרי 20:00", store: s, now });
-  assert.match(ok.text, /^רשמתי: כל שני ורביעי, אחרי 20:00\.\n\nכמה זמן/);
+  assert.match(ok.text, /^רשמתי: כל שני ורביעי, אחרי 20:00\.\n\n(?!כמה זמן)/);
 });
 
 test("picking 'find a court' from the menu immediately asks when, and the answer goes to availability", async () => {

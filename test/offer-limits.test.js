@@ -1,3 +1,4 @@
+import { noDur } from "./no-duration.mjs";
 // Tom 23.9 15:36: when several people match one person - offer limits, capacity, and the closing flow.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -6,7 +7,7 @@ import { dailySweep, ALERTS_PER_DAY, autoClose, activeRequests, gameEndMs } from
 import { memoryStore, named } from "./named-store.mjs";
 const now = new Date("2026-09-23T08:00:00+03:00");
 const available = async i => ({ kind: "availability", date: i.date, slots: [{ courtId: "c1", courtName: "1", start: "19:00", end: "20:30", durationMinutes: i.durationMinutes || 90, price: 300 }] });
-const H = (s, u, displayName, at = now) => o => handleConversation({ userId: u, displayName, store: s, now: at, availabilityFn: available, ...o });
+const H = (s, u, displayName, at = now) => noDur(o => handleConversation({ userId: u, displayName, store: s, now: at, availabilityFn: available, ...o }));
 async function create(s, u, name, { when = "מחר אחרי 19:00", pc = "pc:1:yes", level = "level:3" } = {}) {
   await named(s, u, name); const h = H(s, u, name);
   await h({ actionId: "oneoff" }); await h({ actionId: level }); await h({ actionId: pc }); await h({ text: when });

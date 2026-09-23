@@ -1,3 +1,4 @@
+import { noDur } from "./no-duration.mjs";
 // QA round 23.9 (Tom 13:42 "סבב בדיקות לכל התהליכים") + Tom 13:47 mute steering. Every finding is locked here.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -11,7 +12,7 @@ import { isMuted } from "../src/matching.js";
 import { memoryStore, named } from "./named-store.mjs";
 const now = new Date("2026-09-23T08:00:00+03:00");
 const available = async i => ({ kind: "availability", date: i.date, slots: [{ courtId: "c1", courtName: "1", start: "19:00", end: "20:30", durationMinutes: 90, price: 300 }] });
-const H = (s, u, name) => o => handleConversation({ userId: u, displayName: name, store: s, now, availabilityFn: available, ...o });
+const H = (s, u, name) => noDur(o => handleConversation({ userId: u, displayName: name, store: s, now, availabilityFn: available, ...o }));
 const ids = r => [...(r.buttons || []), ...(r.list?.sections || []).flatMap(x => x.rows)];
 const quiet = async f => { const o = console.log; console.log = () => {}; try { return await f(); } finally { console.log = o; } };
 async function create(s, u, name, { when = "מחר אחרי 19:00", level = "level:3", court = "yes", party = "party:1" } = {}) {
@@ -31,7 +32,7 @@ test("match notification: weekday + date + window, no ISO date; connect + לא �
   assert.match(n.text, /נועם · חמישי 24\.9 · אחרי 19:00 · רמה 3–3\.5/); assert.doesNotMatch(n.text, /2026-/);
   assert.deepEqual(ids(n).map(x => x.title), ["רוצה להתחבר", "לא הפעם"]);
   // Critique item 5: party, court, duration and the combined count.
-  assert.match(n.text, /\nשחקן אחד · יש מגרש · 90 דק׳\nיחד: 2 מתוך 4\n/);
+  assert.match(n.text, /\nשחקן אחד · יש מגרש\nיחד: 2 מתוך 4\n/);
 });
 test("connect request to the owner has no mute button", async () => {
   const s = memoryStore(); await create(s, "a", "יוסי"); const req = (await s.list("request/"))[0].value;

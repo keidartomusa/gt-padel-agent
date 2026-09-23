@@ -1,7 +1,9 @@
 // 100 availability / menu / board conversations through the production path, live Matchpointer.
 import fs from "node:fs";
 import { memoryStore } from "../src/store.js";
-import { provider, makeUser, turn, turnAll, options, rng, pick, view } from "./harness.mjs";
+import { provider, makeUser, turn, turnAll as turnAll0, options, rng, pick, view } from "./harness.mjs";
+// Tom 23.9 18:51: no duration question in partner finding - scripted duration taps are skipped.
+const turnAll = (u, s) => s?.actionId?.startsWith("duration:") ? Promise.resolve([]) : turnAll0(u, s);
 const out = [], rand = rng(20260923);
 const TERMINAL = [
   ["cta", t => t.response.ctaUrl?.url?.includes("/go/book?")],
