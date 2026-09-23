@@ -17,5 +17,8 @@ for(const [w,n] of W)out.push([`מחר ב${w} וחצי`,add(1),(n+12)*60+30]);
 for(let n=16;n<=22;n++)out.push([`מחר ב-${n}:00`,add(1),n*60],[`מחרתיים אחרי ${n}:30`,add(2),n*60+30]);
 for(let n=2;n<=9;n++)out.push([`בעוד ${n} ימים`,add(n),null]);
 for(let i=1;i<=15;i++){const iso=add(i),[,mm,dd]=iso.split("-").map(Number);out.push([`${dd}/${mm} בערב`,iso,1140],[`ב-${dd}.${mm} ב-20:00`,iso,1200]);}
+const MON=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+// Regression 23.9: "ב-3 לאוקטובר" was read as 15:00 (day of month taken as an hour).
+for(let i=1;i<=15;i++){const iso=add(i),[,mm,dd]=iso.split("-").map(Number);out.push([`ב-${dd} ל${MON[mm-1]}`,iso,null],[`${dd} ב${MON[mm-1]} בערב`,iso,1140]);}
 writeFileSync(new URL("./fixtures/hebrew-when-corpus-generated.json",import.meta.url),JSON.stringify(out));
 console.log(out.length);
