@@ -23,8 +23,10 @@ const data = { generatedAt: now.toISOString(), ...summarizeAdmin({ requests, con
   live: liveConnections({ requests, connections, profiles, now }), open: openRequests({ requests, connections, profiles, now, isOver: x => !x.recurring && gameOver(x, now) }), bookingClicks: clicks };
 let html = await (await (await import("../../netlify/functions/admin.js")).default()).text();
 const before = html.length;
+if (process.env.KEEP_COST !== "1") {
 html = html.replace(/,\['עלות הודעות',usd\(m\.estimatedUsd\),[^\]]*\]/, "").replace(" · עלות '+usd(u.estimatedUsd)+'", "'+'");
 if (html.length === before || html.includes("'עלות הודעות'") || html.includes("עלות '+usd(u.estimatedUsd)")) throw new Error("cost hiding did not apply - admin page changed");
+}
 const mock = `<script>sessionStorage.setItem('gt-admin-token','x');window.fetch=async u=>{const m=/user=(\\d+)/.exec(u);const D=${JSON.stringify(data)},C=${JSON.stringify(conv)},N=${JSON.stringify(names)};return{ok:true,json:async()=>m?{userId:m[1],name:N[m[1]]||null,messages:C[m[1]]}:D}}</script>`;
 const tabJs = tab !== "overview" ? `<script>setTimeout(()=>{const b=document.querySelector('[data-v="${tab}"]');b&&b.click();${tab === "chats" ? `setTimeout(()=>{const u=document.querySelector('#users .u');u&&u.click()},500)` : ""}},600)</script>` : "";
 fs.writeFileSync(out, html.replace("<script>", mock + "<script>") + tabJs);
