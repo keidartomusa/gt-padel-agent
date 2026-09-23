@@ -11,7 +11,8 @@ function dateFromDayOfMonth(day,today){
   for(const offset of [0,1]) { const mm=m+offset, yy=y+Math.floor((mm-1)/12), mon=((mm-1)%12)+1, iso=`${yy}-${pad(mon)}-${pad(day)}`; if(validIso(iso)&&iso>=today) return iso; }
   return null;
 }
-function nextWeekday(today,target,nextWeek=false){ let delta=(target-weekdayIndex(today)+7)%7; if(delta===0||nextWeek) delta+=7; return addDays(today,delta); }
+// Tom 23.9 10:43: "<weekday> הבא" = that weekday in next calendar week (Sun-Sat), e.g. on Wed 23.9 "חמישי הבא"=1.10, "ראשון הבא"=27.9.
+function nextWeekday(today,target,nextWeek=false){ const w=weekdayIndex(today); if(nextWeek) return addDays(today,7-w+target); let delta=(target-w+7)%7; if(delta===0) delta+=7; return addDays(today,delta); }
 // resolveHour lives in timeres.js (single source of truth).
 function parseClock(text){
   const m=text.match(/ב?שעה\s*(\d{1,2})(?::(\d{2}))?/)||text.match(/(?:סביב|בערך|בין|מ|אחרי|ב)(?:\s*ב)?\s*-?\s*(\d{1,2})(?::(\d{2}))?(?![\d/.])/)||text.match(/(?:^|\s)(\d{1,2}):(\d{2})(?![\d])/);
