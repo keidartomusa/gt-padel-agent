@@ -10,7 +10,7 @@ async function registration(store, n, { recurring, level, when, duration, party,
   const last = turns.at(-1), text = last.response.text || "", found = /מצאתי \d+ התאמ/.test(text), saved = /הבקשה נשמרה/.test(text), notPublished = /לא פורסמה/.test(text);
   if (!saved && !notPublished) problems.push(`nonterminal ${n}: ${text.slice(0, 120)}`);
   if (saved && expectMatch !== found) problems.push(`match expectation ${n}: expected ${expectMatch}, got ${found}`);
-  for (const t of turns) { if (t.reaction !== "👍" || t.typing !== true) problems.push(`transport ${n}`); if (!t.outbound.length) problems.push(`no outbound ${n}`); }
+  for (const t of turns) { if (t.reaction !== null || t.typing !== true) problems.push(`transport ${n}`); if (!t.outbound.length) problems.push(`no outbound ${n}`); }
   if (found && expectNote !== null && /רמה אחת (מעליכם|מתחתיכם)/.test(text) !== expectNote) problems.push(`level note ${n}: expected ${expectNote}`);
   if (found && !/· רמה /.test(text)) problems.push(`match without level ${n}`);
   if (/\?\s*$/.test(text)) problems.push(`dangling ${n}`);
