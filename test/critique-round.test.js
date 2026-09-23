@@ -1,7 +1,7 @@
 // Critique round 23.9 (Tom: "תתקן הכל") + Tom 14:58 (pending answer beats menu words) + Tom 15:01 (שלח הודעה) + Tom 15:16 (club contact).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { handleConversation, cleanName, durationFromText, CLUB_URL, NAME_ASK } from "../src/conversation.js";
+import { handleConversation, cleanName, durationFromText, CLUB_URL, NAME_ASK, fieldEditIntent } from "../src/conversation.js";
 import { routeIncoming } from "../src/webhook.js";
 import { bookingCard } from "../src/webhook.js";
 import { findMatches, dailySweep } from "../src/matching.js";
@@ -59,7 +59,7 @@ test("item 9: a duration in the time text skips the duration question; last requ
   const s = memoryStore(), h = H(s, "d", "דנה"); await named(s, "d", "דנה");
   for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a });
   const r = await h({ text: "מחר אחרי 19:00 ל120 דקות" }); assert.match(r.text, /הבקשה נשמרה/); assert.deepEqual((await mine(s, "d"))[0].durations, [120]);
-  const again = await h({ actionId: "oneoff" }); assert.match(again.text, /^לקחתי מהבקשה הקודמת: רמה 3–3\.5, 120 דקות\.\n\nכמה אתם/); assert.ok(rows(again).some(x => x.id === "pc_reset"));
+  const again = await h({ actionId: "oneoff" }); assert.match(again.text, /^לקחתי מהבקשה הקודמת: רמה 3–3\.5, 120 דקות\.\n\nכמה אתם/); assert.deepEqual(rows(again).filter(x => x.id.startsWith("pc_")).map(x => [x.id, x.title]), [["pc_level", "עדכן רמה"], ["pc_dur", "עדכן משך זמן"]]);
 });
 test("item 10: day understood without an hour -> ask only the hour, then continue", async () => {
   const s = memoryStore(), h = H(s, "t", "דנה");
@@ -93,7 +93,7 @@ test("item 6: accepting below 4 keeps the owner's request with the new count and
   const acc = await H(s, "a", "דנה")({ actionId: `accept:${c.id}` });
   assert.match(acc.text, /יחד אתם 2 מתוך 4\. הבקשה נשארת בלוח \(חסר 2\)/);
   assert.equal((await s.get(`request/${ra.id}`)).partySize, 2); assert.equal((await s.get(`request/${rb.id}`)).active, false);
-  const follow = acc.notifications.find(n => n.to === "a"); assert.deepEqual(follow.response.buttons.map(b => b.id), [`closed:${ra.id}`, "menu"]); assert.doesNotMatch(JSON.stringify(acc), /https?:\/\/(?!wa\.me)/);
+  assert.doesNotMatch(JSON.stringify(acc), /closed:|סגרתם משחק/); /* Tom 23.9 16:25: no closing question */ assert.doesNotMatch(JSON.stringify(acc), /https?:\/\/(?!wa\.me)/);
   const closed = await H(s, "a", "דנה")({ actionId: `closed:${ra.id}` }); assert.match(closed.text, /הורדתי את הבקשה מהלוח/); assert.equal((await s.get(`request/${ra.id}`)).active, false);
   const s2 = memoryStore(); await create(s2, "x", "גל", { pc: "pc:2:yes" }); await create(s2, "y", "רון", { pc: "pc:2:yes" });
   const [rx] = await mine(s2, "x"), [ry] = await mine(s2, "y");
@@ -159,4 +159,30 @@ test("item 19: the WhatsApp profile name is offered with one tap", async () => {
 test("item 20: name-change confirmation reads naturally for Hebrew and Latin names", async () => {
   const s = memoryStore(); await named(s, "z", "תום"); const c = await H(s, "z")({ text: "קוראים לי אבי" }); assert.equal(c.text, "לשנות את השם מתום לאבי?");
   const s2 = memoryStore(); await named(s2, "z", "Tom"); const c2 = await H(s2, "z")({ text: "קוראים לי אבי" }); assert.equal(c2.text, "לשנות את השם מ-Tom לאבי?");
+});
+
+test("prefilled level/duration: one-tap fix buttons and free-text 'אני רוצה לשנות רמה'", async () => {
+  assert.equal(fieldEditIntent("אני רוצה לשנות רמה"), "level"); assert.equal(fieldEditIntent("לעדכן משך זמן"), "duration"); assert.equal(fieldEditIntent("רמה אחרת"), "level"); assert.equal(fieldEditIntent("מחר אחרי 19 ל-90 דקות"), null); assert.equal(fieldEditIntent("רוצה לשנות משך"), "duration"); assert.equal(fieldEditIntent("בשעה אחרת"), "duration");
+  const s = memoryStore(), h = H(s, "e", "דנה"); await named(s, "e", "דנה");
+  for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a }); await h({ text: "מחר אחרי 19:00 ל120 דקות" });
+  let r = await h({ actionId: "oneoff" }); assert.match(r.text, /^לקחתי מהבקשה הקודמת/);
+  r = await h({ text: "אני רוצה לשנות רמה" }); assert.match(r.text, /^מה הרמה שלכם/);
+  r = await h({ actionId: "level:4" }); assert.match(r.text, /^כמה אתם/); assert.ok(rows(r).some(x => x.id === "pc_dur"));
+  r = await h({ actionId: "pc_dur" }); assert.match(r.text, /^כמה זמן/);
+  r = await h({ actionId: "duration:90" }); assert.match(r.text, /כמה אתם/);
+  const st = await s.get("state/e"); assert.deepEqual(st.draft.durations, [90]); assert.notEqual(st.draft.level, (await mine(s, "e"))[0].level);
+  r = await h({ actionId: "pc_level" }); assert.match(r.text, /^מה הרמה שלכם/);
+});
+
+test("live 16:32: 'לשנות רמה ומשך' (text or the old row) asks level and then duration, before the party question", async () => {
+  assert.equal(fieldEditIntent("לשנות רמה ומשך"), "both");
+  for (const how of [{ text: "לשנות רמה ומשך" }, { actionId: "pc_reset" }]) {
+    const s = memoryStore(), h = H(s, "f", "דנה"); await named(s, "f", "דנה");
+    for (const a of ["oneoff", "level:3", "pc:1:yes"]) await h({ actionId: a }); await h({ text: "מחר אחרי 19:00 ל120 דקות" });
+    await h({ actionId: "oneoff" });
+    let r = await h(how); assert.match(r.text, /^מה הרמה שלכם/);
+    r = await h({ actionId: "level:3.5" }); assert.match(r.text, /^כמה זמן תרצו לשחק/);
+    r = await h({ actionId: "duration:90" }); assert.match(r.text, /^כמה אתם/);
+    assert.deepEqual((await s.get("state/f")).draft.durations, [90]);
+  }
 });
