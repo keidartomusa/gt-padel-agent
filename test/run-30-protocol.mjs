@@ -21,9 +21,9 @@ const shared=memoryStore();await convo('20a. יצירת בקשה ללוח',oneof
 // connect accept using real IDs from state
 const req=(await shared.list('request/'))[0].value;await convo('21a. בקשת חיבור',[{actionId:`connect:${req.id}`}],{store:shared,userId:'viewer',name:'נועם',availabilityFn:yes});const conn=(await shared.list('connection/'))[0].value;await convo('21. אישור חיבור מתווך',[{actionId:`accept:${conn.id}`}],{store:shared,userId:'board1',name:'דנה',availabilityFn:yes});
 const shared2=memoryStore();await convo('22a. יצירת בקשה לחיבור שנדחה',oneoff,{store:shared2,userId:'a',name:'רוני',availabilityFn:yes});const req2=(await shared2.list('request/'))[0].value;await convo('22a2. בקשת חיבור',[{actionId:`connect:${req2.id}`}],{store:shared2,userId:'b',name:'גל',availabilityFn:yes});const conn2=(await shared2.list('connection/'))[0].value;await convo('22. דחיית חיבור',[{actionId:`decline:${conn2.id}`}],{store:shared2,userId:'a',name:'רוני',availabilityFn:yes});
-await convo('23. השתקה לשבוע',[{actionId:'mute_week'}]);
-await convo('24. השתקה מותאמת ל-14 יום',[{actionId:'mute_custom'},{actionId:'mute_14'}]);
-await convo('25. תפריט הגדרות',[{text:'הגדרות'},{actionId:'mute_week'}]);
+await convo('23. הסרה מהרשימה',[{actionId:'leave'},{actionId:'leave_yes'}]);
+await convo('24. הסרה בהקלדה ובחירה להישאר',[{text:'תסירו אותי מהרשימה'},{actionId:'leave_no'}]);
+await convo('25. תפריט הגדרות',[{text:'הגדרות'},{actionId:'leave'},{actionId:'leave_no'}]);
 const mine=memoryStore();await convo('26a. יצירת בקשה לניהול',oneoff,{store:mine,userId:'me',name:'תמר',availabilityFn:yes});await convo('26. הבקשות שלי',[{actionId:'my_requests'}],{store:mine,userId:'me',name:'תמר',availabilityFn:yes});
 const mismatch=memoryStore();await convo('27a. רמה 1-2',oneoff.map(x=>x.actionId==='level:3–3.5'?{actionId:'level:1–2'}:x),{store:mismatch,userId:'low',name:'אורי',availabilityFn:yes});await convo('27. אי התאמה בין רמות רחוקות',oneoff.map(x=>x.actionId==='level:3–3.5'?{actionId:'level:4+'}:x),{store:mismatch,userId:'high',name:'לי',availabilityFn:yes});
 await convo('28. משך 120 וגמישות שעה',[{actionId:'oneoff'},{actionId:'level:3.5–4'},{text:'מחר ב17:00'},{actionId:'duration:120'},{actionId:'party:3'},{actionId:'court:yes'}],{availabilityFn:yes});
