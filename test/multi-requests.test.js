@@ -36,7 +36,7 @@ test("a second request is allowed and both are listed", async () => {
 test("typed 'הבקשות שלי' opens the list; empty state offers a new request", async () => {
   const s = memoryStore(); await named(s, "e", "דנה");
   const r = await H(s, "e")({ text: "הבקשות שלי" });
-  assert.equal(r.text, "אין לך כרגע בקשות פעילות.");
+  assert.equal(r.text, "אין לכם כרגע בקשות פעילות.");
   assert.deepEqual(r.buttons.map(b => b.id), ["players", "menu"]);
 });
 test("tap a request -> עריכה | מחיקה | חזרה", async () => {
@@ -107,7 +107,7 @@ test("cap: a 6th request is refused with the cap text", async () => {
   for (const w of ["מחר אחרי 19:00", "שישי בבוקר", "שבת בבוקר", "ראשון בערב", "שני בערב"]) await create(s, "a", { when: w });
   assert.equal((await mine(s, "a")).length, 5);
   const r = await H(s, "a")({ actionId: "oneoff" });
-  assert.equal(r.text, "יש לך כבר 5 בקשות פעילות. אפשר למחוק אחת דרך 'הבקשות שלי'.");
+  assert.equal(r.text, "יש לכם כבר 5 בקשות פעילות. אפשר למחוק אחת דרך 'הבקשות שלי'.");
   const l = await H(s, "a")({ actionId: "my_requests" });
   assert.ok(!l.list.sections[0].rows.some(x => x.id === "players"));
 });

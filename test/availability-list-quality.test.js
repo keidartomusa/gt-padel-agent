@@ -27,7 +27,7 @@ test("slot list plus menu row never exceeds Meta's 10-row limit", async () => {
 
 test("summary text counts the extra list rows instead of asking the user to narrow", () => {
   const text = formatHebrew(many());
-  assert.match(text, /ועוד \d+ שעות ברשימה/);
+  assert.match(text, /ועוד \d+ אפשרויות ברשימה/);
   assert.doesNotMatch(text, /כתוב לי/);
 });
 

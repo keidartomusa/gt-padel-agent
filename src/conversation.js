@@ -88,6 +88,23 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  const reask=async s=>{switch(s.step){case"avail_when":return list(AVAIL_ASK,WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));case"board_when":return list(BOARD_ASK,WHEN_OPTIONS.map((x,i)=>({id:`bwhen:${i}`,title:x})));case"when":case"edit_when":return{text:s.step==="edit_when"&&(await ownReq(s.editId))?.recurring?SCHEDULE_ASK:WHEN_ASK};case"schedule":return{text:SCHEDULE_ASK};
    case"level":case"edit_level":return list(LEVEL_ASK,LEVEL_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"pc":return list(PC_ASK,PC_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"duration":case"edit_duration":return list(DURATION_ASK,DURATION_ROWS());case"flex":case"edit_flex":return list(FLEX_ASK,FLEX_ROWS());case"edit_party":return list("כמה שחקנים אתם?",PARTY_ROWS());case"court":case"edit_court":return btn("כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);
    case"mode":return btn(PLAYERS_MENU,PLAYERS_BTNS);case"time_ask":return timeAsk(s.tDate,null);case"nw_day":return s.nwDays?list("באיזה יום בשבוע הבא?",s.nwDays.map((d,i)=>({id:`nw:${i}`,title:d.label}))):null;case"leave_confirm":return btn(LEAVE_ASK,[{id:"leave_yes",title:"כן, להסיר"},{id:"leave_no",title:"לא"}]);case"name_confirm":return btn(`לשנות את השם ${fromName(s.oldName)} ${toName(s.newName)}?`,[{id:"name_yes",title:"כן, לשנות"},{id:"name_no",title:"לא"}]);default:return null;}};
+ // Items 3 and 9: one routine decides the next missing field, so known answers are never asked again.
+ const finish=async(st,d,prefix="")=>{if(!name)return askName({pending:"pfinish",resume:{...st,flow:"players",step:"ready",draft:d}},prefix);const request={...d,displayName,id:id(),userId,flexMinutes:d.flexMinutes??0,active:true,createdAt:now.toISOString()};
+   if(!request.recurring&&!request.hasCourt){const availability=await availabilityFn({date:request.date,startMinute:request.startMinute,endMinute:request.endMinute,durationMinutes:request.durations[0]},{today:today()});if(!availability.slots?.length){await set({flow:"players",step:"when",draft:{...d,date:undefined,startMinute:undefined,endMinute:undefined}});return{text:"לא מצאתי מגרש פנוי שמתאים לחלון ולמשך שביקשתם. הבקשה לא פורסמה כדי שלא נחפש שחקנים למשחק שלא ניתן להזמין.",buttons:[{id:"retry_when",title:"לנסות זמן אחר"},{id:"availability",title:"בדיקת זמינות"}]};}request.courtSlot=availability.slots[0];}
+   await store.set(`request/${request.id}`,request);await set({});const matches=await findMatches(store,request,now),saved=`${prefix}הבקשה נשמרה ותופיע בלוח המשחקים.`;
+   if(!matches.length)return btn(`${saved}\n\nאעדכן כשאמצא התאמה.`,[MY_REQ,{id:"players",title:"בקשה נוספת"},MENU]);
+   // Item 4: the matches as a list, each one connectable right away.
+   const top=matches.slice(0,3),response={text:`${saved}\n\n${top.length===1?"מצאתי התאמה אפשרית ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:":`מצאתי ${top.length} התאמות אפשריות ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:`}`,list:{button:"להתאמות",sections:[{title:"התאמות",rows:top.map(m=>({id:`connect:${m.id}`,title:`${m.displayName} · ${m.level}`.slice(0,24),description:`${partyText(m.partySize)}${m.hasCourt?" · יש מגרש":""}${levelNote(request.level,m.level)}`.slice(0,72)})).concat(MY_REQ,MENU)}]}};
+   response.notifications=matchNotifications(request,top);return response;};
+ const nextStep=async(st,d,prefix="")=>{const cancel=st.autoOpen?[CANCEL_ROW]:[],base={...st,flow:"players",draft:d};
+   if(!d.level){await set({...base,step:"level"});return list(prefix+LEVEL_ASK,LEVEL_ROWS().concat(cancel));}
+   if(d.partySize==null){await set({...base,step:"pc"});return list(prefix+PC_ASK,PC_ROWS().concat(st.prefilled?[{id:"pc_reset",title:"לשנות רמה ומשך"}]:[],cancel));}
+   if(d.hasCourt==null){await set({...base,step:"court"});return btn(prefix+"כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);}
+   if(d.recurring?!d.weekdays?.length:!d.date){await set({...base,step:d.recurring?"schedule":"when"});return{text:prefix+(d.recurring?SCHEDULE_ASK:WHEN_ASK)};}
+   if(!d.durations?.length){await set({...base,step:"duration"});return list(prefix+DURATION_ASK,DURATION_ROWS());}
+   // Tom 23.9 13:14: with a court the time is fixed - no flex question.
+   if(d.flexMinutes==null){if(d.hasCourt)d={...d,flexMinutes:0};else{await set({...base,draft:d,step:"flex"});return list(prefix+FLEX_ASK,FLEX_ROWS());}}
+   return finish(st,d,prefix);};
  // Tom 23.9 14:58: while a question is waiting, a greeting is not a reason to drop it - ask the same question again. "תפריט" still exits.
  if(!actionId&&state.step&&/^(היי|הי|שלום|start)[.!]?$/i.test(input)){const r=await reask(state);if(r)return r;}
  if(/^(היי|הי|שלום|תפריט|menu|start)$/i.test(input)||input==="menu"){if(state.step)await set({});return withMyRequests(await menuFor());}
@@ -123,7 +140,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  if(input==="availability"){await set({flow:"availability",step:"avail_when"});return list(AVAIL_ASK,WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));}
  if(input.startsWith("when:")){await set({});return{mode:"availability",query:whenLabel(input.slice(5))};}
  if(state.step==="avail_when"&&text&&!actionId){if(DAY_WORD.test(text)){const p=await parseWhen(text,now);if(p.needsClarification==="unclear"&&p.dateExplicit&&p.startMinute==null)return timeAsk(p.date,{flow:"availability",step:"avail_when"});}await set({});return{mode:"availability",query:text};}
- if(input==="availability"||(!(!actionId&&["when","schedule","board_when"].includes(state.step))&&!/מי מחפש|שחקן פנוי|בקשות פתוחות/.test(input)&&/מגרש(?:ים)?(?:\s+פנוי)?|זמינות|איזה מגרשים|איפה מזמינים|מה פנוי|תבדוק|(?:היום|מחר|מחרתיים|ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת|\d{1,2}[/.]\d{1,2}|\d{1,2}\s*לחודש).*(?:בוקר|צהריים|אחה"?צ|ערב|לילה|שעה|שעתיים|דקות|דק|\d{1,2}:\d{2}|אחרי\s*\d|לפני\s*\d|ב-?\d{1,2}\b)|^\s*\d{1,2}[/.]\d{1,2}\b/.test(input)))return{mode:"availability",query:text||input};
+ if(input==="availability"||(!(!actionId&&(["when","schedule","board_when"].includes(state.step)||(state.flow==="players"&&["level","pc","court","duration","flex"].includes(state.step))))&&!/מי מחפש|שחקן פנוי|בקשות פתוחות/.test(input)&&/מגרש(?:ים)?(?:\s+פנוי)?|זמינות|איזה מגרשים|איפה מזמינים|מה פנוי|תבדוק|(?:היום|מחר|מחרתיים|ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת|\d{1,2}[/.]\d{1,2}|\d{1,2}\s*לחודש).*(?:בוקר|צהריים|אחה"?צ|ערב|לילה|שעה|שעתיים|דקות|דק|\d{1,2}:\d{2}|אחרי\s*\d|לפני\s*\d|ב-?\d{1,2}\b)|^\s*\d{1,2}[/.]\d{1,2}\b/.test(input)))return{mode:"availability",query:text||input};
  if(input==="players"||/מציאת שחקנים/.test(input)){await set({flow:"players",step:"mode"});return btn(PLAYERS_MENU,PLAYERS_BTNS);}
  // QA 23.9: "לנסות זמן אחר" keeps level/party/court and asks only for a new time.
  if(input==="retry_when"&&state.flow==="players"&&state.step==="when")return btn(WHEN_ASK,[MENU]);
@@ -160,30 +177,22 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    const notes=[{to:connection.fromUserId,response:{text:`החיבור עם ${displayName} אושר! אפשר לשלוח הודעה בלחיצה.${group}`,ctaUrl:{displayText:"שלח הודעה",url:waLink(userId)}}}];
    if(openReq)notes.push({to:userId,response:btn(`סגרתם משחק? אם כן, אוריד את הבקשה מהלוח.${bookLine}`,[{id:`closed:${openReq.id}`,title:"כן, סגרנו"},MENU])});
    return{text:`חיברתי ביניכם! אפשר לשלוח הודעה ${toName(connection.fromDisplayName)} בלחיצה.${group}${openReq?"":bookLine}`,ctaUrl:{displayText:"שלח הודעה",url:waLink(connection.fromUserId)},notifications:notes};}
- // Items 3 and 9: one routine decides the next missing field, so known answers are never asked again.
- const finish=async(st,d,prefix="")=>{if(!name)return askName({pending:"pfinish",resume:{...st,flow:"players",step:"ready",draft:d}},prefix);const request={...d,displayName,id:id(),userId,flexMinutes:d.flexMinutes??0,active:true,createdAt:now.toISOString()};
-   if(!request.recurring&&!request.hasCourt){const availability=await availabilityFn({date:request.date,startMinute:request.startMinute,endMinute:request.endMinute,durationMinutes:request.durations[0]},{today:today()});if(!availability.slots?.length){await set({flow:"players",step:"when",draft:{...d,date:undefined,startMinute:undefined,endMinute:undefined}});return{text:"לא מצאתי מגרש פנוי שמתאים לחלון ולמשך שביקשתם. הבקשה לא פורסמה כדי שלא נחפש שחקנים למשחק שלא ניתן להזמין.",buttons:[{id:"retry_when",title:"לנסות זמן אחר"},{id:"availability",title:"בדיקת זמינות"}]};}request.courtSlot=availability.slots[0];}
-   await store.set(`request/${request.id}`,request);await set({});const matches=await findMatches(store,request,now),saved=`${prefix}הבקשה נשמרה ותופיע בלוח המשחקים.`;
-   if(!matches.length)return btn(`${saved}\n\nאעדכן כשאמצא התאמה.`,[MY_REQ,{id:"players",title:"בקשה נוספת"},MENU]);
-   // Item 4: the matches as a list, each one connectable right away.
-   const top=matches.slice(0,3),response={text:`${saved}\n\n${top.length===1?"מצאתי התאמה אפשרית ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:":`מצאתי ${top.length} התאמות אפשריות ושלחתי הצעה. אפשר גם להתחבר כבר עכשיו:`}`,list:{button:"להתאמות",sections:[{title:"התאמות",rows:top.map(m=>({id:`connect:${m.id}`,title:`${m.displayName} · ${m.level}`.slice(0,24),description:`${partyText(m.partySize)}${m.hasCourt?" · יש מגרש":""}${levelNote(request.level,m.level)}`.slice(0,72)})).concat(MY_REQ,MENU)}]}};
-   response.notifications=matchNotifications(request,top);return response;};
- const nextStep=async(st,d,prefix="")=>{const cancel=st.autoOpen?[CANCEL_ROW]:[],base={...st,flow:"players",draft:d};
-   if(!d.level){await set({...base,step:"level"});return list(prefix+LEVEL_ASK,LEVEL_ROWS().concat(cancel));}
-   if(d.partySize==null){await set({...base,step:"pc"});return list(prefix+PC_ASK,PC_ROWS().concat(st.prefilled?[{id:"pc_reset",title:"לשנות רמה ומשך"}]:[],cancel));}
-   if(d.hasCourt==null){await set({...base,step:"court"});return btn(prefix+"כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);}
-   if(d.recurring?!d.weekdays?.length:!d.date){await set({...base,step:d.recurring?"schedule":"when"});return{text:prefix+(d.recurring?SCHEDULE_ASK:WHEN_ASK)};}
-   if(!d.durations?.length){await set({...base,step:"duration"});return list(prefix+DURATION_ASK,DURATION_ROWS());}
-   // Tom 23.9 13:14: with a court the time is fixed - no flex question.
-   if(d.flexMinutes==null){if(d.hasCourt)d={...d,flexMinutes:0};else{await set({...base,draft:d,step:"flex"});return list(prefix+FLEX_ASK,FLEX_ROWS());}}
-   return finish(st,d,prefix);};
  if(input==="oneoff"||input==="recurring"){if((await userActiveRequests(store,userId,now)).length>=MAX_ACTIVE_REQUESTS)return btn(CAP_TEXT,[MY_REQ,MENU]);const last=await lastRequest(store,userId),draft={recurring:input==="recurring",displayName};if(!last)return nextStep({},draft);draft.level=last.level;draft.durations=last.durations;return nextStep({prefilled:true},draft,`לקחתי מהבקשה הקודמת: רמה ${last.level}, ${last.durations.length>1?"משך גמיש":`${last.durations[0]} דקות`}.\n\n`);}
  if(input==="pfinish"&&state.flow==="players"&&state.draft)return finish(state,state.draft);
  if(state.flow==="players"&&state.step==="pc"&&input==="pc_reset")return nextStep({...state,prefilled:false},{...state.draft,level:undefined,durations:undefined});
- if(state.flow==="players"&&state.step==="level"&&input.startsWith("level:"))return nextStep(state,{...state.draft,level:levelValue(input.slice(6))});
- if(state.flow==="players"&&state.step==="pc"&&/^pc:[123]:(?:yes|no)$/.test(input)){const[,n,c]=input.split(":");return nextStep(state,{...state.draft,partySize:Number(n),hasCourt:c==="yes"});}
- if(state.flow==="players"&&(state.step==="when"||state.step==="schedule")&&text&&!actionId){
-   if(state.step==="schedule"&&!recurringDays(text).length)return{text:"בזמינות קבועה צריך לציין ימים בשבוע, למשל: שני ורביעי אחרי 20:00. לחיפוש משחק ליום מסוים חזרו לתפריט ובחרו \"חסרים לי שחקנים\"."};
+ // Any answer to a registration field is kept, whichever question is showing (buttons from earlier messages included); then the next missing field is asked.
+ const REG_STEPS=["level","pc","party","court","when","schedule","duration","flex"];
+ if(state.flow==="players"&&state.draft&&actionId&&REG_STEPS.includes(state.step)){let f=null;
+   if(input.startsWith("level:"))f={level:levelValue(input.slice(6))};
+   else if(/^pc:[123]:(?:yes|no)$/.test(input)){const[,n,c]=input.split(":");f={partySize:Number(n),hasCourt:c==="yes"};}
+   else if(/^party:[123]$/.test(input))f={partySize:Number(input.slice(6))};
+   else if(/^court:(?:yes|no)$/.test(input))f={hasCourt:input.endsWith("yes")};
+   else if(input.startsWith("duration:")){const v=input.slice(9);f={durations:v==="flex"?[60,90,120]:[Number(v)]};}
+   else if(input.startsWith("flex:"))f={flexMinutes:flexMinutesFor(input.slice(5))};
+   if(f)return nextStep(state,{...state.draft,...f});}
+ const whenLike=t=>DAY_WORD.test(t)||/\d/.test(t);
+ if(state.flow==="players"&&state.draft&&text&&!actionId&&(state.step==="when"||state.step==="schedule"||(["level","pc","court","duration","flex"].includes(state.step)&&whenLike(text)))){
+   if(state.draft.recurring&&!recurringDays(text).length)return{text:"בזמינות קבועה צריך לציין ימים בשבוע, למשל: שני ורביעי אחרי 20:00. לחיפוש משחק ליום מסוים חזרו לתפריט ובחרו \"חסרים לי שחקנים\"."};
    const rec=state.draft.recurring,p=await parseWhen(text,now);
    if(p.needsClarification==="unclear"&&!rec){if(p.dateExplicit&&p.startMinute==null)return timeAsk(p.date,state);return{text:UNCLEAR_WHEN};}
    if(p.ambiguousHour&&!rec){await set({step:"ampm",apResume:state,apText:text});return btn(`התכוונתם ל-${p.ambiguousHour} בבוקר או ל-${p.ambiguousHour} בערב?`,[{id:"ampm:am",title:`${p.ambiguousHour} בבוקר`},{id:"ampm:pm",title:`${p.ambiguousHour} בערב`}]);}
@@ -191,15 +200,10 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    // Item 14: recurring availability is echoed too.
    const echo=`רשמתי: ${rec?recurringEcho(draft):whenEcho(draft)}.\n\n`;
    // Item 3: no court -> check availability right away, before any more questions.
-   if(!rec&&!draft.hasCourt){const a=await availabilityFn({date:draft.date,startMinute:draft.startMinute,endMinute:draft.endMinute,durationMinutes:draft.durations?.[0]||60},{today:today()});if(!a.slots?.length)return{text:`${echo}לא מצאתי מגרש פנוי בחלון הזה, ולכן לא אחפש שחקנים למשחק שלא ניתן להזמין. אפשר לנסות זמן אחר או לבדוק מה פנוי.`,buttons:[{id:"retry_when",title:"לנסות זמן אחר"},{id:"availability",title:"בדיקת זמינות"}]};}
+   if(!rec&&draft.hasCourt===false){const a=await availabilityFn({date:draft.date,startMinute:draft.startMinute,endMinute:draft.endMinute,durationMinutes:draft.durations?.[0]||60},{today:today()});if(!a.slots?.length)return{text:`${echo}לא מצאתי מגרש פנוי בחלון הזה, ולכן לא אחפש שחקנים למשחק שלא ניתן להזמין. אפשר לנסות זמן אחר או לבדוק מה פנוי.`,buttons:[{id:"retry_when",title:"לנסות זמן אחר"},{id:"availability",title:"בדיקת זמינות"}]};}
    return nextStep(state,draft,echo);}
- if(state.flow==="players"&&state.step==="duration"&&input.startsWith("duration:")){const v=input.slice(9);return nextStep(state,{...state.draft,durations:v==="flex"?[60,90,120]:[Number(v)]});}
- // Buttons from messages sent before the critique round (separate party / court questions).
- if(state.flow==="players"&&state.step==="party"&&input.startsWith("party:"))return nextStep(state,{...state.draft,partySize:Number(input.slice(6))});
- if(state.flow==="players"&&state.step==="court"&&input.startsWith("court:"))return nextStep(state,{...state.draft,hasCourt:input.endsWith("yes")});
- if(state.flow==="players"&&state.step==="flex"&&input.startsWith("flex:"))return nextStep(state,{...state.draft,flexMinutes:flexMinutesFor(input.slice(5))});
- // Item 10: outside a flow, a day without an hour ("מחר אחרי העבודה") -> ask the hour, then check courts.
- if(text&&!actionId&&!state.step&&DAY_WORD.test(text)){const p=await parseWhen(text,now);if(p.needsClarification==="unclear"&&p.dateExplicit&&p.startMinute==null)return timeAsk(p.date,{flow:"availability",step:"avail_when"});}
+
+ // Item 10 applies inside flows only: Tom 23.9 ~12:58 kept "לא הבנתי" for a no-step "מחר אחרי העבודה".
  // Item 11: a question the bot cannot answer gets the two things it can do (club contact needs a number from Tom).
  if(text.includes("?"))return btn("את זה אני עוד לא יודע לענות. אני יכול לבדוק מגרש פנוי או למצוא שחקנים.",[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"}]);
  if(seen)return btn("לא הבנתי. אפשר לבחור מה לעשות:",[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"}]);
