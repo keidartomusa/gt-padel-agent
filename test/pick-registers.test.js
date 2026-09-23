@@ -89,12 +89,41 @@ test("live 19:13: a full foursome stays on the board as מלא, is never offered
   assert.match(xb.text, /מלא/); assert.ok(!rows(xb).some(r => r.id === `connect:${t.id}`));
   const { findMatches } = await import("../src/matching.js"); assert.ok(!(await findMatches(s, x, now)).some(m => m.id === t.id));
   const mr = await H(s, "me", "תום")({ actionId: "my_requests" }); assert.ok(rows(mr).some(r => r.id === `req:${t.id}`));
-  const card = await H(s, "me", "תום")({ actionId: `req:${t.id}` }); assert.match(card.text, /בקבוצה: תימור, תום \(מלא\)/); assert.deepEqual(card.buttons.map(b => b.id), ["my_requests"]);
+  const card = await H(s, "me", "תום")({ actionId: `req:${t.id}` }); assert.match(card.text, /בקבוצה: תימור, תום \(מלא\)/); assert.deepEqual(card.buttons.map(b => b.id), [`rm:${t.id}`, "my_requests"]);
   const tc = await H(s, "t", "תימור")({ actionId: `req:${t.id}` }); assert.ok(rows(tc).some(r => r.id === `rm:${t.id}`));
-  const who = await H(s, "t", "תימור")({ actionId: `rm:${t.id}` }); assert.deepEqual(rows(who).map(r => r.id), [`rmu:${t.id}:me`, `req:${t.id}`]);
+  const who = await H(s, "t", "תימור")({ actionId: `rm:${t.id}` }); assert.deepEqual(rows(who).map(r => r.id), [`rmu:${t.id}:t`, `rmu:${t.id}:me`, `req:${t.id}`]);
   const ask = await H(s, "t", "תימור")({ actionId: `rmu:${t.id}:me` }); assert.match(ask.text, /^להסיר את תום מהמשחק/);
   const done = await H(s, "t", "תימור")({ actionId: `rmok:${t.id}:me` }); assert.match(done.text, /הסרתי את תום\. יש עכשיו 1 מתוך 4/);
   R = await s.get(`request/${t.id}`); assert.equal(R.full, false); assert.equal(R.partySize, 1); assert.deepEqual(R.joined, []);
   assert.ok(done.notifications.some(n => n.to === "me" && /הבקשה שלכם חזרה ללוח/.test(n.response.text)));
   assert.equal((await reqs(s, "me")).length, 1); assert.ok((await findMatches(s, x, now)).some(m => m.id === t.id));
+});
+
+test("live 19:36: any member can remove the opener or themselves; removing the opener hands the game to the next member", async () => {
+  const setup = async () => { const s = memoryStore(); const t = await seed(s, "t", "תימור"); await seed(s, "me", "תום", "מחר אחרי 19:00", "pc:3:yes");
+    await H(s, "me", "תום")({ actionId: `connect:${t.id}` }); const c = (await s.list("connection/")).map(x => x.value).find(x => x.fromUserId === "me" && x.status === "pending");
+    await H(s, "t", "תימור")({ actionId: `accept:${c.id}` }); return { s, t }; };
+  // a joiner removes the opener
+  let { s, t } = await setup();
+  const who = await H(s, "me", "תום")({ actionId: `rm:${t.id}` }); assert.deepEqual(rows(who).map(r => r.title), ["תימור", "תום (אני)", "חזרה"]);
+  const ask = await H(s, "me", "תום")({ actionId: `rmu:${t.id}:t` }); assert.match(ask.text, /^להסיר את תימור מהמשחק/);
+  const done = await H(s, "me", "תום")({ actionId: `rmok:${t.id}:t` }); assert.match(done.text, /^הסרתי את תימור\. יש עכשיו 3 מתוך 4, והמשחק פתוח שוב להתאמות\. המשחק רשום עכשיו עליכם\.$/);
+  let R = await s.get(`request/${t.id}`); assert.equal(R.userId, "me"); assert.equal(R.displayName, "תום"); assert.equal(R.partySize, 3); assert.deepEqual(R.joined, []); assert.equal(R.full, false); assert.equal(R.active, true);
+  const tBack = await reqs(s, "t"); assert.equal(tBack.length, 1); assert.equal(tBack[0].partySize, 1); assert.deepEqual(tBack[0].joined, []); assert.notEqual(tBack[0].id, t.id);
+  assert.ok(done.notifications.some(n => n.to === "t" && /הקבוצה עדכנה שאתם כבר לא חלק מהמשחק\. הבקשה שלכם חזרה ללוח/.test(n.response.text)));
+  const mine = await H(s, "me", "תום")({ actionId: `req:${t.id}` }); assert.ok([...(mine.buttons || []), ...rows(mine)].some(b => b.id === `edit:${t.id}`), "new owner can edit the game");
+  const { findMatches } = await import("../src/matching.js"); assert.ok((await findMatches(s, tBack[0], now)).some(m => m.id === t.id), "opener can be matched back into the game");
+  // the opener leaves on their own
+  ({ s, t } = await setup());
+  const self = await H(s, "t", "תימור")({ actionId: `rmu:${t.id}:t` }); assert.match(self.text, /^לצאת מהמשחק/); assert.equal(self.buttons[0].title, "כן, לצאת");
+  const left = await H(s, "t", "תימור")({ actionId: `rmok:${t.id}:t` }); assert.match(left.text, /^יצאתם מהמשחק \(.+\)\. הבקשה שלכם חזרה ללוח/);
+  assert.ok(!left.notifications.some(n => n.to === "t")); assert.ok(left.notifications.some(n => n.to === "me" && /תימור כבר לא בקבוצה.*המשחק רשום עכשיו עליכם/.test(n.response.text)));
+  R = await s.get(`request/${t.id}`); assert.equal(R.userId, "me");
+  // a joiner leaves on their own
+  ({ s, t } = await setup());
+  const out = await H(s, "me", "תום")({ actionId: `rmok:${t.id}:me` }); assert.match(out.text, /^יצאתם מהמשחק/);
+  R = await s.get(`request/${t.id}`); assert.equal(R.userId, "t"); assert.equal(R.partySize, 1); assert.equal((await reqs(s, "me")).length, 1);
+  assert.ok(out.notifications.some(n => n.to === "t" && /תום כבר לא בקבוצה/.test(n.response.text)) && !out.notifications.some(n => n.to === "me"));
+  // an outsider cannot remove anyone
+  const nope = await H(s, "x", "רון")({ actionId: `rmok:${t.id}:t` }); assert.match(nope.text, /כבר לא פעילה/);
 });
