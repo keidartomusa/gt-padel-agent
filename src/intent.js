@@ -43,7 +43,7 @@ export function parseIntentLocal(raw,now=new Date()){raw=spelledHours(canon(raw)
   else if(slash){const candidate=`${slash[3]||today.slice(0,4)}-${pad(slash[2])}-${pad(slash[1])}`;if(validIso(candidate)){date=candidate;dateExplicit=true;}}
   else if(dom){const day=Number(dom[1]||dom[2]);if(day>=1&&day<=31){const candidate=dateFromDayOfMonth(day,today);if(candidate){date=candidate;dateExplicit=true;}}}
   if(!dateExplicit){ const w=text.match(/(?:יום\s*)?(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?:\s+(הבא))?/); if(w){date=nextWeekday(today,HEBREW_WEEKDAYS.get(w[1]),Boolean(w[2]));dateExplicit=true;} }
-  const clockText=text.replace(/\b\d{1,2}[/.]\d{1,2}(?:[/.](20\d{2}))?\b/g," ").replace(/(?:ב)?עוד\s+\d{1,2}\s*(?:ימים|שבועות)/g," ").replace(/\d{1,2}\s*(?:ל|ב)?חודש/g," ");let [startMinute,endMinute,ambiguousHour]=parseClock(clockText);if(startMinute==null)for(const {re,range} of WINDOWS)if(re.test(text)){[startMinute,endMinute]=range;}
+  const clockText=text.replace(/\b\d{1,2}[/.]\d{1,2}(?:[/.](20\d{2}))?\b/g," ").replace(/(?:ב)?עוד\s+\d{1,2}\s*(?:ימים|שבועות)/g," ").replace(/\d{1,2}\s*(?:ל|ב)?חודש/g," ").replace(new RegExp(`\\d{1,2}\\s*(?:ל|ב)?-?\\s*(?:${MONTHS.join("|")})`,"g")," ");let [startMinute,endMinute,ambiguousHour]=parseClock(clockText);if(startMinute==null)for(const {re,range} of WINDOWS)if(re.test(text)){[startMinute,endMinute]=range;}
   // Relational clock constraints are stronger than broad day-parts. "אחרי 20:30 בערב" starts at 20:30.
   const after=text.match(/אחרי\s*(\d{1,2})(?::(\d{2}))?/);
   const before=text.match(/לפני\s*(\d{1,2})(?::(\d{2}))?/);
