@@ -17,7 +17,7 @@ const TERMINAL = [
 ];
 const terminalOf = t => TERMINAL.find(([, f]) => f(t))?.[0] || null;
 async function convo(title, type, user, steps) { const turns = []; for (const s of steps) { const s2 = typeof s === "function" ? s(turns.at(-1)) : s; if (!s2) break; turns.push(...await turnAll(user, s2)); } out.push({ title, type, identity: { userId: user.userId, displayName: user.displayName }, turns }); return turns; }
-const pickSlot = last => { const rows = options(last.response).filter(o => o.id.startsWith("book:")); if (!rows.length) return null; const r = pick(rand, rows); return { actionId: r.id, title: r.title }; };
+const pickSlot = last => { const rows = options(last.response).filter(o => o.id.startsWith("bk:")); if (!rows.length) return null; const r = pick(rand, rows); return { actionId: r.id, title: r.title }; };
 const Q = ["יש מגרש היום בערב ל90 דקות?","מה פנוי מחר בערב לשעה?","תבדוק שישי בצהריים לשעתיים","שבת בבוקר, מגרש לשעה וחצי","יש משהו ביום ראשון אחרי 19:00?","מה פנוי ביום שני לפני 18:00 ל90 דק","שלישי בלילה לשעה וחצי","רביעי הבא בערב ל90 דקות","מגרש ב25/9 בשעה 17:00 ל90 דקות","מתי יש מגרש ב30 לחודש בערב?","יש מגרש מחר אחהצ לשעה וחצי","מתי יש מגרשים פנויים אחרי 20:30 בערב ל90 דק","מגרש מחר לפני 08:00 ל60 דק","אפשר מחר ב16:00 לשעתיים?","יש מגרש מחר בערב?","מגרש היום בצהריים ל60 דקות","חמישי בבוקר לשעתיים","שישי בערב ל90 דקות","שבת בצהריים לשעה וחצי","ראשון בבוקר לשעה","שני בערב לשעתיים","שלישי אחר הצהריים לשעה וחצי","רביעי בבוקר ל60 דקות","25/9 בצהריים ל120 דקות","26/9 בשעה 12:00 ל90 דקות","27/9 אחרי 21:00 ל90 דקות","28/9 לפני 09:00 לשעה","29/9 ב16:00 לשעתיים","30/9 אחרי 17:00 לשעה וחצי","מחר ב17:30 ל90 דק","מחר אחרי 18:30 לשעה","מחר לפני 19:00 לשעתיים","שישי ב12:30 ל60 דקות","שבת אחרי 12 ל120 דקות","ראשון ב21:00 ל90 דקות","שני ב06:00 לשעה","שלישי ב16:30 לשעה וחצי","רביעי ב17:00 לשעתיים","יש זמינות מחר בערב?","איזה מגרשים פנויים בשישי בצהריים?","מה פנוי בשבת בצהריים ל90 דקות?","איפה מזמינים מגרש בראשון בערב?","יש מגרשים ביום שני בבוקר?","מגרש ביום שלישי אחהצ ל60 דקות","מגרש היום לפני 06:00 לשעה"];
 // 1-45: availability question -> slot list -> random row -> CTA (or a clear full-day statement)
 for (let i = 0; i < Q.length; i++) await convo(`${i + 1}. זמינות: ${Q[i]}`, "availability", makeUser(`97250100${String(i + 1).padStart(4, "0")}`, "דנה"), [{ text: Q[i] }, pickSlot]);
@@ -29,13 +29,13 @@ async function menuJourney(n) {
   const push = async s => { const ts = await turnAll(user, s); turns.push(...ts); return ts.at(-1); };
   let t = await push({ text: pick(rand, ["שלום", "היי", "hi", "מה קורה", "בוקר טוב"]) });
   const wander = Math.floor(rand() * 4);
-  for (let k = 0; k < wander; k++) { const opts = options(t.response).filter(o => !o.id.startsWith("book:")); t = rand() < 0.35 || !opts.length ? await push({ text: pick(rand, odd) }) : await push({ actionId: (o => o.id)(pick(rand, opts)), title: "" }); }
+  for (let k = 0; k < wander; k++) { const opts = options(t.response).filter(o => !o.id.startsWith("bk:")); t = rand() < 0.35 || !opts.length ? await push({ text: pick(rand, odd) }) : await push({ actionId: (o => o.id)(pick(rand, opts)), title: "" }); }
   t = await push({ text: "תפריט" });
   const goal = pick(rand, ["availability", "players"]);
   const first = options(t.response).find(o => o.id === goal); t = await push({ actionId: first.id, title: first.title });
   for (let guard = 0; guard < 14 && !terminalOf(t); guard++) {
     const opts = options(t.response).filter(o => o.id !== "menu");
-    if (goal === "availability") { const slot = opts.filter(o => o.id.startsWith("book:")), whenRows = opts.filter(o => o.id.startsWith("when:")); if (!slot.length && whenRows.length && rand() < 0.5) { const w = pick(rand, whenRows); t = await push({ actionId: w.id, title: w.title }); continue; } t = slot.length ? await push((r => ({ actionId: r.id, title: r.title }))(pick(rand, slot))) : await push({ text: pick(rand, ["מחר בערב ל90 דקות", "שישי בצהריים לשעה", "שבת בבוקר לשעתיים", "ראשון אחרי 19:00 ל90 דק"]) }); continue; }
+    if (goal === "availability") { const slot = opts.filter(o => o.id.startsWith("bk:")), whenRows = opts.filter(o => o.id.startsWith("when:")); if (!slot.length && whenRows.length && rand() < 0.5) { const w = pick(rand, whenRows); t = await push({ actionId: w.id, title: w.title }); continue; } t = slot.length ? await push((r => ({ actionId: r.id, title: r.title }))(pick(rand, slot))) : await push({ text: pick(rand, ["מחר בערב ל90 דקות", "שישי בצהריים לשעה", "שבת בבוקר לשעתיים", "ראשון אחרי 19:00 ל90 דק"]) }); continue; }
     if (opts.length) { const o = pick(rand, opts); t = await push({ actionId: o.id, title: o.title }); } else t = await push({ text: /ימים|בדרך כלל/.test(t.response.text || "") ? pick(rand, ["ימי שני ורביעי אחרי 20:00", "ראשון וחמישי בבוקר", "שלישי אחרי 18:00"]) : pick(rand, ["מחר אחרי 19:00", "שישי בבוקר", "מחר ב18:00"]) });
   }
   out.push({ title: `${n}. תפריט ראשי אקראי → ${goal === "availability" ? "מגרש פנוי" : "מציאת שחקנים"} (${wander} צעדי שיטוט)`, type: "menu", identity: { userId: user.userId, displayName: user.displayName }, turns });
@@ -75,7 +75,7 @@ for (const x of out) {
     if (t.reaction !== null || t.typing !== true) problems.push(`transport: ${x.title}`);
     const rows = t.response.list?.sections.flatMap(s => s.rows) || [];
     if (rows.length > 10) problems.push(`>10 rows: ${x.title}`);
-    for (const r of rows) if (r.title.length > 24 || (r.id.startsWith("book:") && !/^(\d{1,2}\.\d{1,2} )?\d\d:\d\d–\d\d:\d\d$/.test(r.title))) problems.push(`row title: ${x.title}: ${r.title}`);
+    for (const r of rows) if (r.title.length > 24 || (r.id.startsWith("bk:") && !/^(\d{1,2}\.\d{1,2} )?\d\d:\d\d–\d\d:\d\d$/.test(r.title))) problems.push(`row title: ${x.title}: ${r.title}`);
     if (/https?:\/\//.test(t.response.text || "")) problems.push(`raw link in text: ${x.title}`);
     if (!t.outbound.length) problems.push(`no outbound payload: ${x.title}`);
   }
