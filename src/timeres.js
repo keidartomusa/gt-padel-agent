@@ -20,6 +20,7 @@ export function dateTable(today,days=15){const out=[];for(let i=0;i<=days;i++){c
 export const hhmm=m=>`${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
 // Text for the gpt prompt, generated from the constants above.
 export function rulesText(){return `- Hours with no morning/evening word: 1-7 mean PM (e.g. "ב6","שעה שש" = 18:00); 8, 9 or 10 are ambiguous -> needs_clarification="ampm" (still fill the AM value); 11 and 12 mean midday. Hours 13-23 or zero-padded ("09:00") are as written.
+- A weekday followed by "הבא" (e.g. "חמישי הבא") = that weekday in NEXT calendar week (weeks run Sunday-Saturday), never this week. A bare weekday = its next occurrence.
 - Parts of day (startMinute-endMinute): ${WINDOWS.map(w=>`${w.he}=${w.range[0]}-${w.range[1]}`).join(", ")}.`;}
 // Validator for any model answer before it can reach a user. Returns null when fine, else a reason.
 export function hourRuleViolation(text,startMinute){if(startMinute==null)return null;const t=String(text||""),h=Math.floor(startMinute/60);
