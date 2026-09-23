@@ -1,38 +1,89 @@
-import fs from 'node:fs';
-import {routeIncoming} from '../src/webhook.js';
-import {memoryStore} from '../src/store.js';
-const now=new Date('2026-09-23T00:10:00+03:00'), transcripts=[];
-const view=r=>({text:r.text,buttons:r.buttons?.map(x=>x.title),list:r.list?.sections?.flatMap(s=>s.rows.map(x=>x.title)),messages:r.messages,notifications:r.notifications?.map(x=>({to:x.to,text:x.response.text,buttons:x.response.buttons?.map(b=>b.title)}))});
-const yes=async i=>({kind:'availability',date:i.date,slots:[{courtId:'c3',courtName:'3',start:'19:00',end:'20:30',durationMinutes:i.durationMinutes,price:null}]});
-const no=async i=>({kind:'availability',date:i.date,slots:[]});
-async function run(title,steps,{store=memoryStore(),userId=`u-${transcripts.length+1}`,name='דנה',availabilityFn=yes,type='conversation'}={}){const turns=[];for(const step of steps){turns.push({from:'user',text:step.text||`[${step.actionId}]`});const r=await routeIncoming({userId,displayName:name,text:step.text||'',actionId:step.actionId,store,now,availabilityFn});turns.push({from:'bot',...view(r)});}transcripts.push({title,type,turns});return {store,turns};}
-const availabilityQueries=[
-'יש מגרש היום בבוקר ל90 דקות?','מה פנוי מחר בערב לשעה?','תבדוק שישי בצהריים לשעתיים','שבת בבוקר, מגרש לשעה וחצי','יש משהו ביום ראשון אחרי 19:00?','מה פנוי ביום שני לפני 18:00 ל90 דק','שלישי בלילה לשעה וחצי','רביעי הבא בערב ל90 דקות','מגרש ב25/9 בשעה 17:00 ל90 דקות','מתי יש מגרש ב30 לחודש בערב?','יש מגרש מחר אחהצ לשעה וחצי','מתי יש מגרשים פנויים אחרי 20:30 בערב ל90 דק','מגרש מחר לפני 08:00 ל60 דק','אפשר מחר ב16:00 לשעתיים?','יש מגרש מחר בערב?','מגרש היום בצהריים ל60 דקות','חמישי בבוקר לשעתיים','שישי בערב ל90 דקות','שבת בצהריים לשעה וחצי','ראשון בבוקר לשעה','שני בערב לשעתיים','שלישי אחר הצהריים לשעה וחצי','רביעי בבוקר ל60 דקות','25/9 בצהריים ל120 דקות','26/9 בשעה 12:00 ל90 דקות','27/9 אחרי 21:00 ל90 דקות','28/9 לפני 09:00 לשעה','29/9 ב16:00 לשעתיים','30/9 אחרי 17:00 לשעה וחצי','מחר ב17:30 ל90 דק','מחר אחרי 18:30 לשעה','מחר לפני 19:00 לשעתיים','שישי ב12:30 ל60 דקות','שבת אחרי 12 ל120 דקות','ראשון ב21:00 ל90 דקות','שני ב06:00 לשעה','שלישי ב16:30 לשעה וחצי','רביעי ב17:00 לשעתיים','יש זמינות מחר בערב?','איזה מגרשים פנויים בשישי בצהריים?','מה פנוי בשבת בצהריים ל90 דקות?','איפה מזמינים מגרש בראשון בערב?','יש מגרשים ביום שני בבוקר?','מגרש ביום שלישי אחהצ ל60 דקות','מגרש ברביעי הבא בערב לשעה וחצי'
+// 100 availability / menu / board conversations through the production path, live Matchpointer.
+import fs from "node:fs";
+import { memoryStore } from "../src/store.js";
+import { provider, makeUser, turn, options, rng, pick, view } from "./harness.mjs";
+const out = [], rand = rng(20260923);
+const TERMINAL = [
+  ["cta", t => t.response.ctaUrl?.url?.includes("/go/book?")],
+  ["request_saved", t => /הבקשה נשמרה/.test(t.response.text || "")],
+  ["not_published", t => /לא פורסמה/.test(t.response.text || "")],
+  ["connected", t => /חיברתי ביניכם/.test(t.response.text || "")],
+  ["declined", t => /סימנתי שלא מתאים/.test(t.response.text || "")],
+  ["connect_sent", t => /שלחתי בקשת חיבור/.test(t.response.text || "")],
+  ["muted", t => /הושתקו/.test(t.response.text || "")],
+  ["my_requests", t => /אין לך כרגע בקשות|\*הבקשות שלי\*/.test(t.response.text || "")],
+  ["board_empty", t => /לא מצאתי כרגע בקשות פתוחות/.test(t.response.text || "")],
+  ["day_full", t => /אין מגרש פנוי .* וגם לא בשאר היום/.test(t.response.text || "")]
 ];
-for(let i=0;i<availabilityQueries.length;i++){const title=`${i+1}. זמינות: ${availabilityQueries[i]}`;const first=await run(title,[{text:availabilityQueries[i]}],{type:'availability'});if(!first.turns.at(-1).messages?.some(m=>m.ctaUrl?.url?.includes('/go/book?'))){const follow='אז תבדוק שבת בצהריים לשעה וחצי';const r=await routeIncoming({userId:`u-${i+1}`,displayName:'דנה',text:follow,store:first.store,now,availabilityFn:yes});first.turns.push({from:'user',text:follow},{from:'bot',...view(r)});}}
-await run('46. ברכה בלבד ואז בדיקת מגרש',[{text:'היי'},{text:'יש מגרש מחר בערב?'}],{type:'entry'});
-await run('47. שלום ואז בדיקת מגרש',[{text:'שלום'},{text:'מגרש בשישי בצהריים ל90 דקות'}],{type:'entry'});
-await run('48. שאלה ראשונה בלי פתיחה',[{text:'יש מגרש מחר בערב?'}],{type:'entry'});
-await run('49. שאלה לא מוכרת ואז ניסוח מובן',[{text:'כמה עולה מנוי?'},{text:'יש מגרש מחר בערב?'}],{type:'entry'});
-await run('50. תפריט באמצע ואז השלמת בדיקה',[{actionId:'players'},{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'תפריט'},{text:'יש מגרש מחר בערב?'}],{type:'entry'});
-const levels=['1–2','2–2.5','2.5–3','3–3.5','3.5–4','4+'], durations=[60,90,120], parties=[1,2,3], flexes=[0,30,60];
-for(let j=0;j<40;j++){const recurring=j%5===4,level=levels[j%levels.length],duration=durations[j%durations.length],party=parties[(j+1)%3],flex=flexes[(j+2)%3],hasCourt=j%4!==0;const steps=[{actionId:recurring?'recurring':'oneoff'},{actionId:`level:${level}`},{text:recurring?'ימי שני ורביעי אחרי 20:00':`מחר אחרי ${17+(j%5)}:00`},{actionId:j%7===0?'duration:flex':`duration:${duration}`},{actionId:`party:${party}`},{actionId:`court:${hasCourt?'yes':'no'}`},{actionId:`flex:${flex}`}];await run(`${51+j}. רישום ${recurring?'זמינות קבועה':'משחק נקודתי'} ${level}, ${duration} דקות, ${party} שחקנים`,steps,{userId:`reg-${j}`,name:`שחקן ${j+1}`,type:'matching'});}
-const board=memoryStore();await run('setup-board',[{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'מחר אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:yes'},{actionId:'flex:30'}],{store:board,userId:'owner',name:'דנה'});const req=(await board.list('request/'))[0].value;
-await run('91. לוח ציבורי ובקשת חיבור',[{text:'מי מחפש משחק מחר בערב?'},{actionId:`connect:${req.id}`}],{store:board,userId:'viewer',name:'נועם',type:'matching'});const conn=(await board.list('connection/'))[0].value;
-await run('92. אישור חיבור מתווך',[{actionId:`accept:${conn.id}`}],{store:board,userId:'owner',name:'דנה',type:'matching'});
-const board2=memoryStore();await run('setup-decline',[{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'מחר אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:yes'},{actionId:'flex:30'}],{store:board2,userId:'owner2',name:'רוני'});const req2=(await board2.list('request/'))[0].value;await run('setup-connect',[{actionId:`connect:${req2.id}`}],{store:board2,userId:'viewer2',name:'גל'});const conn2=(await board2.list('connection/'))[0].value;
-await run('93. דחיית חיבור בלי חשיפת טלפון',[{actionId:`decline:${conn2.id}`}],{store:board2,userId:'owner2',name:'רוני',type:'matching'});
-await run('94. השתקה לשבוע',[{actionId:'mute_week'}],{type:'settings'});
-await run('95. השתקה מותאמת',[{actionId:'mute_custom'},{actionId:'mute_14'}],{type:'settings'});
-await run('96. אין בקשות פעילות',[{actionId:'my_requests'}],{type:'settings'});
-const mine=memoryStore();await run('setup-mine',[{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'מחר אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:yes'},{actionId:'flex:30'}],{store:mine,userId:'me',name:'תמר'});await run('97. הצגת הבקשות שלי',[{actionId:'my_requests'}],{store:mine,userId:'me',name:'תמר',type:'settings'});
-await run('98. אין מגרש חי ולכן לא מפרסמים',[{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'מחר אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:no'},{actionId:'flex:30'}],{availabilityFn:no,type:'matching'});
-await run('99. תפריט בשלב בחירת משך ואז בדיקה מלאה',[{actionId:'players'},{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'מחר אחרי 19:00'},{text:'תפריט'},{text:'מגרש בשבת בצהריים ל90 דקות'}],{type:'entry'});
-await run('100. תפריט בשלב גמישות ואז רישום חדש',[{actionId:'players'},{actionId:'oneoff'},{actionId:'level:2.5–3'},{text:'מחר ב18:00'},{actionId:'duration:60'},{actionId:'party:2'},{actionId:'court:yes'},{text:'תפריט'},{actionId:'players'},{actionId:'oneoff'},{actionId:'level:2.5–3'},{text:'מחר ב18:00'},{actionId:'duration:60'},{actionId:'party:2'},{actionId:'court:yes'},{actionId:'flex:0'}],{type:'entry'});
-const final=transcripts.filter(x=>/^([1-9]|[1-9][0-9]|100)\./.test(x.title));
-if(final.length!==100)throw Error(`expected 100, got ${final.length}`);
-for(const x of final){const last=x.turns.at(-1),text=last.text||'';if(last.from!=='bot')throw Error(`not bot terminal: ${x.title}`);const terminal=last.messages?.some(m=>m.ctaUrl?.url?.includes('/go/book?'))||/|הבקשה נשמרה|לא פורסמה|חיברתי ביניכם|סימנתי שלא מתאים|שלחתי בקשת חיבור|הושתקו|אין לך כרגע בקשות|\*הבקשות שלי\*/.test(text);if(!terminal)throw Error(`nonterminal: ${x.title}: ${text}`);if(/רוצה שאבדוק|מה תרצו לעשות\?|אפשר לנסח .*\?|מה הרמה שלכם\?|מתי תרצו|כמה זמן תרצו|כמה שחקנים|כבר יש לכם מגרש\?|עד כמה אתם גמישים/.test(text))throw Error(`dangling bot question: ${x.title}`);}
-for(const x of final.filter(x=>[46,47].includes(Number(x.title.split('.')[0])))){if(!x.turns[1].text.includes('ברוכים הבאים'))throw Error(`missing welcome: ${x.title}`);}
-if(final[47].turns[1].text.includes('ברוכים הבאים'))throw Error('question-first incorrectly welcomed');
-fs.writeFileSync('/tmp/gt-100-transcripts.json',JSON.stringify(final,null,2));
-console.log(JSON.stringify({count:final.length,engine:'routeIncoming',output:'/tmp/gt-100-transcripts.json'},null,2));
+const terminalOf = t => TERMINAL.find(([, f]) => f(t))?.[0] || null;
+async function convo(title, type, user, steps) { const turns = []; for (const s of steps) { const s2 = typeof s === "function" ? s(turns.at(-1)) : s; if (!s2) break; turns.push(await turn(user, s2)); } out.push({ title, type, identity: { userId: user.userId, displayName: user.displayName }, turns }); return turns; }
+const pickSlot = last => { const rows = options(last.response).filter(o => o.id.startsWith("book:")); if (!rows.length) return null; const r = pick(rand, rows); return { actionId: r.id, title: r.title }; };
+const Q = ["יש מגרש היום בערב ל90 דקות?","מה פנוי מחר בערב לשעה?","תבדוק שישי בצהריים לשעתיים","שבת בבוקר, מגרש לשעה וחצי","יש משהו ביום ראשון אחרי 19:00?","מה פנוי ביום שני לפני 18:00 ל90 דק","שלישי בלילה לשעה וחצי","רביעי הבא בערב ל90 דקות","מגרש ב25/9 בשעה 17:00 ל90 דקות","מתי יש מגרש ב30 לחודש בערב?","יש מגרש מחר אחהצ לשעה וחצי","מתי יש מגרשים פנויים אחרי 20:30 בערב ל90 דק","מגרש מחר לפני 08:00 ל60 דק","אפשר מחר ב16:00 לשעתיים?","יש מגרש מחר בערב?","מגרש היום בצהריים ל60 דקות","חמישי בבוקר לשעתיים","שישי בערב ל90 דקות","שבת בצהריים לשעה וחצי","ראשון בבוקר לשעה","שני בערב לשעתיים","שלישי אחר הצהריים לשעה וחצי","רביעי בבוקר ל60 דקות","25/9 בצהריים ל120 דקות","26/9 בשעה 12:00 ל90 דקות","27/9 אחרי 21:00 ל90 דקות","28/9 לפני 09:00 לשעה","29/9 ב16:00 לשעתיים","30/9 אחרי 17:00 לשעה וחצי","מחר ב17:30 ל90 דק","מחר אחרי 18:30 לשעה","מחר לפני 19:00 לשעתיים","שישי ב12:30 ל60 דקות","שבת אחרי 12 ל120 דקות","ראשון ב21:00 ל90 דקות","שני ב06:00 לשעה","שלישי ב16:30 לשעה וחצי","רביעי ב17:00 לשעתיים","יש זמינות מחר בערב?","איזה מגרשים פנויים בשישי בצהריים?","מה פנוי בשבת בצהריים ל90 דקות?","איפה מזמינים מגרש בראשון בערב?","יש מגרשים ביום שני בבוקר?","מגרש ביום שלישי אחהצ ל60 דקות","מגרש היום לפני 06:00 לשעה"];
+// 1-45: availability question -> slot list -> random row -> CTA (or a clear full-day statement)
+for (let i = 0; i < Q.length; i++) await convo(`${i + 1}. זמינות: ${Q[i]}`, "availability", makeUser(`97250100${String(i + 1).padStart(4, "0")}`, "דנה"), [{ text: Q[i] }, pickSlot]);
+// 46-70: main-menu journeys with random picks, odd inputs and mid-flow menu returns, each driven to completion
+const odd = ["בננה", "?", "👍", "מה?", "אממ", "תפריט", "סתם", "123"];
+const regText = ["מחר אחרי 19:00", "שישי בבוקר", "ימי שני ורביעי אחרי 20:00", "מחר ב18:00"];
+async function menuJourney(n) {
+  const user = makeUser(`97250200${String(n).padStart(4, "0")}`, `שחקן ${n}`), turns = [];
+  const push = async s => { const t = await turn(user, s); turns.push(t); return t; };
+  let t = await push({ text: pick(rand, ["שלום", "היי", "hi", "מה קורה", "בוקר טוב"]) });
+  const wander = Math.floor(rand() * 4);
+  for (let k = 0; k < wander; k++) { const opts = options(t.response).filter(o => !o.id.startsWith("book:")); t = rand() < 0.35 || !opts.length ? await push({ text: pick(rand, odd) }) : await push({ actionId: (o => o.id)(pick(rand, opts)), title: "" }); }
+  t = await push({ text: "תפריט" });
+  const goal = pick(rand, ["availability", "players"]);
+  const first = options(t.response).find(o => o.id === goal); t = await push({ actionId: first.id, title: first.title });
+  for (let guard = 0; guard < 14 && !terminalOf(t); guard++) {
+    const opts = options(t.response).filter(o => o.id !== "menu");
+    if (goal === "availability") { const slot = opts.filter(o => o.id.startsWith("book:")), whenRows = opts.filter(o => o.id.startsWith("when:")); if (!slot.length && whenRows.length && rand() < 0.5) { const w = pick(rand, whenRows); t = await push({ actionId: w.id, title: w.title }); continue; } t = slot.length ? await push((r => ({ actionId: r.id, title: r.title }))(pick(rand, slot))) : await push({ text: pick(rand, ["מחר בערב ל90 דקות", "שישי בצהריים לשעה", "שבת בבוקר לשעתיים", "ראשון אחרי 19:00 ל90 דק"]) }); continue; }
+    if (opts.length) { const o = pick(rand, opts); t = await push({ actionId: o.id, title: o.title }); } else t = await push({ text: /ימים|בדרך כלל/.test(t.response.text || "") ? pick(rand, ["ימי שני ורביעי אחרי 20:00", "ראשון וחמישי בבוקר", "שלישי אחרי 18:00"]) : pick(rand, ["מחר אחרי 19:00", "שישי בבוקר", "מחר ב18:00"]) });
+  }
+  out.push({ title: `${n}. תפריט ראשי אקראי → ${goal === "availability" ? "מגרש פנוי" : "מציאת שחקנים"} (${wander} צעדי שיטוט)`, type: "menu", identity: { userId: user.userId, displayName: user.displayName }, turns });
+}
+for (let n = 46; n <= 70; n++) await menuJourney(n);
+// 71-90: registrations through the players menu
+const levels = ["1–2", "2–2.5", "2.5–3", "3–3.5", "3.5–4", "4+"];
+for (let j = 0; j < 20; j++) { const n = 71 + j, recurring = j % 4 === 3, u = makeUser(`97250300${String(n).padStart(4, "0")}`, `שחקן ${n}`); await convo(`${n}. רישום ${recurring ? "זמינות קבועה" : "משחק נקודתי"} ${levels[j % 6]}`, "matching", u, [{ actionId: "players" }, { actionId: recurring ? "recurring" : "oneoff" }, { actionId: `level:${levels[j % 6]}` }, { text: recurring ? "ימי שני ורביעי אחרי 20:00" : `מחר אחרי ${17 + (j % 5)}:00` }, { actionId: j % 7 === 0 ? "duration:flex" : `duration:${[60, 90, 120][j % 3]}` }, { actionId: `party:${[1, 2, 3][(j + 1) % 3]}` }, { actionId: `court:${j % 5 === 0 ? "no" : "yes"}` }, { actionId: `flex:${[0, 30, 60][(j + 2) % 3]}` }]); }
+// 91-100: public board, brokered connection, settings
+const reg = (u, lvl = "3–3.5", when = "מחר אחרי 19:00") => [{ actionId: "players" }, { actionId: "oneoff" }, { actionId: `level:${lvl}` }, { text: when }, { actionId: "duration:90" }, { actionId: "party:1" }, { actionId: "court:yes" }, { actionId: "flex:30" }];
+const board = memoryStore(); const owner = makeUser("972503000901", "דנה", board), viewer = makeUser("972503000902", "נועם", board);
+for (const s of reg(owner)) await turn(owner, s);
+const req = (await board.list("request/"))[0].value;
+await convo("91. לוח ציבורי ובקשת חיבור", "board", viewer, [{ text: "מי מחפש משחק מחר בערב?" }, { actionId: `connect:${req.id}` }]);
+const conn = (await board.list("connection/"))[0].value;
+await convo("92. אישור חיבור מתווך", "board", owner, [{ actionId: `accept:${conn.id}` }]);
+const b2 = memoryStore(), o2 = makeUser("972503000903", "רוני", b2), v2 = makeUser("972503000904", "גל", b2);
+for (const s of reg(o2)) await turn(o2, s); const r2 = (await b2.list("request/"))[0].value; await turn(v2, { actionId: `connect:${r2.id}` }); const c2 = (await b2.list("connection/"))[0].value;
+await convo("93. דחיית חיבור בלי חשיפת טלפון", "board", o2, [{ actionId: `decline:${c2.id}` }]);
+await convo("94. השתקה לשבוע", "settings", makeUser("972503000905", "עדי"), [{ actionId: "mute_week" }]);
+await convo("95. השתקה מותאמת", "settings", makeUser("972503000906", "עדי"), [{ actionId: "mute_custom" }, { actionId: "mute_14" }]);
+await convo("96. אין בקשות פעילות", "settings", makeUser("972503000907", "עדי"), [{ actionId: "my_requests" }]);
+const mine = memoryStore(), me = makeUser("972503000908", "תמר", mine); for (const s of reg(me)) await turn(me, s);
+await convo("97. הצגת הבקשות שלי", "settings", me, [{ actionId: "my_requests" }]);
+await convo("98. לוח ריק בחלון זמן", "board", makeUser("972503000909", "יואב"), [{ text: "מי מחפש משחק מחר בערב?" }]);
+await convo("99. תפריט באמצע רישום ואז בדיקת מגרש מלאה", "menu", makeUser("972503000910", "ליאור"), [{ actionId: "players" }, { actionId: "oneoff" }, { actionId: "level:3–3.5" }, { text: "מחר אחרי 19:00" }, { text: "תפריט" }, { text: "מגרש בשבת בצהריים ל90 דקות" }, pickSlot]);
+await convo("100. תפריט בשלב גמישות ואז רישום חדש עד הסוף", "menu", makeUser("972503000911", "מאיה"), [...reg({}, "2.5–3", "מחר ב18:00").slice(0, 7), { text: "תפריט" }, ...reg({}, "2.5–3", "מחר ב18:00")]);
+// validation
+const problems = [];
+for (const x of out) for (let i = 0; i < x.turns.length - 1; i++) if (x.turns[i].input.actionId === "availability" && !/מתי תרצו לשחק/.test(x.turns[i].response.text || "")) problems.push(`no guiding question after availability pick: ${x.title}`);
+if (out.length !== 100) problems.push(`expected 100 got ${out.length}`);
+for (const x of out) {
+  const last = x.turns.at(-1), term = last && terminalOf(last);
+  if (!term) problems.push(`nonterminal: ${x.title}: ${(last?.response.text || "").slice(0, 120)}`);
+  x.terminal = term;
+  for (const t of x.turns) {
+    if (t.reaction !== "👍" || t.typing !== true) problems.push(`transport: ${x.title}`);
+    const rows = t.response.list?.sections.flatMap(s => s.rows) || [];
+    if (rows.length > 10) problems.push(`>10 rows: ${x.title}`);
+    for (const r of rows) if (r.title.length > 24 || (r.id.startsWith("book:") && !/^(\d{1,2}\.\d{1,2} )?\d\d:\d\d–\d\d:\d\d$/.test(r.title))) problems.push(`row title: ${x.title}: ${r.title}`);
+    if (/https?:\/\//.test(t.response.text || "")) problems.push(`raw link in text: ${x.title}`);
+    if (!t.outbound.length) problems.push(`no outbound payload: ${x.title}`);
+  }
+  if (/\?\s*$/.test(last?.response.text || "") && term !== "cta") problems.push(`dangling question: ${x.title}`);
+}
+const snapshot = { capturedAt: provider.startedAt, finishedAt: new Date().toISOString(), source: "https://api.matchpointer.app/rest/v1 (live, recorded during this run)", requests: provider.requests };
+fs.writeFileSync("/tmp/gt-live-provider-snapshot.json", JSON.stringify(snapshot));
+fs.writeFileSync("/tmp/gt-100-transcripts.json", JSON.stringify(out.map(x => ({ ...x, turns: x.turns.map(t => ({ user: t.input, reaction: t.reaction, typing: t.typing, bot: view(t) })) })), null, 2));
+const counts = {}; for (const x of out) counts[x.terminal] = (counts[x.terminal] || 0) + 1;
+console.log(JSON.stringify({ count: out.length, problems: problems.length, sample: problems.slice(0, 15), terminals: counts, providerRequests: provider.requests.length, capturedAt: snapshot.capturedAt }, null, 2));
+if (problems.length) process.exit(1);

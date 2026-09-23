@@ -1,5 +1,5 @@
 import { parseIntent } from "./intent.js";
-import { findAvailabilitySeries, formatHebrewSeries, availabilityChoices } from "./availability.js";
+import { findAvailability, findAvailabilitySeries, formatHebrewSeries, availabilityChoices, nearestGroups, formatNearest } from "./availability.js";
 export async function answer(text,opts={}){const intent=await parseIntent(text,opts.now,opts.fetchImpl);const results=await findAvailabilitySeries(intent,opts);return formatHebrewSeries(results,opts.formatOptions);}
 
-export async function answerResponse(text,opts={}){const intent=await parseIntent(text,opts.now,opts.fetchImpl),results=await findAvailabilitySeries(intent,opts);return{text:formatHebrewSeries(results,opts.formatOptions),choices:availabilityChoices(results,opts.formatOptions)};}
+export async function answerResponse(text,opts={}){const intent=await parseIntent(text,opts.now,opts.fetchImpl),results=await findAvailabilitySeries(intent,opts);const only=results.length===1?results[0]:null;const ranged=(intent.startMinute??0)>0||(intent.endMinute??1440)<1440;if(only&&only.kind==="availability"&&!only.slots.length&&ranged){const day=await findAvailability({...intent,dates:undefined,date:only.date,startMinute:0,endMinute:1440},opts);if(day.slots.length){const groups=nearestGroups(day,intent);return{text:formatNearest(day,groups),choices:availabilityChoices([day],{groupsFor:()=>groups})};}}return{text:formatHebrewSeries(results,opts.formatOptions),choices:availabilityChoices(results,opts.formatOptions)};}
