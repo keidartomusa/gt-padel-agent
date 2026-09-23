@@ -1,0 +1,12 @@
+import test from "node:test";import assert from "node:assert/strict";
+import { minePilot, redact } from "../src/pilot-mine.js";
+import { memoryStore } from "../src/store.js";
+test("mines unique inbound free text, drops button ids and outbound, redacts numbers, drops user ids",async()=>{const s=memoryStore();
+ await s.set("msg/972500000001/1-in",{userId:"972500000001",direction:"in",kind:"user",body:"יש מגרש מחר בערב?",at:"2026-09-23T07:00:00.000Z"});
+ await s.set("msg/972500000001/2-in",{userId:"972500000001",direction:"in",kind:"user",body:"ampm:pm",at:"2026-09-23T07:01:00.000Z"});
+ await s.set("msg/972500000002/1-in",{userId:"972500000002",direction:"in",kind:"user",body:"יש מגרש מחר בערב?",at:"2026-09-23T08:00:00.000Z"});
+ await s.set("msg/972500000002/2-in",{userId:"972500000002",direction:"in",kind:"user",body:"תתקשר 054-123-4567",at:"2026-09-23T08:01:00.000Z"});
+ await s.set("msg/972500000002/3-out",{userId:"972500000002",direction:"out",kind:"service",body:"שלום",at:"2026-09-23T08:02:00.000Z"});
+ const r=await minePilot(s);assert.equal(r.inboundTotal,4);assert.equal(r.unique,2);assert.equal(r.items[0].local.date,"2026-09-24");assert.equal(r.items[0].local.start,1140);assert.equal(r.items[1].text,"תתקשר [מספר]");assert.doesNotMatch(JSON.stringify(r),/9725000/);});
+test("redact keeps short numbers (times, dates)",()=>assert.equal(redact("מחר ב-19:00 25.9"),"מחר ב-19:00 25.9"));
+test("deploy-succeeded routes [pilot-mine] only to the mining job",async()=>{const {default:h}=await import("../netlify/functions/deploy-succeeded.js");const o=globalThis.fetch,calls=[];globalThis.fetch=async u=>{calls.push(String(u));return{status:202};};const l=console.log;console.log=()=>{};try{await h(new Request("http://x",{method:"POST",body:JSON.stringify({payload:{title:"mine [pilot-mine]",url:"https://x"}})}));}finally{globalThis.fetch=o;console.log=l;}assert.equal(calls.length,1);assert.match(calls[0],/pilot-mine-background/);});
