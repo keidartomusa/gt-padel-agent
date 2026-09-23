@@ -1,9 +1,10 @@
 // Production-path QA harness: every user turn goes through the same steps as
 // netlify/functions/whatsapp.js (reaction -> typing -> routeIncoming -> sendResponse),
 // with Meta calls captured instead of sent, and Matchpointer called live and recorded.
+import { deliver } from "../src/notify.js";
 import { routeIncoming } from "../src/webhook.js";
 import { memoryStore } from "../src/store.js";
-import { sendReaction, sendTyping, sendResponse } from "../src/whatsapp.js";
+import { sendReaction, sendTyping, sendResponse, sendTemplate } from "../src/whatsapp.js";
 process.env.DISABLE_OUTBOUND = "false";
 process.env.WHATSAPP_ACCESS_TOKEN = "qa-capture-only";
 process.env.WHATSAPP_PHONE_NUMBER_ID = "qa-phone";
@@ -27,7 +28,7 @@ export async function turn(user, step, { now = new Date() } = {}) {
   const typing = await sendTyping(msgId, undefined, capture);
   const response = await routeIncoming({ userId: user.userId, displayName: user.displayName, ...input, store: user.store, now });
   await sendResponse(user.userId, response, undefined, capture);
-  for (const n of response.notifications || []) await sendResponse(n.to, n.response, undefined, capture);
+  for (const n of response.notifications || []) await deliver(user.store, n.to, n.response, { now, send: (to, r) => sendResponse(to, r, undefined, capture), sendTemplate: (to, t) => sendTemplate(to, t.name, t.language, t.payloads, undefined, capture) });
   return { msgId, input: step.actionId ? { actionId: step.actionId, title: step.title } : { text: step.text }, reaction: reaction.sent && calls[0]?.type === "reaction" ? calls[0].reaction.emoji : null, typing: typing.sent && calls[1]?.typing_indicator?.type === "text", response, outbound: calls.slice(2) };
 }
 export const options = r => [...(r.buttons || []).map(b => ({ id: b.id, title: b.title })), ...(r.list?.sections || []).flatMap(s => s.rows.map(x => ({ id: x.id, title: x.title, description: x.description })))];
