@@ -28,3 +28,9 @@ export async function evalCombo(gpt,jev,corpus,{today,concurrency=6,timeoutMs=15
  const byThreshold=thresholds.map(th=>{const ans=rows.filter(r=>r.agree&&r.conf>=th);return{jevConfidenceMin:th,answered:ans.length,answeredCorrect:ans.filter(r=>r.correct).length,wrongAnswers:ans.filter(r=>!r.correct).length,askedUser:rows.length-ans.length};});
  return{provider:"combo",n:rows.length,agree:rows.filter(r=>r.agree).length,byThreshold,latencyMs:{p50:pct(ms,0.5),p95:pct(ms,0.95),max:Math.max(...ms)},tokens:tok,costUsd:Number(cost.toFixed(6)),costPer1kMessagesUsd:Number((cost/rows.length*1000).toFixed(4)),
   misses:rows.filter(r=>r.agree&&!r.correct).map(r=>({text:r.text,want:r.want,got:r.g,conf:r.conf,wrongAgree:true})).concat(rows.filter(r=>!r.agree).map(r=>({text:r.text,want:r.want,gpt:r.g,jev:r.j})))};}
+// The production pipeline itself (local first, combo fallback, 0.8 gate). Wrong answers are what users would see.
+export async function evalHybrid(parse,corpus,now,{concurrency=6}={}){const rows=[];let i=0;
+ async function worker(){while(i<corpus.length){const [text,date,start]=corpus[i++],t0=Date.now();const p=await parse(text,now,{log:false});const asked=!!(p.needsClarification||p.ambiguousHour);rows.push({text,ms:Date.now()-t0,source:p.source,asked,correct:!asked&&p.date===date&&p.startMinute===start,got:[p.date,p.startMinute],want:[date,start]});}}
+ await Promise.all(Array.from({length:concurrency},worker));const ms=rows.map(r=>r.ms),src={};for(const r of rows)src[r.source]=(src[r.source]||0)+1;
+ return{provider:"hybrid",n:rows.length,answered:rows.filter(r=>!r.asked).length,answeredCorrect:rows.filter(r=>r.correct).length,wrongAnswers:rows.filter(r=>!r.asked&&!r.correct).length,askedUser:rows.filter(r=>r.asked).length,sources:src,latencyMs:{p50:pct(ms,0.5),p95:pct(ms,0.95),max:Math.max(...ms)},
+  misses:rows.filter(r=>!r.correct).map(r=>({text:r.text,want:r.want,got:r.got,source:r.source,asked:r.asked||undefined}))};}

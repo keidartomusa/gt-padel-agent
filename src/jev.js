@@ -2,13 +2,14 @@
 // date and start time are asked as choices over concrete options and mapped back to the same schema as openaiAdapter.
 // Evaluation only: production stays on openaiAdapter until Tom decides.
 import { prompt } from "./when.js";
+import { WINDOWS } from "./timeres.js";
 const HE_DAYS=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 const addDays=(iso,n)=>{const d=new Date(`${iso}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
 const hhmm=m=>`${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
 export function jevQuestions(today){
  const date={which_day:"next week or some day, but no specific day is named",none:"no date or day is mentioned"};
  for(let i=0;i<=15;i++){const d=addDays(today,i),w=new Date(`${d}T12:00:00Z`);date[d]=`יום ${HE_DAYS[w.getUTCDay()]} ${w.getUTCDate()}.${w.getUTCMonth()+1}${i===0?" (היום)":i===1?" (מחר)":i===2?" (מחרתיים)":""}`;}
- const PART={360:" - also בוקר (morning) with no hour",720:" - also צהריים (noon) with no hour",960:" - also אחה\"צ / אחרי הצהריים (afternoon) with no hour",1200:" - also לילה (night) with no hour",1140:" - also ערב / בערב (evening) or מוצ\"ש with no hour"};
+ const PART=Object.fromEntries(WINDOWS.map(w=>[w.range[0],` - also ${w.he} with no hour`]));PART[1140]+=" or מוצ\"ש";
  const start={none:"no time of day is mentioned"};for(let m=0;m<1440;m+=30)start[hhmm(m)]=`starts at ${hhmm(m)}${PART[m]||""}`;
  return{
   date:{type:"choice",instructions:`${prompt(today)}\nWhich calendar date does the player mean?`,criteria:date},
