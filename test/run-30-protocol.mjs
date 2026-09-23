@@ -13,9 +13,9 @@ async function convo(title,steps,{store=memoryStore(),userId='u',name='דנה',a
 await convo('16. הודעת פתיחה ושני כפתורים',[{text:'שלום'},{actionId:'availability'},{text:'יש מגרש מחר בערב?'}]);
 const yes=async i=>({kind:'availability',date:i.date,slots:[{courtId:'c3',courtName:'3',start:'19:00',end:'20:30',durationMinutes:i.durationMinutes,price:null}]});
 const no=async i=>({kind:'availability',date:i.date,slots:[]});
-const oneoff=[{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'מחר אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:yes'},{actionId:'flex:60'}];
+const oneoff=[{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'מחר אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:yes'}];
 await convo('17. בקשה חד-פעמית ליחיד',oneoff,{availabilityFn:yes});
-await convo('18. זוג עם מגרש ומשך 60',[{actionId:'oneoff'},{actionId:'level:2.5–3'},{text:'מחר ב18:00'},{actionId:'duration:60'},{actionId:'party:2'},{actionId:'court:yes'},{actionId:'flex:0'}],{userId:'pair',name:'נועם',availabilityFn:yes});
+await convo('18. זוג עם מגרש ומשך 60',[{actionId:'oneoff'},{actionId:'level:2.5–3'},{text:'מחר ב18:00'},{actionId:'duration:60'},{actionId:'party:2'},{actionId:'court:yes'}],{userId:'pair',name:'נועם',availabilityFn:yes});
 await convo('19. מנוי קבוע וגמישות במשך',[{actionId:'recurring'},{actionId:'level:3–3.5'},{text:'ימי שני ורביעי אחרי 20:00'},{actionId:'duration:flex'},{actionId:'party:1'},{actionId:'court:no'},{actionId:'flex:60'}],{userId:'rec',name:'מיכל',availabilityFn:yes});
 const shared=memoryStore();await convo('20a. יצירת בקשה ללוח',oneoff,{store:shared,userId:'board1',name:'דנה',availabilityFn:yes});await convo('20. לוח בקשות ציבורי',[{text:'מי מחפש משחק מחר בערב?'}],{store:shared,userId:'viewer',name:'נועם',availabilityFn:yes});
 // connect accept using real IDs from state
@@ -26,7 +26,7 @@ await convo('24. השתקה מותאמת ל-14 יום',[{actionId:'mute_custom'}
 await convo('25. תפריט הגדרות',[{text:'הגדרות'},{actionId:'mute_week'}]);
 const mine=memoryStore();await convo('26a. יצירת בקשה לניהול',oneoff,{store:mine,userId:'me',name:'תמר',availabilityFn:yes});await convo('26. הבקשות שלי',[{actionId:'my_requests'}],{store:mine,userId:'me',name:'תמר',availabilityFn:yes});
 const mismatch=memoryStore();await convo('27a. רמה 1-2',oneoff.map(x=>x.actionId==='level:3–3.5'?{actionId:'level:1–2'}:x),{store:mismatch,userId:'low',name:'אורי',availabilityFn:yes});await convo('27. אי התאמה בין רמות רחוקות',oneoff.map(x=>x.actionId==='level:3–3.5'?{actionId:'level:4+'}:x),{store:mismatch,userId:'high',name:'לי',availabilityFn:yes});
-await convo('28. משך 120 וגמישות שעה',[{actionId:'oneoff'},{actionId:'level:3.5–4'},{text:'מחר ב17:00'},{actionId:'duration:120'},{actionId:'party:3'},{actionId:'court:yes'},{actionId:'flex:60'}],{availabilityFn:yes});
+await convo('28. משך 120 וגמישות שעה',[{actionId:'oneoff'},{actionId:'level:3.5–4'},{text:'מחר ב17:00'},{actionId:'duration:120'},{actionId:'party:3'},{actionId:'court:yes'}],{availabilityFn:yes});
 await convo('29. אין מגרש חי - הבקשה לא מתפרסמת',[{actionId:'oneoff'},{actionId:'level:3–3.5'},{text:'מחר אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:no'},{actionId:'flex:60'}],{availabilityFn:no});
 const sweep=memoryStore();await convo('30a. מנוי ראשון לסריקה',[{actionId:'recurring'},{actionId:'level:3–3.5'},{text:'ימי חמישי אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:no'},{actionId:'flex:60'}],{store:sweep,userId:'s1',name:'שרון',availabilityFn:yes});await convo('30b. מנוי שני לסריקה',[{actionId:'recurring'},{actionId:'level:3–3.5'},{text:'ימי חמישי אחרי 19:00'},{actionId:'duration:90'},{actionId:'party:1'},{actionId:'court:no'},{actionId:'flex:60'}],{store:sweep,userId:'s2',name:'עדי',availabilityFn:yes});const first=await dailySweep(sweep,now),second=await dailySweep(sweep,now);transcripts.push({title:'30. סריקה יומית ומניעת כפילות',type:'matching',turns:[{from:'system',text:`סריקה ראשונה: ${first.length} התאמות; סריקה חוזרת: ${second.length} התאמות חדשות.`},{from:'bot',text:'אותה התאמה אינה נשלחת פעמיים.'}]});
 // Extended entry/menu conversations.
