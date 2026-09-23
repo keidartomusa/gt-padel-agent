@@ -27,5 +27,5 @@ export function hourRuleViolation(text,startMinute){if(startMinute==null)return 
  if(h>=8&&h<=10&&!MORNING_CUE.test(t)&&!/\b0\d:\d\d/.test(t))return"ampm_needed"; // 8-10 AM with no cue must be asked, not guessed
  if(PM_CUE.test(t)&&!MORNING_CUE.test(t)&&h<12&&h!==0)return"pm_cue_ignored";
  return null;}
-// Clarification when the models disagree or are unsure (copy pending Tom review).
+// Clarification when the models disagree or are unsure. Copy approved by Tom 23.9 12:26 ("מתאים") - do not change without his review.
 export const UNCLEAR_WHEN="לא הייתי בטוח שהבנתי מתי. אפשר לכתוב יום ושעה, למשל: מחר ב-19:00 או חמישי בערב.";
