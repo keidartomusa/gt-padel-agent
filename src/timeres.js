@@ -29,4 +29,4 @@ export function hourRuleViolation(text,startMinute){if(startMinute==null)return 
  if(PM_CUE.test(t)&&!MORNING_CUE.test(t)&&h<12&&h!==0)return"pm_cue_ignored";
  return null;}
 // Clarification when the models disagree or are unsure. Copy approved by Tom 23.9 12:26 ("מתאים") - do not change without his review.
-export const UNCLEAR_WHEN="לא הייתי בטוח שהבנתי מתי. אפשר לכתוב יום ושעה, למשל: מחר ב-19:00 או חמישי בערב.";
+export const UNCLEAR_WHEN="לא הבנתי. אפשר לכתוב יום ושעה, למשל: מחר ב-19:00 או חמישי בערב.";
