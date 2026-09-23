@@ -12,7 +12,7 @@ Rules:
 - date: the calendar date meant (never in the past). "מחר"=today+1, "מחרתיים"=today+2, a bare weekday = its next occurrence (today excluded), "סופ\\"ש"=the coming Friday, "מוצ\\"ש"=Saturday from 19:00, "עוד שבועיים"=today+14.
 - "שבוע הבא"/"בשבוע הבא" with no specific day: needs_clarification="which_day", date=null.
 - Hours with no morning/evening word: 1-7 mean PM (e.g. "ב6","שעה שש" = 18:00); 8, 9 or 10 are ambiguous -> needs_clarification="ampm" (still fill the AM value); 11 and 12 mean midday. Hours 13-23 or zero-padded ("09:00") are as written.
-- startMinute/endMinute are minutes from midnight. "אחרי X": start=X, end=1440. "לפני X": start=0, end=X. A single time X: start=X, end=X+180. Morning=360-720, noon=720-1020, afternoon=960-1200, evening=1020-1380, night=1200-1440. No time info: both null.
+- startMinute/endMinute are minutes from midnight. "אחרי X": start=X, end=1440. "לפני X": start=0, end=X. A single time X: start=X, end=X+180. Morning=360-720, noon=720-1020, afternoon=960-1200, evening=1140-1380, night=1200-1440. No time info: both null.
 - durationMinutes: 60/90/120 only if stated ("שעה","שעה וחצי","שעתיים"), else null.
 - If nothing in the text is a date or time: needs_clarification="no_time_info".
 Calendar (use it, do not compute weekdays yourself):
