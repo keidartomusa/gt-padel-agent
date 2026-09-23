@@ -16,7 +16,7 @@ test("admin-data validates user param and requires auth",()=>{const src=fs.readF
 test("dashboard: chat list + bubbles + prev/next, clear booking labels, no raw ids", async () => {
   const html = await (await adminPage()).text();
   assert.match(html, /class="b '\+\(x\.direction==='in'\?'in':'out'\)/); assert.match(html, /data-step="-1"/); assert.match(html, /data-step="1"/); assert.match(html, /id="q"/);
-  assert.doesNotMatch(html, />אישור משתמש<|>אימות ספק<|>clicked</); assert.match(html, /המשתמש אישר שהזמין/); assert.match(html, /מופיע ביומן המועדון/);
+  assert.doesNotMatch(html, />אישור משתמש<|>אימות ספק<|>clicked<|data-verify|המשתמש אישר|מופיע ביומן|הזמנות שאושרו/); /* Tom 23.9 16:00: no marking, clicks only, with name + phone */ assert.match(html, /ופתחו את דף ההזמנה באתר/); assert.match(html, /<th>משתמש<\/th><th>טלפון<\/th>/);
   assert.doesNotMatch(html, /[–—]/);
 });
 

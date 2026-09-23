@@ -5,3 +5,12 @@ test("only verified bookings contribute actual or labeled estimated revenue",()=
 import adminPage from"../netlify/functions/admin.js";
 test("admin uses password login and never puts token in URL",async()=>{const html=await(await adminPage()).text();assert.match(html,/type="password"/);assert.match(html,/sessionStorage/);assert.match(html,/authorization:'Bearer '\+TOKEN/);assert.doesNotMatch(html,/admin-data\?token/);});
 test("admin shows authentication and server errors instead of loading forever",async()=>{const html=await(await adminPage()).text();assert.match(html,/סיסמה שגויה/);assert.match(html,/if\(!r\.ok\)/);assert.doesNotMatch(html,/>טוען…</);});
+// Tom 23.9 16:00: every booking click records who clicked (name + phone on the dashboard).
+test("booking click records the user who clicked; bad user values are dropped", async () => {
+  const u = new URL(bookingUrl("2026-09-25", { courtId: "c3", start: "17:00", durationMinutes: 90, price: 225 }, { user: "972501234567" }));
+  assert.equal(u.searchParams.get("user"), "972501234567");
+  assert.equal(new URL(bookingUrl("2026-09-25", { courtId: "c3", start: "17:00", durationMinutes: 90 }, { user: "x<script>" })).searchParams.get("user"), null);
+  const { routeIncoming } = await import("../src/webhook.js"); const { slotActionId } = await import("../src/availability.js"); const { memoryStore } = await import("../src/store.js");
+  const r = await routeIncoming({ userId: "972501234567", text: "", actionId: slotActionId("2026-09-25", { courtId: "c3", start: "17:00", durationMinutes: 90, price: 225 }), store: memoryStore() });
+  assert.equal(new URL(r.ctaUrl.url).searchParams.get("user"), "972501234567");
+});
