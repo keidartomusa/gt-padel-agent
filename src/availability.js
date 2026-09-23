@@ -11,7 +11,7 @@ export function formatHebrew(result,{maxGroups=2}={}){
   if(result.kind==="outside_window")return `אפשר לבדוק זמינות עד ${result.advanceDays} ימים קדימה. איזה יום קרוב יותר מתאים לך?`;
   const label=heDate(result.date); if(!result.slots.length)return `אין מגרש פנוי ב${label} בטווח שביקשת, וגם לא בשאר היום. אפשר לבדוק יום אחר, למשל "מחר בערב".`;
   const groups=grouped(result.slots),shown=groups.slice(0,maxGroups);const lines=shown.map(g=>{const courtText=g.courts.length===3?"כל 3 המגרשים":g.courts.length===1?`מגרש ${g.courts[0]}`:`מגרשים ${g.courts.join(", ")}`;const link=bookingUrl(result.date,g.bookingSlot);return `• ${g.start}–${g.end} · ${courtText}${g.price!=null?` · ₪${g.price}`:""}`;});
-  const listed=Math.min(groups.length,MAX_SLOT_ROWS),more=listed-shown.length;const tail=(more>0?`\nועוד ${more===1?"שעה אחת":`${more} שעות`} ברשימה.`:"")+(groups.length>MAX_SLOT_ROWS?`\nלשעות נוספות כתבו טווח מדויק יותר, למשל "אחרי 20:00".`:"");
+  const listed=Math.min(groups.length,MAX_SLOT_ROWS),more=listed-shown.length;const tail=(more>0?`\nועוד ${more===1?"אפשרות אחת":`${more} אפשרויות`} ברשימה.`:"")+(groups.length>MAX_SLOT_ROWS?`\nלאפשרויות נוספות כתבו טווח מדויק יותר, למשל "אחרי 20:00".`:"");
   return `יש זמינות ב${label}:\n${lines.join("\n")}${tail}`;
 }
 
