@@ -1,4 +1,5 @@
 import { addDays, localDateParts, weekdayIndex } from "./time.js";
+import { timeLabel } from "./requests.js";
 const pad=n=>String(n).padStart(2,"0"), clock=m=>`${pad(Math.floor(m/60)%24)}:${pad(m%60)}`;
 export const LEVELS=["1–2","2–2.5","2.5–3","3–3.5","3.5–4","4+"];
 export const LEVEL_LABELS={"1–2":"מתחילים","2–2.5":"מתחילים+","2.5–3":"בינוניים","3–3.5":"בינוניים+","3.5–4":"בינוניים-גבוהים","4+":"מתקדמים"};
@@ -19,7 +20,7 @@ export async function findMatches(store,request,now=new Date()){const rows=await
 export async function publicBoard(store,{date,startMinute=0,endMinute=1440,now=new Date()}={}){return(await activeRequests(store,now)).filter(x=>(!date||appliesOn(x,date))&&x.startMinute<endMinute&&startMinute<x.endMinute).sort((a,b)=>a.startMinute-b.startMinute);}
 export function formatPhone(userId){const d=String(userId||"").replace(/\D/g,"");if(/^972\d{8,9}$/.test(d)){const l="0"+d.slice(3);return`${l.slice(0,3)}-${l.slice(3)}`;}return d?`+${d}`:"";}
 export const clockLabel=m=>clock(m);
-export function formatBoard(rows){if(!rows.length)return"לא מצאתי כרגע בקשות פתוחות בחלון הזה. אפשר לפתוח בקשה חדשה ואחפש התאמות.";return`*בקשות פתוחות*\n${rows.slice(0,10).map((x,i)=>`${i+1}. ${x.displayName} · ${formatPhone(x.userId)} · רמה ${x.level} · ${clock(x.startMinute)}–${clock(x.endMinute)} · ${x.partySize} שחקנים${x.hasCourt?" · יש מגרש":""}`).join("\n")}\n\nלהתחברות בחרו בקשה מהרשימה.`;}
+export function formatBoard(rows){if(!rows.length)return"לא מצאתי כרגע בקשות פתוחות בחלון הזה. אפשר לפתוח בקשה חדשה ואחפש התאמות.";return`*בקשות פתוחות*\n${rows.slice(0,9).map((x,i)=>`${i+1}. ${x.displayName} · ${formatPhone(x.userId)} · רמה ${x.level} · ${timeLabel(x)} · ${Number(x.partySize)===1?"שחקן אחד":`${x.partySize} שחקנים`}${x.hasCourt?" · יש מגרש":""}`).join("\n")}\n\nלהתחברות בחרו בקשה מהרשימה.`;}
 export async function mute(store,userId,until){const p=await store.get(`profile/${userId}`)||{userId};p.mutedUntil=until;await store.set(`profile/${userId}`,p);return p;}
 export async function isMuted(store,userId,now=new Date()){const p=await store.get(`profile/${userId}`);return Boolean(p?.mutedUntil&&new Date(p.mutedUntil)>now);}
 export async function dailySweep(store,now=new Date()){const req=await activeRequests(store,now),pairs=[],today=localDateParts(now).iso;for(let day=0;day<14;day++){const date=addDays(today,day),candidates=req.filter(x=>appliesOn(x,date));for(let i=0;i<candidates.length;i++)for(let j=i+1;j<candidates.length;j++)if(candidates[i].userId!==candidates[j].userId&&overlap(candidates[i],candidates[j])&&!await isMuted(store,candidates[i].userId,now)&&!await isMuted(store,candidates[j].userId,now)){const key=[candidates[i].id,candidates[j].id,date].sort().join("~");if(!await store.get(`notification/${key}`)){pairs.push([{...candidates[i],date},{...candidates[j],date}]);await store.set(`notification/${key}`,{sentAt:now.toISOString()});}}}return pairs;}

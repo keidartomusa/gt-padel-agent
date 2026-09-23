@@ -28,7 +28,10 @@ async function timed(ad,text,today,fetchImpl){const ctl=new AbortController(),t=
 // Hybrid parser (Tom approved 23.9 11:35): local rules first; only what they cannot parse goes to gpt + Jev in parallel.
 // Agreement on date+start with Jev confidence >= 0.8 and no hour-rule violation answers; anything else asks the user.
 export async function parseWhen(text,now=new Date(),{fetchImpl=fetch,adapter=openaiAdapter,verifier,log=true}={}){
- const local=parseIntentLocal(text,now),today=localDateParts(now).iso,t0=Date.now(),out=(r,extra)=>{if(log)console.log(JSON.stringify({event:"parse_source",source:r.source,ms:Date.now()-t0,...extra}));return r;};
+ const local=parseIntentLocal(text,now),today=localDateParts(now).iso,t0=Date.now(),
+  // QA 23.9: "מחר אחרי העבודה" - a before/after cue with no parsable time never falls back to the whole day.
+  cue=local.startMinute==null&&/(?:^|\s)(?:אחרי|לפני)\s+(?!\d)/.test(String(text)),
+  out=(r,extra)=>{if(cue&&r.startMinute==null&&!r.needsClarification&&!r.ambiguousHour){r={...r,needsClarification:"unclear"};extra={...extra,cueNoTime:true};}if(log)console.log(JSON.stringify({event:"parse_source",source:r.source,ms:Date.now()-t0,...extra}));return r;};
  if(local.ambiguousHour)return out({...local,source:"local_ask_ampm"}); // Tom: 8-10 without a cue -> always ask, never let a model guess.
  if(localConfident(local,text))return out({...local,source:"local"});
  if(!process.env.OPENAI_API_KEY)return out({...local,source:"local_no_key"});

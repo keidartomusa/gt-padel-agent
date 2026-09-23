@@ -39,7 +39,7 @@ test("match notification still offers mute", async () => {
   const s = memoryStore();
   await (await upToCourt(s, "x", "דנה"))({ actionId: "court:yes" });
   const r = await (await upToCourt(s, "y", "נועם"))({ actionId: "court:yes" });
-  assert.match(r.text, /מצאתי 1 התאמות/);
+  assert.match(r.text, /מצאתי התאמה אפשרית ושלחתי הצעה/);
   assert.ok(r.notifications?.length);
   assert.ok(r.notifications.some(n => ids(n.response).some(x => x.startsWith("mute"))), JSON.stringify(r.notifications.map(n => ids(n.response))));
 });
