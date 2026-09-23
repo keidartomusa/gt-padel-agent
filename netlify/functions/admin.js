@@ -24,10 +24,10 @@ button{font:inherit;cursor:pointer}
 .btn{background:var(--brand);color:#fff;border:0;border-radius:12px;padding:12px 20px;font-weight:700;width:100%}.err{color:var(--red);margin-top:12px;min-height:1em;font-size:14px}
 .page{max-width:1240px;margin:0 auto;padding:30px 32px 48px}
 .ptitle{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px}.ptitle h2{margin:0;font-size:26px;font-weight:800;letter-spacing:-.3px}.ptitle p{margin:4px 0 0;color:var(--ink2);font-size:14px}.stamp{color:var(--ink3);font-size:13px;white-space:nowrap}
-.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}@media(max-width:1300px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px}@media(max-width:1300px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}.kpi b{font-size:30px!important;white-space:nowrap}
 .kpi{background:var(--card);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh);position:relative;overflow:hidden;border:1px solid rgba(226,232,240,.7)}
 .kpi::after{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--brand)}
-.kpi:nth-child(2)::after{background:var(--amber)}.kpi:nth-child(3)::after{background:#8b5cf6}.kpi:nth-child(4)::after{background:var(--green)}.kpi:nth-child(5)::after{background:#06b6d4}.kpi:nth-child(6)::after{background:#64748b}
+.kpi:nth-child(2)::after{background:var(--amber)}.kpi:nth-child(3)::after{background:#8b5cf6}.kpi:nth-child(4)::after{background:var(--green)}.kpi:nth-child(5)::after{background:#06b6d4}.kpi:nth-child(6)::after{background:#16a34a}.kpi:nth-child(7)::after{background:#64748b}
 .kpi b{display:block;font-size:34px;font-weight:800;letter-spacing:-.5px;color:var(--ink);line-height:1.1}.kpi span{display:block;color:var(--ink2);font-size:14px;font-weight:600;margin-top:6px}.kpi small{display:block;color:var(--ink3);font-size:12.5px;margin-top:3px}
 .kpi.go{cursor:pointer;transition:transform .15s,box-shadow .15s}.kpi.go:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(15,23,42,.1)}
 .grid2{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;margin-top:18px}
@@ -85,6 +85,8 @@ function gameDay(s){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');if(!m)return s
 function wa(h){return h.replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/(^|\s)_([^_\n]+)_(?=\s|$)/g,'$1<i>$2</i>')}
 function seats(n){n=Math.max(0,Math.min(4,n||0));var o='<span class="seats" aria-label="'+n+' מתוך 4">';for(var i=0;i<4;i++)o+='<i'+(i<n?' class="f"':'')+'></i>';return o+'</span>'}
 function head(t,sub){return'<div class="ptitle"><div><h2>'+esc(t)+'</h2>'+(sub?'<p>'+esc(sub)+'</p>':'')+'</div>'+(D&&D.generatedAt?'<span class="stamp">עודכן '+esc(stamp(D.generatedAt))+'</span>':'')+'</div>'}
+function ils(n){return Math.round(Number(n||0)).toLocaleString('he-IL')+' ₪'}
+function clickValue(){return(D.bookingClicks||[]).reduce((a,x)=>a+(x.price==null?0:Number(x.price)||0),0)}
 function usd(n){return'$'+Number(n||0).toFixed(2)}
 function initials(u){var n=(u.name||'').trim();return n?n[0]:'#'}
 function phone(p){p=String(p||'');return p.indexOf('972')===0?'0'+p.slice(3):p}
@@ -94,7 +96,7 @@ function tab(v){VIEW=v;render()}
 function render(){document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===VIEW));var a=$('#app');a.hidden=false;
  if(VIEW==='chats')a.innerHTML=chatsView();else if(VIEW==='overview')a.innerHTML=overview();else if(VIEW==='live')a.innerHTML=liveView();else a.innerHTML=clicksView();
  if(VIEW!=='chats'&&CUR===null)history.replaceState(null,'',location.pathname);if(VIEW==='chats'){drawUsers();var h=decodeURIComponent((location.hash.match(/u=(\d+)/)||[])[1]||'');if(h)showConv(h,true)}}
-function overview(){var s=D.summary,m=(D.messages||{}).totals||{};var k=[['משתמשים',(D.messages&&D.messages.users.length)||s.registrations,'כתבו לבוט לפחות פעם אחת','chats'],['בקשות פעילות',s.activeRequests,'מופיעות עכשיו בלוח','live'],['הצעות התאמה',s.matches,''],['חיבורים שאושרו',s.acceptedMatches,'שני הצדדים הסכימו','live'],['לחיצות על "להזמנה"',s.bookingClicks,'פתחו את דף ההזמנה באתר','clicks'],['עלות הודעות',usd(m.estimatedUsd),(m.sent||0)+' נשלחו · '+(m.received||0)+' התקבלו']];
+function overview(){var s=D.summary,m=(D.messages||{}).totals||{};var k=[['משתמשים',(D.messages&&D.messages.users.length)||s.registrations,'כתבו לבוט לפחות פעם אחת','chats'],['בקשות פעילות',s.activeRequests,'מופיעות עכשיו בלוח','live'],['הצעות התאמה',s.matches,''],['חיבורים שאושרו',s.acceptedMatches,'שני הצדדים הסכימו','live'],['לחיצות על "להזמנה"',s.bookingClicks,'פתחו את דף ההזמנה באתר','clicks'],['שווי הלחיצות',ils(clickValue()),'סכום המחירים בלחיצות · פוטנציאל, לא הזמנות','clicks'],['עלות הודעות',usd(m.estimatedUsd),(m.sent||0)+' נשלחו · '+(m.received||0)+' התקבלו']];
  var users0=(D.messages&&D.messages.users.length)||s.registrations||0,F=[['משתמשים',users0],['בקשות פעילות',s.activeRequests||0],['הצעות התאמה',s.matches||0],['חיבורים שאושרו',s.acceptedMatches||0],['לחיצות על "להזמנה"',s.bookingClicks||0]],mx=Math.max.apply(null,F.map(f=>f[1]).concat([1]));
  var G=(D.open||[]).map(g=>Object.assign({kind:'open'},g)).concat((D.live||[]).map(g=>Object.assign({kind:'conn'},g))).sort((a,b)=>a.nextDate.localeCompare(b.nextDate)||a.startMinute-b.startMinute).slice(0,5);
  var RC=(D.bookingClicks||[]).slice().sort((a,b)=>String(b.clickedAt).localeCompare(String(a.clickedAt))).slice(0,4);

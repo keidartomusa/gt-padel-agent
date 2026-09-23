@@ -1,0 +1,14 @@
+/* C - Clean minimal: white, top bar with centered segmented tabs, airy, one green accent */
+:root{--ink:#111;--ink2:#555;--ink3:#999;--line:#ececec;--bg:#fafafa;--card:#fff;--brand:#16a34a;--sh:none}
+body{display:block;background:#fafafa}
+.top{position:sticky;height:auto;flex-direction:row;align-items:center;justify-content:space-between;padding:16px 40px;background:#fff;border-bottom:1px solid #ececec;color:#111}
+.top h1{margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px}.top h1::before{width:22px;height:22px;margin:0;border-radius:6px;background:#16a34a;box-shadow:none}
+.tabs{flex-direction:row;background:#f2f2f2;padding:4px;border-radius:12px;gap:2px;margin:0 auto}.tabs button{color:#555;padding:8px 18px;border-radius:9px;font-size:14px}.tabs button::before{display:none}.tabs button:hover{background:transparent;color:#111}.tabs button.on{background:#fff;color:#111;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.page{max-width:1120px;padding:44px 40px}.ptitle h2{font-size:32px;font-weight:700}
+.kpi,.card,.game,.panel{border:1px solid #ececec;box-shadow:none;border-radius:14px}.kpi::after{display:none}.kpi{padding:22px}.kpi b{font-size:38px;font-weight:600}
+.fr i{background:#16a34a}.fb{background:#f2f2f2}.ur .d{background:#f0fdf4;color:#15803d}.seats i.f{background:#16a34a}
+.game.open,.game.conn{border-top:1px solid #ececec}.game.open{border-inline-start:3px solid #f59e0b}.game.conn{border-inline-start:3px solid #16a34a}
+.av{background:#f2f2f2;color:#333}.page a{color:#15803d}.u.on{background:#f7f7f7;box-shadow:inset -3px 0 0 #16a34a}
+.chat{height:calc(100vh - 67px)}.msgs{background:#f7f7f5}.b.out{background:#e8f5e9}
+#login,#app{grid-column:auto}
+.page{max-width:1280px}.kpi{padding:18px}.kpi b{font-size:28px!important}
