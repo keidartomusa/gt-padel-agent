@@ -5,7 +5,7 @@ import { parseIntentLocal } from "./intent.js";
 import { parseWhen, whenLabel as whenEcho } from "./when.js";
 import { findAvailability } from "./availability.js";
 
-import { activeRequests, DURATIONS, findMatches, formatBoard, LEVELS, levelTitle, levelNote, flexMinutesFor, publicBoard, welcome, formatPhone, clockLabel, appliesOn, timesCompatible, skipKey, matchAlert, partyOf, pairKey, allowAlert, groupNames, groupLabel, groupShort } from "./matching.js";
+import { activeRequests, DURATIONS, findMatches, formatBoard, LEVELS, levelTitle, levelNote, flexMinutesFor, publicBoard, welcome, formatPhone, clockLabel, appliesOn, timesCompatible, skipKey, matchAlert, partyOf, pairKey, allowAlert, groupNames, groupLabel, groupShort, isMine } from "./matching.js";
 import { slotActionId } from "./availability.js";
 // Row/button ids stay ASCII (index-based); Hebrew labels live only in titles. Tom 23.9: list taps went undelivered.
 const WHEN_OPTIONS=["היום בערב","מחר בבוקר","מחר בערב","שישי בבוקר","שבת בבוקר"];
@@ -35,6 +35,9 @@ export function fieldEditIntent(text){const t=String(text||"");if(!/(?:^|\s)(?:�
 // Item 16: a short hint under the level question. Item 17: one form of address (plural) everywhere.
 const LEVEL_ASK="מה הרמה שלכם?\nלא בטוחים? בחרו את הקרובה ביותר, אפשר לשנות אחר כך.";
 const WHEN_ASK="מתי תרצו לשחק? אפשר לכתוב למשל: מחר אחרי 19:00";
+// Tom 23.9 17:09: with a court already booked the time is fixed - ask "באיזה שעה?".
+const COURT_WHEN_ASK="באיזה שעה? אפשר לכתוב למשל: מחר ב-19:00";
+const whenAsk=d=>d?.hasCourt?COURT_WHEN_ASK:WHEN_ASK;
 const SCHEDULE_ASK="באילו ימים ושעות אתם זמינים בדרך כלל? למשל: שני ורביעי אחרי 20:00";
 const DURATION_ASK="כמה זמן תרצו לשחק?", FLEX_ASK="עד כמה אתם גמישים בשעה?";
 const AVAIL_ASK="מתי תרצו לשחק? בחרו מהרשימה או כתבו יום, שעה ומשך, למשל: מחר אחרי 19:00 ל90 דקות", BOARD_ASK="מתי תרצו לשחק? בחרו מהרשימה או כתבו יום ושעה, למשל: מחר אחרי 19:00";
@@ -64,7 +67,7 @@ const matchNotifications=async(store,request,matches,now)=>{const out=[];for(con
 export const PLAYERS_MENU="מה בא לכם?\n\n👥 חסרים לי שחקנים - מחפשים שחקנים להשלמת רביעייה, עם מגרש או בלי.\n\n⚡ להצטרף למשחק חד-פעמי - רוצים לראות משחקים פתוחים ולהצטרף.\n\n🔁 משחק קבוע כל שבוע - רושמים פעם אחת את הזמנים שנוחים, וכל שבוע המערכת תנסה לשדך לכם שחקנים. בלי התחייבות - כל שבוע תקבלו הצעה ותצטרכו לאשר אותה מחדש.";
 export const NAME_ASK="באיזה שם להציג אתכם בלוח המשחקים?";
 // Tom 23.9 14:58: when the name was asked, the answer wins over menu words ("שלום" is a real name). Commands are never names.
-export function cleanName(raw,{asked=false}={}){if(asked&&/^\s*שלום\s*[.!]?\s*$/.test(String(raw||"")))return "שלום";let t=String(raw||"").replace(/^(אני\s+)?(קוראים לי|שמי|השם שלי(?:\s+הוא)?|תקרא(?:ו)? לי|תקראי לי)\s*/,"").replace(/[.!?,"'״׳:;()]/g," ").replace(/\s+/g," ").trim();if(!t||t.length>30||/\d|@/.test(t)||t.split(" ").length>3)return null;if(/^(לא|כן|תפריט|שלום|היי|הי|אוקי|בסדר|menu|hi|hello|start|stop|עזרה|הגדרות|ביטול|הבקשות שלי|הסר|הסר אותי)$/i.test(t))return null;if(t.split(" ").some(w=>/^(מה|איך|מתי|כמה|איפה|למה|מי|יש|אין|רוצה|רוצים|מגרש|מגרשים|משחק|שחקן|שחקנים|פנוי|מחר|היום|בערב|בבוקר|תודה|אפשר|צריך|בוקר|ערב|טוב|קורה|שלום)$/.test(w)))return null;return t;}
+export function cleanName(raw,{asked=false}={}){if(asked&&/^\s*שלום\s*[.!]?\s*$/.test(String(raw||"")))return "שלום";let t=String(raw||"").replace(/^(אני\s+)?(קוראים לי|שמי|השם שלי(?:\s+הוא)?|תקרא(?:ו)? לי|תקראי לי)\s*/,"").replace(/[.!?,"'״׳:;()]/g," ").replace(/\s+/g," ").trim();if(!t||t.length>30||/\d|@/.test(t)||t.split(" ").length>3)return null;if(/^(לא|כן|תפריט|שלום|היי|הי|אוקי|בסדר|menu|hi|hello|start|stop|עזרה|הגדרות|ביטול|הבקשות שלי|הסר|הסר אותי|די|מספיק|עצור|תודה|תודה רבה|סבבה|אחלה|רגע|נו|מה|למה|טוב|יאללה|חזור|חזרה|אין|אף אחד|ok|okay|thanks|end|cancel)$/i.test(t))return null;if(t.split(" ").some(w=>/^(מה|איך|מתי|כמה|איפה|למה|מי|יש|אין|רוצה|רוצים|מגרש|מגרשים|משחק|שחקן|שחקנים|פנוי|מחר|היום|בערב|בבוקר|תודה|אפשר|צריך|בוקר|ערב|טוב|קורה|שלום)$/.test(w)))return null;return t;}
 export function nameChangeIntent(text){const t=String(text||"").trim();if(!t)return null;let m=t.match(/^(?:אני\s+)?(?:קוראים לי|שמי)\s+(.+)$/);if(m)return{name:cleanName(m[1])};if(/השם שלי(?:\s+הוא)?\s+לא(?:\s|$)/.test(t))return{name:null};m=t.match(/(?:לשנות|לעדכן|להחליף|תשנה|תעדכן|תחליף|שנה|תחליפו|תשנו)\s+(?:לי\s+)?(?:את\s+)?(?:ה)?שם(?:\s+שלי)?(?:\s+ל[-־]?\s*(\S.*))?$/);if(m)return{name:m[1]?cleanName(m[1]):null};m=t.match(/^(?:אבל\s+)?השם שלי(?:\s+הוא)?\s+(?!לא(?:\s|$))(.+)$/);if(m)return{name:cleanName(m[1])};if(/השם שלי(?:\s+הוא)?\s+לא(?:\s|$)/.test(t)||/(?:לשנות|לעדכן|שינוי|עדכון|להחליף)\s+(?:את\s+)?(?:ה)?שם/.test(t)||/השם\s+(?:שלי\s+)?לא\s+נכון/.test(t))return{name:null};return null;}
 const NEXT_WEEK=/(?:ב|ל)?שבוע ה(?:בא|קרוב)/;
 const HE_DAYS=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
@@ -97,7 +100,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  // Item 18: the full greeting once; later a short menu.
  const menuFor=async()=>{const p=await store.get(profileKey)||{userId},w=welcome(name),buttons=[...w.buttons,CLUB_BTN];if(p.welcomedAt)return{text:name?`${name}, מה תרצו לעשות?`:"מה תרצו לעשות?",buttons};await store.set(profileKey,{...p,welcomedAt:now.toISOString()});return{...w,buttons};};
  const timeAsk=async(date,resume)=>{if(resume!==null)await set({step:"time_ask",tResume:resume,tDate:date});return btn(`${dayLabel({date})} - מאיזו שעה?`,[17,18,19].map(h=>({id:`tm:${h}`,title:`${h}:00`})));};
- const reask=async s=>{switch(s.step){case"avail_when":return list(AVAIL_ASK,WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));case"board_when":return list(BOARD_ASK,WHEN_OPTIONS.map((x,i)=>({id:`bwhen:${i}`,title:x})));case"when":case"edit_when":return{text:s.step==="edit_when"&&(await ownReq(s.editId))?.recurring?SCHEDULE_ASK:WHEN_ASK};case"schedule":return{text:SCHEDULE_ASK};
+ const reask=async s=>{switch(s.step){case"avail_when":return list(AVAIL_ASK,WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));case"board_when":return list(BOARD_ASK,WHEN_OPTIONS.map((x,i)=>({id:`bwhen:${i}`,title:x})));case"when":case"edit_when":{const er=s.step==="edit_when"?await ownReq(s.editId):null;return{text:er?.recurring?SCHEDULE_ASK:whenAsk(er||s.draft)};};case"schedule":return{text:SCHEDULE_ASK};
    case"level":case"edit_level":return list(LEVEL_ASK,LEVEL_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"pc":return list(PC_ASK,PC_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"duration":case"edit_duration":return list(DURATION_ASK,DURATION_ROWS());case"flex":case"edit_flex":return list(FLEX_ASK,FLEX_ROWS());case"edit_party":return list("כמה שחקנים אתם?",PARTY_ROWS());case"court":case"edit_court":return btn("כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);
    case"mode":return btn(PLAYERS_MENU,PLAYERS_BTNS);case"time_ask":return timeAsk(s.tDate,null);case"nw_day":return s.nwDays?list("באיזה יום בשבוע הבא?",s.nwDays.map((d,i)=>({id:`nw:${i}`,title:d.label}))):null;case"leave_confirm":return btn(LEAVE_ASK,[{id:"leave_yes",title:"כן, להסיר"},{id:"leave_no",title:"לא"}]);case"name_confirm":return btn(`לשנות את השם ${fromName(s.oldName)} ${toName(s.newName)}?`,[{id:"name_yes",title:"כן, לשנות"},{id:"name_no",title:"לא"}]);default:return null;}};
  // Items 3 and 9: one routine decides the next missing field, so known answers are never asked again.
@@ -117,7 +120,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    if(d.recurring&&d.hasCourt==null){d.hasCourt=false;d.flexMinutes??=0;}
    if(d.partySize==null){await set({...base,step:"pc"});return list(prefix+PC_ASK,PC_ROWS().concat(st.prefilled?PREFILL_ROWS(d):[],cancel));}
    if(d.hasCourt==null){await set({...base,step:"court"});return btn(prefix+"כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);}
-   if(d.recurring?!d.weekdays?.length:!d.date){await set({...base,step:d.recurring?"schedule":"when"});return{text:prefix+(d.recurring?SCHEDULE_ASK:WHEN_ASK)};}
+   if(d.recurring?!d.weekdays?.length:!d.date){await set({...base,step:d.recurring?"schedule":"when"});return{text:prefix+(d.recurring?SCHEDULE_ASK:whenAsk(d))};}
    if(!d.durations?.length){await set({...base,step:"duration"});return list(prefix+DURATION_ASK,DURATION_ROWS());}
    // Tom 23.9 13:14: with a court the time is fixed - no flex question.
    if(d.flexMinutes==null){if(d.hasCourt)d={...d,flexMinutes:0};else{await set({...base,draft:d,step:"flex"});return list(prefix+FLEX_ASK,FLEX_ROWS());}}
@@ -135,7 +138,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  if(input.startsWith("delok:")){const r=await ownReq(input.slice(6));if(!r)return btn("הבקשה כבר לא פעילה.",[MY_REQ,MENU]);await store.set(`request/${r.id}`,{...r,active:false,deletedAt:now.toISOString()});await set({});return btn("מחקתי את הבקשה.",[MY_REQ,MENU]);}
  if(input.startsWith("edit:")){const r=await ownReq(input.slice(5));if(!r)return btn("הבקשה כבר לא פעילה.",[MY_REQ,MENU]);const f=[["when","יום ושעה"],["level","רמה"],["duration","משך"],["party","מספר שחקנים"],["court","מגרש"]].filter(([k])=>!(r.recurring&&k==="court")).concat(r.hasCourt?[]:[["flex","גמישות"]]);return list(`מה לשנות ב${reqTitle(r)}?`,f.map(([k,t])=>({id:`ef:${r.id}:${k}`,title:t})).concat({id:"my_requests",title:"חזרה"}));}
  if(input.startsWith("ef:")){const [,rid,field]=input.split(":"),r=await ownReq(rid);if(!r)return btn("הבקשה כבר לא פעילה.",[MY_REQ,MENU]);await set({flow:"edit",step:`edit_${field}`,editId:r.id});
-   if(field==="when")return{text:r.recurring?SCHEDULE_ASK:WHEN_ASK};
+   if(field==="when")return{text:r.recurring?SCHEDULE_ASK:whenAsk(r)};
    if(field==="level")return list(LEVEL_ASK,LEVEL_ROWS());if(field==="duration")return list("כמה זמן תרצו לשחק?",DURATION_ROWS());if(field==="party")return list("כמה שחקנים אתם?",PARTY_ROWS());
    if(field==="court")return btn("כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);if(field==="flex")return list("עד כמה אתם גמישים בשעה?",FLEX_ROWS());await set({});return btn("לא הבנתי. אפשר לבחור מה לעשות:",[MY_REQ,MENU]);}
  if(state.flow==="edit"&&state.editId){const r=await ownReq(state.editId);if(!r){await set({});return btn("הבקשה כבר לא פעילה.",[MY_REQ,MENU]);}let patch=null;
@@ -176,7 +179,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    if((await userActiveRequests(store,userId,now)).length>=MAX_ACTIVE_REQUESTS)return btn(`אין כרגע משחקים פתוחים ב${whenEcho(p).replace(", "," ")}.\n\n${CAP_TEXT}`,[MY_REQ,MENU]);
    const last=await lastRequest(store,userId),draft={recurring:false,displayName,date:p.date,startMinute:p.startMinute??1140,endMinute:p.endMinute??1380},open=`אין כרגע משחקים פתוחים ב${whenEcho(p).replace(", "," ")}, אז אני פותח לכם בקשה ואחפש לכם שחקנים.`;
    if(last){draft.level=last.level;draft.durations=last.durations;return nextStep({autoOpen:true,prefilled:true},draft,`${open}\nלקחתי מהבקשה הקודמת: רמה ${last.level}, ${last.durations.length>1?"משך גמיש":`${last.durations[0]} דקות`}.\n\n`);}
-   return nextStep({autoOpen:true},draft,`${open}\n\n`);}return{text:head+formatBoard(rows),list:{button:"לבקשות",sections:[{title:"בקשות פתוחות",rows:rows.slice(0,9).map(x=>({id:`connect:${x.id}`,title:`${groupShort(x)} · ${x.level}`.slice(0,24),description:`${groupNames(x).length>1?groupLabel(x)+" · ":""}${timeLabel(x)} · ${partyText(x.partySize)}${x.hasCourt?" · יש מגרש":""}`.slice(0,72)}))}]}};}
+   return nextStep({autoOpen:true},draft,`${open}\n\n`);}const pick=rows.slice(0,9).filter(x=>!isMine(x,userId));if(!pick.length)return btn(head+formatBoard(rows,userId),[MY_REQ,MENU]);return{text:head+formatBoard(rows,userId),list:{button:"לבקשות",sections:[{title:"בקשות פתוחות",rows:pick.map(x=>({id:`connect:${x.id}`,title:`${groupShort(x)} · ${x.level}`.slice(0,24),description:`${groupNames(x).length>1?groupLabel(x)+" · ":""}${timeLabel(x)} · ${partyText(x.partySize)}${x.hasCourt?" · יש מגרש":""}`.slice(0,72)}))}]}};}
 
  if(input.startsWith("connect:")){const request=await store.get(`request/${input.slice(8)}`);if(!request||!request.active)return{text:"הבקשה כבר לא פעילה."};if(request.userId===userId)return{text:"זו הבקשה שלכם."};
    // Tom 23.9 15:36: no connecting into a group that would pass 4, and no second pending request to the same game.

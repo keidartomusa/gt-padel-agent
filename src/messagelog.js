@@ -11,9 +11,11 @@ export async function logMessage(store,userId,{direction,kind,type,body,sent=tru
  const ts=at instanceof Date?at:new Date(at),key=`msg/${userId}/${pad(ts.getTime())}-${String(++seq).padStart(6,"0")}-${direction}-${kind}-${sent?"ok":"fail"}`;
  await store.set(key,{userId,direction,kind,type,body,sent,reason,waMessageId,at:ts.toISOString()});
 }
+// Meta's error code and title are kept with a failed send so the dashboard shows why (Tom 23.9 17:12 "מה זה 2 נכשלו?").
+export function reasonOf(result){if(result?.sent)return null;let r=result?.reason||null;try{const e=JSON.parse(result?.detail||"{}").error;if(e?.code)r=`${r} #${e.code}${e.error_data?.details||e.message?": "+String(e.error_data?.details||e.message).slice(0,140):""}`;}catch{}return r;}
 export const logInbound=(store,userId,msg,input,at)=>logMessage(store,userId,{direction:"in",kind:"user",type:msg?.type||"text",body:input?.text||input?.actionId||"",waMessageId:msg?.id||null,at});
-export const logOutbound=(store,to,response,result,at)=>logMessage(store,to,{direction:"out",kind:"service",type:response?.list?"list":response?.buttons?.length?"buttons":response?.ctaUrl?"cta_url":"text",body:describe(response),sent:Boolean(result?.sent),reason:result?.sent?null:result?.reason||null,waMessageId:result?.data?.messages?.[0]?.id||null,at});
-export const logTemplate=(store,to,template,bodyText,result,at)=>logMessage(store,to,{direction:"out",kind:"template",type:"template",body:`[תבנית ${template.name}] ${bodyText}`,sent:Boolean(result?.sent),reason:result?.sent?null:result?.reason||null,waMessageId:result?.data?.messages?.[0]?.id||null,at});
+export const logOutbound=(store,to,response,result,at)=>logMessage(store,to,{direction:"out",kind:"service",type:response?.list?"list":response?.buttons?.length?"buttons":response?.ctaUrl?"cta_url":"text",body:describe(response),sent:Boolean(result?.sent),reason:reasonOf(result),waMessageId:result?.data?.messages?.[0]?.id||null,at});
+export const logTemplate=(store,to,template,bodyText,result,at)=>logMessage(store,to,{direction:"out",kind:"template",type:"template",body:`[תבנית ${template.name}] ${bodyText}`,sent:Boolean(result?.sent),reason:reasonOf(result),waMessageId:result?.data?.messages?.[0]?.id||null,at});
 export function parseKey(key){const m=/^msg\/([^/]+)\/(\d{13})-\d+-(in|out)-(\w+)-(ok|fail)$/.exec(key);return m?{userId:m[1],ms:Number(m[2]),direction:m[3],kind:m[4],sent:m[5]==="ok"}:null;}
 export function summarizeMessages(keys,profiles={}){
  const users={};
