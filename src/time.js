@@ -14,3 +14,10 @@ export function rangesFor(venue, iso) {
   return d.timeRanges?.length ? d.timeRanges : [{openTime:d.openTime,closeTime:d.closeTime}];
 }
 
+// Epoch ms of a local wall-clock minute on an ISO date (handles DST via the zone's real offset that day).
+export function zonedMs(iso, minute, timezone = "Asia/Jerusalem") {
+  const [y, m, d] = iso.split("-").map(Number), guess = Date.UTC(y, m - 1, d, 0, minute);
+  const off = new Intl.DateTimeFormat("en-US", { timeZone: timezone, timeZoneName: "longOffset" }).formatToParts(new Date(guess)).find(p => p.type === "timeZoneName")?.value || "GMT";
+  const mm = /GMT([+-])(\d{2}):?(\d{2})?/.exec(off), sign = mm?.[1] === "-" ? -1 : 1, offMin = mm ? sign * (Number(mm[2]) * 60 + Number(mm[3] || 0)) : 0;
+  return guess - offMin * 60000;
+}

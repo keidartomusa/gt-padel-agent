@@ -1,4 +1,4 @@
-import { addDays, localDateParts, weekdayIndex } from "./time.js";
+import { addDays, localDateParts, weekdayIndex, zonedMs } from "./time.js";
 import { timeLabel, dayLabel } from "./requests.js";
 const pad=n=>String(n).padStart(2,"0"), clock=m=>`${pad(Math.floor(m/60)%24)}:${pad(m%60)}`;
 export const LEVELS=["1–2","2–2.5","2.5–3","3–3.5","3.5–4","4+"];
@@ -21,14 +21,27 @@ export const skipKey=(userId,requestId)=>`skip/${userId}/${requestId}`;
 const skipped=async(store,a,b)=>Boolean(await store.get(skipKey(a.userId,b.id))||await store.get(skipKey(b.userId,a.id)));
 const durText=r=>r.durations?.length>1?"משך גמיש":r.durations?.length?`${r.durations[0]} דק׳`:"";
 // Item 5: the alert shows who, when, level, party, court, duration and the combined count. One builder for instant and daily alerts.
-export function matchAlert(viewer,r){const sum=partyOf(viewer)+partyOf(r),when=`${dayLabel(r.recurring&&r.date?{date:r.date}:r)} · ${timeLabel(r)}`;return{text:`מצאתי התאמה אפשרית: ${r.displayName} · ${when} · רמה ${r.level}${levelNote(viewer.level,r.level)}\n${[partyOf(r)===1?"שחקן אחד":`${partyOf(r)} שחקנים`,r.hasCourt?"יש מגרש":"בלי מגרש",durText(r)].filter(Boolean).join(" · ")}\nיחד: ${sum} מתוך 4\n\nתרצו להתחבר?`,buttons:[{id:`connect:${r.id}`,title:"רוצה להתחבר"},{id:`notnow:${r.id}`,title:"לא הפעם"}]};}
-export async function activeRequests(store,now=new Date()){const today=localDateParts(now).iso,rows=await store.list("request/");return rows.map(x=>x.value).filter(x=>x.active&&(x.recurring||!x.date||x.date>=today));}
+export function matchAlert(viewer,r){const sum=partyOf(viewer)+partyOf(r),when=`${dayLabel(r.recurring&&r.date?{date:r.date}:r)} · ${timeLabel(r)}`;const g=groupNames(r).length>1;return{text:`מצאתי התאמה אפשרית: ${g?`${groupLabel(r)} (כבר מחוברים ביניהם)`:r.displayName} · ${when} · רמה ${r.level}${levelNote(viewer.level,r.level)}\n${[partyOf(r)===1?"שחקן אחד":`${partyOf(r)} שחקנים`,r.hasCourt?"יש מגרש":"בלי מגרש",durText(r)].filter(Boolean).join(" · ")}\nיחד: ${sum} מתוך 4\n\nתרצו להתחבר?`,buttons:[{id:`connect:${r.id}`,title:"רוצה להתחבר"},{id:`notnow:${r.id}`,title:"לא הפעם"}]};}
+// Tom 23.9 16:25: a game closes automatically 4 hours after its time window ends - no question asked.
+// End = the booked court slot's end when there is one, otherwise the request window's end (open-ended = midnight).
+export const CLOSE_AFTER_MS=4*3600000;
+const mins=t=>{const[h,m]=String(t).split(":").map(Number);return h*60+(m||0);};
+export function gameEndMs(r,date=r.date){const end=r.courtSlot?.end?mins(r.courtSlot.end):Math.min(r.endMinute??1440,1440);return zonedMs(date,end);}
+export const gameOver=(r,now=new Date(),date=r.date)=>Boolean(date)&&now.getTime()>=gameEndMs(r,date)+CLOSE_AFTER_MS;
+export async function activeRequests(store,now=new Date()){const today=localDateParts(now).iso,yesterday=addDays(today,-1),rows=await store.list("request/");return rows.map(x=>x.value).filter(x=>x.active&&(x.recurring||!x.date||(x.date>=yesterday&&!gameOver(x,now))));}
+// Hourly: persist the automatic closing (requests leave the board; their connections are done).
+export async function autoClose(store,now=new Date()){const closed=[];for(const{value:r}of await store.list("request/")){if(!r||r.recurring||!r.date||r.closedReason==="time_passed"||r.deletedAt||!gameOver(r,now))continue;await store.set(`request/${r.id}`,{...r,active:false,closedAt:r.closedAt||now.toISOString(),closedReason:r.active?"time_passed":r.closedReason,gameOverAt:now.toISOString()});closed.push(r.id);}
+ const ids=new Set(closed);for(const{value:c}of await store.list("connection/"))if(c&&ids.has(c.requestId)&&(c.status==="accepted"||c.status==="pending"))await store.set(`connection/${c.id}`,{...c,status:c.status==="accepted"?"done":"expired",doneAt:now.toISOString()});return closed;}
+// Tom 23.9 16:27: a connected group is one match - one message with all the names, never one per member.
+export function groupNames(r){return[r.displayName,...(r.joinedNames||[])].filter(Boolean);}
+export function groupLabel(r){const n=groupNames(r);return n.length<2?(n[0]||""):`${n.slice(0,-1).join(", ")} ו${n.at(-1)}`;}
+export const groupShort=r=>{const n=groupNames(r);return n.length<2?(n[0]||""):`${n[0]} ועוד ${n.length-1}`;};
 export const appliesOn=(request,date)=>request.recurring?request.weekdays?.includes(weekdayIndex(date)):request.date===date;
 export async function findMatches(store,request,now=new Date()){const rows=await activeRequests(store,now);const out=[];for(const x of rows)if(x.id!==request.id&&x.userId!==request.userId&&appliesOn(x,request.date)&&overlap(x,request)&&!await isMuted(store,x.userId,now)&&!await skipped(store,x,request))out.push(x);return out;}
 export async function publicBoard(store,{date,startMinute=0,endMinute=1440,now=new Date()}={}){return(await activeRequests(store,now)).filter(x=>(!date||appliesOn(x,date))&&x.startMinute<endMinute&&startMinute<x.endMinute).sort((a,b)=>a.startMinute-b.startMinute);}
 export function formatPhone(userId){const d=String(userId||"").replace(/\D/g,"");if(/^972\d{8,9}$/.test(d)){const l="0"+d.slice(3);return`${l.slice(0,3)}-${l.slice(3)}`;}return d?`+${d}`:"";}
 export const clockLabel=m=>clock(m);
-export function formatBoard(rows){if(!rows.length)return"לא מצאתי כרגע בקשות פתוחות בחלון הזה. אפשר לפתוח בקשה חדשה ואחפש התאמות.";return`*בקשות פתוחות*\n${rows.slice(0,9).map((x,i)=>`${i+1}. ${x.displayName} · רמה ${x.level} · ${timeLabel(x)} · ${Number(x.partySize)===1?"שחקן אחד":`${x.partySize} שחקנים`}${x.hasCourt?" · יש מגרש":""}`).join("\n")}\n\nלהתחברות בחרו בקשה מהרשימה.`;}
+export function formatBoard(rows){if(!rows.length)return"לא מצאתי כרגע בקשות פתוחות בחלון הזה. אפשר לפתוח בקשה חדשה ואחפש התאמות.";return`*בקשות פתוחות*\n${rows.slice(0,9).map((x,i)=>`${i+1}. ${groupLabel(x)} · רמה ${x.level} · ${timeLabel(x)} · ${Number(x.partySize)===1?"שחקן אחד":`${x.partySize} שחקנים`}${x.hasCourt?" · יש מגרש":""}${x.full?" · מלא":""}`).join("\n")}\n\nלהתחברות בחרו בקשה מהרשימה.`;}
 export async function mute(store,userId,until){const p=await store.get(`profile/${userId}`)||{userId};p.mutedUntil=until;await store.set(`profile/${userId}`,p);return p;}
 export async function isMuted(store,userId,now=new Date()){const p=await store.get(`profile/${userId}`);return Boolean(p?.mutedUntil&&new Date(p.mutedUntil)>now);}
 export async function dailySweep(store,now=new Date()){const req=await activeRequests(store,now),pairs=[],today=localDateParts(now).iso;for(let day=0;day<14;day++){const date=addDays(today,day),candidates=req.filter(x=>appliesOn(x,date));for(let i=0;i<candidates.length;i++)for(let j=i+1;j<candidates.length;j++)if(candidates[i].userId!==candidates[j].userId&&overlap(candidates[i],candidates[j])&&!await isMuted(store,candidates[i].userId,now)&&!await isMuted(store,candidates[j].userId,now)&&!await skipped(store,candidates[i],candidates[j])){const key=pairKey(candidates[i],candidates[j]);if(!await store.get(key)){pairs.push([{...candidates[i],date},{...candidates[j],date}]);await store.set(key,{sentAt:now.toISOString()});}}}return pairs;}
@@ -39,12 +52,3 @@ export function expiryFor(date,endMinute=1440){return new Date(`${addDays(date,1
 export const ALERTS_PER_DAY=3;
 export const pairKey=(a,b)=>`notification/${[a.id,b.id].sort().join("~")}`;
 export async function allowAlert(store,userId,now=new Date()){const key=`alertcap/${userId}/${localDateParts(now).iso}`,n=(await store.get(key))?.n||0;if(n>=ALERTS_PER_DAY)return false;await store.set(key,{n:n+1});return true;}
-// Tom 23.9 15:36 closing flow: the morning after a connection (daily sweep), everyone in it who still has an open
-// request for that game day is asked whether the game worked out. "כן, סגרנו" closes their request; "עוד לא" keeps it.
-// Asked once per connection; past games are dropped silently (their requests expire anyway).
-export async function dueFollowups(store,now=new Date()){const today=localDateParts(now).iso,out=[],active=await activeRequests(store,now);
- for(const {key,value:f} of await store.list("followup/")){if(!f||f.sentAt)continue;if(f.date<today){await store.delete(key);continue;}if(localDateParts(new Date(f.createdAt)).iso>=today)continue;
-  for(const u of f.users){const r=active.find(x=>x.userId===u.userId&&appliesOn(x,f.date));if(!r)continue;
-   out.push({to:u.userId,response:{text:`הסתדר משחק עם ${u.other} ל${dayLabel({date:f.date})}? אם כן, אוריד את הבקשה שלכם מהלוח.`,buttons:[{id:`closed:${r.id}`,title:"כן, סגרנו"},{id:`notyet:${r.id}`,title:"עוד לא"}]}});}
-  await store.set(key,{...f,sentAt:now.toISOString()});}
- return out;}
