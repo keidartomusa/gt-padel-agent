@@ -1,5 +1,5 @@
 import test from "node:test";import assert from "node:assert/strict";
-import {memoryStore} from "../src/store.js";import {ensureTemplate} from "../src/template.js";import {rememberWaba} from "../netlify/functions/whatsapp.js";
+import {memoryStore} from "../src/store.js";import {ensureTemplate,retryTemplateIfNeeded} from "../src/template.js";import {rememberWaba} from "../netlify/functions/whatsapp.js";
 // 24.9 regression: first live run returned no_waba - the system-user token's debug scopes carried no target_ids.
 const res=(body,ok=true,status=200)=>({ok,status,json:async()=>body});
 function graph({businesses=[]}={}){const calls=[];return{calls,fetch:async(url,opt={})=>{calls.push({url,method:opt.method||"GET"});
@@ -18,3 +18,8 @@ test("two WABAs through businesses and no hint: refuses (multiple_waba) instead 
 test("rememberWaba stores entry.id from WhatsApp webhooks only, and only numeric ids",async()=>{const s=memoryStore();
  assert.equal(await rememberWaba(s,{object:"page",entry:[{id:"999999"}]}),null);assert.equal(await rememberWaba(s,{object:"whatsapp_business_account",entry:[{id:"abc"}]}),null);assert.equal(await s.get("meta/waba-id"),null);
  assert.equal(await rememberWaba(s,{object:"whatsapp_business_account",entry:[{id:"123456789"}]}),"123456789");assert.equal((await s.get("meta/waba-id")).id,"123456789");});
+test("retryTemplateIfNeeded: only after no_waba and only once a webhook recorded the WABA id",async()=>{const s=memoryStore();const g=graph();
+ assert.equal((await retryTemplateIfNeeded(s,{token:"T",fetchImpl:g.fetch})).retried,false);
+ await s.set("meta/last-template",{error:"no_waba"});assert.equal((await retryTemplateIfNeeded(s,{token:"T",fetchImpl:g.fetch})).retried,false);
+ await s.set("meta/waba-id",{id:"777888999"});const r=await retryTemplateIfNeeded(s,{token:"T",fetchImpl:g.fetch});assert.equal(r.retried,true);assert.equal(r.result.submit.submitted,true);
+ assert.equal((await retryTemplateIfNeeded(s,{token:"T",fetchImpl:g.fetch})).retried,false);assert.equal(g.calls.filter(c=>c.method==="POST").length,1);});
