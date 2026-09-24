@@ -28,5 +28,9 @@ export async function ensureTemplate({token,submit=true,fetchImpl=fetch,now=new 
  if(before.templates.length||!submit)return out;out.submit=await submitTemplate(w.wabaId,token,fetchImpl);
  const after=await templateStatus(w.wabaId,token,fetchImpl);out.after=after.templates||null;return out;}
 // After a no_waba run, retry once as soon as a signed webhook has recorded the WABA id (so nobody has to redeploy).
+export const templateCurrent=last=>(last?.current||last?.after||last?.before||[])[0]?.status||null;
 export async function retryTemplateIfNeeded(store,{token,fetchImpl=fetch,now=new Date()}){const last=await store.get("meta/last-template");const hint=(await store.get("meta/waba-id"))?.id||null;
+ // While Meta is reviewing, refresh the status read-only (never posts) so /health shows APPROVED/REJECTED without a redeploy.
+ if(last&&!last.error&&hint&&["PENDING","IN_APPEAL"].includes(templateCurrent(last))){const r=await ensureTemplate({token,fetchImpl,now,wabaHint:hint,submit:false});
+  if(r.error)return{retried:false,checked:true,error:r.error};const next={...last,current:r.before,checkedAt:r.at};await store.set("meta/last-template",next);return{retried:false,checked:true,status:templateCurrent(next)};}
  if(!last||last.error!=="no_waba"||!hint)return{retried:false};const r=await ensureTemplate({token,fetchImpl,now,wabaHint:hint});await store.set("meta/last-template",r);return{retried:true,result:r};}

@@ -23,3 +23,9 @@ test("retryTemplateIfNeeded: only after no_waba and only once a webhook recorded
  await s.set("meta/last-template",{error:"no_waba"});assert.equal((await retryTemplateIfNeeded(s,{token:"T",fetchImpl:g.fetch})).retried,false);
  await s.set("meta/waba-id",{id:"777888999"});const r=await retryTemplateIfNeeded(s,{token:"T",fetchImpl:g.fetch});assert.equal(r.retried,true);assert.equal(r.result.submit.submitted,true);
  assert.equal((await retryTemplateIfNeeded(s,{token:"T",fetchImpl:g.fetch})).retried,false);assert.equal(g.calls.filter(c=>c.method==="POST").length,1);});
+test("while PENDING the retry job only refreshes status (GET), never posts; stops once APPROVED",async()=>{const s=memoryStore();let status="PENDING";const calls=[];
+ const f=async(url,opt={})=>{calls.push(opt.method||"GET");if(url.includes("/debug_token"))return res({data:{granular_scopes:[{scope:"whatsapp_business_management"}]}});if(url.includes("/me/businesses"))return res({data:[]});if(url.includes("/message_templates"))return res({data:[{name:"gt_match_found",status,category:"UTILITY",language:"he"}]});return res({},false,404);};
+ await s.set("meta/waba-id",{id:"777888999"});await s.set("meta/last-template",{error:null,submit:{submitted:true,id:"T1"},after:[{name:"gt_match_found",status:"PENDING"}]});
+ let r=await retryTemplateIfNeeded(s,{token:"T",fetchImpl:f});assert.equal(r.status,"PENDING");status="APPROVED";r=await retryTemplateIfNeeded(s,{token:"T",fetchImpl:f});assert.equal(r.status,"APPROVED");
+ const last=await s.get("meta/last-template");assert.equal(last.submit.id,"T1");assert.equal(last.current[0].status,"APPROVED");
+ const n=calls.length;r=await retryTemplateIfNeeded(s,{token:"T",fetchImpl:f});assert.equal(r.checked,undefined);assert.equal(calls.length,n);assert.ok(!calls.includes("POST"));});
