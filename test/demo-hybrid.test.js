@@ -74,3 +74,6 @@ test("demo invite: Tom's phone gets the real 'תום ועוד 2 רוצים לה�
  const yes=sent[0].resp.buttons.find(b=>b.title==="כן, לחבר");const a=await routeIncoming({userId:T,displayName:"דנה",store:s,now:at,availabilityFn:available,actionId:yes.id});
  assert.match(a.text,/^חיברתי ביניכם! אפשר לשלוח הודעה לתום בלחיצה/);assert.match(a.text,/יחד אתם 4 - רביעייה מלאה/);
  await clean(s,{now:at});const left=(await s.list("request/")).map(x=>x.value);assert.deepEqual(left.map(x=>x.id),["real"],"only Tom's real request survives");assert.equal(await s.get("profile/972500000078"),null);});
+test("demo inspect falls back to the demo requester when nobody opted out",async()=>{const {demoInspect}=await import("../src/demo.js");const s=memoryStore();
+ await s.set("connection/c",{id:"c",status:"accepted",toUserId:DEMO_USER,fromUserId:T});await s.set("request/r",{id:"rrrrrrrr1",userId:T,recurring:false,date:"2026-09-27",startMinute:1260,endMinute:1440,active:true,partySize:1});
+ const r=await demoInspect(s,{now:later});assert.equal(r.status,"inspected");assert.equal(r.requests.length,1);assert.doesNotMatch(JSON.stringify(r),new RegExp(T));});
