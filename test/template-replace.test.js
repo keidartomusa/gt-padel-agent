@@ -15,3 +15,9 @@ test("replace: refuses to delete an APPROVED template (30-day name lock)",async(
 test("replace: no-op when live buttons already match; failed delete never resubmits",async()=>{const g=meta({buttons:["כן","לא, תודה"]});const r=await replaceTemplate({token:"T",fetchImpl:g.fetch});
  assert.equal(r.skipped,"buttons_already_match");assert.equal(g.calls.filter(c=>c.m!=="GET").length,0);
  const g2=meta({delOk:false});const r2=await replaceTemplate({token:"T",fetchImpl:g2.fetch});assert.equal(r2.error,"nope");assert.equal(g2.calls.filter(c=>c.m==="POST").length,0);});
+import {memoryStore} from "../src/store.js";import {retryTemplateIfNeeded} from "../src/template.js";
+test("after a replace blocked by 'being deleted', the retry job resubmits once the template is gone",async()=>{const s=memoryStore();const g=meta();
+ await s.set("meta/waba-id",{id:"9001"});await s.set("meta/last-template",{op:"replace",deleted:true,error:"You can't change the category for this message template while the existing Hebrew content is being deleted. Try again in less than 1 minute",after:[]});
+ const gone={calls:[],fetch:async(url,opt={})=>{if((opt.method||"GET")==="GET"&&url.includes("/message_templates")&&!gone.posted)return res({data:[]});if(opt.method==="POST")gone.posted=true;return g.fetch(url,opt);}};
+ const r=await retryTemplateIfNeeded(s,{token:"T",fetchImpl:gone.fetch});assert.equal(r.retried,true);assert.equal(r.result.submit.submitted,true);
+ assert.equal((await retryTemplateIfNeeded(s,{token:"T",fetchImpl:gone.fetch})).retried,false);});
