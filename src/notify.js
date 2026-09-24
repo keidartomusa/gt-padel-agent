@@ -1,9 +1,9 @@
 // Window-aware delivery (WhatsApp 24h customer-service window).
-// Inside the window: normal free-form message. Outside: the approved template "gt_match_found"
+// Inside the window: normal free-form message. Outside: the approved template "gt_match_found_v2" (renamed 24.9 22:06: Meta kept blocking resubmission under the deleted name)
 // (no names, no numbers), and the full notification waits until the user taps "כן, שלחו פרטים" or writes again.
 import{logOutbound,logTemplate}from"./messagelog.js";
 export const WINDOW_MS=24*60*60*1000;
-export const MATCH_TEMPLATE={name:"gt_match_found",language:"he",payloads:["pending_yes","pending_no"],body:"נמצאה לך התאמה למשחק פאדל ב-GT PADEL. רוצה לקבל את הפרטים?"};
+export const MATCH_TEMPLATE={name:"gt_match_found_v2",language:"he",payloads:["pending_yes","pending_no"],body:"נמצאה לך התאמה למשחק פאדל ב-GT PADEL. רוצה לקבל את הפרטים?"};
 export async function recordInbound(store,userId,now=new Date()){const p=await store.get(`profile/${userId}`)||{userId};p.lastInboundAt=now.toISOString();await store.set(`profile/${userId}`,p);}
 export function windowOpen(profile,now=new Date()){if(!profile?.lastInboundAt)return false;return now.getTime()-new Date(profile.lastInboundAt).getTime()<WINDOW_MS;}
 export async function deliver(store,to,response,{now=new Date(),send,sendTemplate}){
