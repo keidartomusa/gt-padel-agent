@@ -44,3 +44,9 @@ test("demo stage wipes old demo records and recreates דנה's solo Sunday reque
  for(const o of [{text:"היי"},{text:"מציאת שחקנים"},{actionId:"oneoff"},{actionId:"level:3"},{actionId:"pc:3:yes"},{text:"ראשון הקרוב בערב"},{actionId:`connect:${st.requestId}`}])await t(o);
  const sent=[];const a=await demoApprove(s,{now:at,deliverFn:async(to,resp)=>{sent.push({to,resp});return{sent:true};}});
  assert.equal(a.status,"accepted");assert.equal(sent.length,1);assert.equal(sent[0].to,T);assert.match(sent[0].resp.text,/החיבור עם דנה אושר/);assert.match(sent[0].resp.text,/יחד אתם 4 - רביעייה מלאה/);});
+test("demo inspect lists the opted-out user's requests without phone numbers and changes no request",async()=>{const {demoInspect}=await import("../src/demo.js");const s=memoryStore();
+ await s.set(`profile/${T}`,{userId:T,name:"תום",optedOutAt:later.toISOString()});
+ await s.set("request/w",{id:"weekly-1",userId:T,recurring:true,weekdays:[5,6],startMinute:360,endMinute:540,active:false,removedReason:"opt_out",createdAt:now.toISOString()});
+ const before=JSON.stringify(await s.list("request/"));const r=await demoInspect(s,{now:later});
+ assert.equal(r.status,"inspected");assert.equal(r.requests.length,1);assert.equal(r.requests[0].removedReason,"opt_out");assert.match(r.requests[0].title,/קבועה/);
+ assert.doesNotMatch(JSON.stringify(r),new RegExp(T));assert.equal(JSON.stringify(await s.list("request/")),before);});
