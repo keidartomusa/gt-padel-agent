@@ -32,3 +32,11 @@ export async function demoStage(store,{now=new Date(),to=DEMO_USER,name=DEMO_NAM
  const id=`demo${now.getTime().toString(36)}`,r={...DEMO_REQUEST,displayName:name,id,userId:to,active:true,demo:true,createdAt:now.toISOString()};
  await store.set(`request/${id}`,r);await store.set(`profile/${to}`,{userId:to,name,demo:true,lastInboundAt:now.toISOString()});await store.set(`state/${to}`,{});
  const out={status:"staged",requestId:id,removed:c.removed,at:now.toISOString()};await store.set("meta/last-demo",{step:"stage",...out});return out;}
+// Read-only state check (Tom 24.9 10:02): which requests the user who just used "הסרה מהרשימה" has, without phone numbers.
+import { reqTitle } from "./requests.js";
+export async function demoInspect(store,{now=new Date(),hours=3}={}){const since=now-hours*3600000;
+ const users=(await vals(store,"profile/")).filter(p=>p.optedOutAt&&new Date(p.optedOutAt)>=since&&!String(p.userId).startsWith("9725000000"));
+ if(users.length!==1){const out={status:users.length?"ambiguous":"not_found",count:users.length,at:now.toISOString()};await store.set("meta/last-demo",{step:"inspect",...out});return out;}
+ const u=users[0],rows=(await vals(store,"request/")).filter(r=>r.userId===u.userId||(r.joined||[]).includes(u.userId)).sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""))
+  .map(r=>({id:String(r.id).slice(0,8),title:reqTitle(r),party:r.partySize||1,court:Boolean(r.hasCourt),level:r.level||null,active:Boolean(r.active),own:r.userId===u.userId,removedReason:r.removedReason||null,removedAt:r.removedAt||null,closedReason:r.closedReason||null,createdAt:r.createdAt||null}));
+ const out={status:"inspected",optedOutAt:u.optedOutAt,requests:rows,at:now.toISOString()};await store.set("meta/last-demo",{step:"inspect",...out});return out;}
