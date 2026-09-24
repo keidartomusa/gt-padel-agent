@@ -28,10 +28,13 @@ export async function demoCleanup(store,{now=new Date(),to=DEMO_USER}={}){let n=
 // Re-stage (Tom 24.9 09:54, re-shoot after the party-size fix): wipe the demo records, then recreate דנה's solo
 // request exactly as recorded in step 1 (Sunday 27.9 after 21:00, 3-3.5, solo, no court, fully flexible).
 export const DEMO_REQUEST={recurring:false,level:"3–3.5",partySize:1,hasCourt:false,date:"2026-09-27",startMinute:1260,endMinute:1440,durations:[90],flexMinutes:1440};
-export async function demoStage(store,{now=new Date(),to=DEMO_USER,name=DEMO_NAME}={}){const c=await demoCleanup(store,{now,to});
+export async function demoStage(store,{now=new Date(),to=DEMO_USER,name=DEMO_NAME,hours=6}={}){const c=await demoCleanup(store,{now,to});
+ // Tom 24.9 10:07: his "delete everything" was intentional; the opt-out mark it left serves no purpose for an active user, so clear it (recent, single, non-fictitious only).
+ const marked=(await vals(store,"profile/")).filter(p=>p.optedOutAt&&now-new Date(p.optedOutAt)<hours*3600000&&!String(p.userId).startsWith("9725000000"));let unmarked=0;
+ if(marked.length===1){const {optedOutAt,...p}=marked[0];await store.set(`profile/${p.userId}`,p);unmarked=1;}
  const id=`demo${now.getTime().toString(36)}`,r={...DEMO_REQUEST,displayName:name,id,userId:to,active:true,demo:true,createdAt:now.toISOString()};
  await store.set(`request/${id}`,r);await store.set(`profile/${to}`,{userId:to,name,demo:true,lastInboundAt:now.toISOString()});await store.set(`state/${to}`,{});
- const out={status:"staged",requestId:id,removed:c.removed,at:now.toISOString()};await store.set("meta/last-demo",{step:"stage",...out});return out;}
+ const out={status:"staged",requestId:id,removed:c.removed,unmarked,at:now.toISOString()};await store.set("meta/last-demo",{step:"stage",...out});return out;}
 // Read-only state check (Tom 24.9 10:02): which requests the user who just used "הסרה מהרשימה" has, without phone numbers.
 import { reqTitle } from "./requests.js";
 export async function demoInspect(store,{now=new Date(),hours=3}={}){const since=now-hours*3600000;

@@ -47,13 +47,13 @@ test("no mute wording anywhere in settings, lists or alerts", async () => {
 test("leave the list: from settings, from 'הבקשות שלי', or by typing; confirm; requests removed; no more alerts", async () => {
   const s = memoryStore(); await create(s, "a", "דנה"); await create(s, "a", "דנה", { when: "שישי בבוקר" });
   const h = H(s, "a", "דנה");
-  assert.ok(ids(await h({ text: "הגדרות" })).some(x => x.id === "leave" && x.title === "הסרה מהרשימה"));
+  assert.ok(ids(await h({ text: "הגדרות" })).some(x => x.id === "leave" && x.title === "מחיקת כל הבקשות"));
   assert.ok(ids(await h({ actionId: "my_requests" })).some(x => x.id === "leave"));
-  for (const t of ["תסירו אותי מהרשימה", "הסר אותי", "אני רוצה להפסיק לקבל הודעות", "stop"]) { const q = await h({ text: t }); assert.match(q.text, /^להסיר אתכם מהרשימה\?/, t); }
-  const no = await h({ actionId: "leave_no" }); assert.equal(no.text, "בסדר, נשארתם ברשימה.");
+  for (const t of ["תסירו אותי מהרשימה", "הסר אותי", "אני רוצה להפסיק לקבל הודעות", "stop"]) { const q = await h({ text: t }); assert.equal(q.text, "למחוק את כל הבקשות שלכם?", t); }
+  const no = await h({ actionId: "leave_no" }); assert.equal(no.text, "בסדר, לא מחקתי כלום.");
   assert.equal((await s.list("request/")).filter(x => x.value.active).length, 2);
   const ask = await h({ actionId: "leave" }); assert.deepEqual(ids(ask).map(x => x.id), ["leave_yes", "leave_no"]);
-  const done = await h({ actionId: "leave_yes" }); assert.match(done.text, /^הוסרתם מהרשימה\. הבקשות שלכם נמחקו/);
+  const done = await h({ actionId: "leave_yes" }); assert.match(done.text, /^מחקתי את כל הבקשות שלכם\./);
   assert.equal((await s.list("request/")).filter(x => x.value.active && x.value.userId === "a").length, 0);
   assert.ok((await s.get("profile/a")).optedOutAt);
   const other = await create(s, "b", "נועם"); assert.ok(!(other.notifications || []).some(n => n.to === "a"));
