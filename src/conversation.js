@@ -17,9 +17,9 @@ const id=()=>crypto.randomUUID();
 // QA 23.9: notifications show the weekday/date and window, not an ISO date.
 const whenOf=r=>`${dayLabel(r.recurring&&r.date?{date:r.date}:r)} · ${timeLabel(r)}`;
 // Tom 23.9 14:13: no mute at all. A user who wants no more messages removes themselves from the list (confirm first).
-const LEAVE={id:"leave",title:"הסרה מהרשימה"};
-export const LEAVE_ASK="להסיר אתכם מהרשימה? כל הבקשות שלכם יימחקו ולא יישלחו אליכם יותר הודעות על התאמות.";
-export const LEAVE_DONE="הוסרתם מהרשימה. הבקשות שלכם נמחקו ולא יישלחו אליכם יותר הודעות על התאמות.\n\nאפשר לחזור בכל רגע - פשוט כותבים לי.";
+const LEAVE={id:"leave",title:"מחיקת כל הבקשות"}; // Tom 24.9 10:07: the old "הסרה מהרשימה" read like leaving the service
+export const LEAVE_ASK="למחוק את כל הבקשות שלכם?";
+export const LEAVE_DONE="מחקתי את כל הבקשות שלכם. אפשר לפתוח בקשה חדשה בכל רגע - פשוט כותבים לי."; // Tom 24.9 10:07 picked option A
 const LEAVE_TEXT=/^(?:הסר(?:ה)?(?: אותי)?(?: מהרשימה)?|תסיר(?:ו)? אותי(?: מהרשימה)?|להסיר אותי(?: מהרשימה)?|(?:אני )?(?:רוצה )?להפסיק לקבל (?:הודעות|התראות)|stop|unsubscribe)[.!]?$/i;
 const MY_REQ={id:"my_requests",title:"הבקשות שלי"},MENU={id:"menu",title:"לתפריט"};
 const LEVEL_ROWS=()=>LEVELS.map((x,i)=>({id:`level:${i}`,title:levelTitle(x)}));
@@ -106,7 +106,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  const timeAsk=async(date,resume)=>{if(resume!==null)await set({step:"time_ask",tResume:resume,tDate:date});return btn(`${dayLabel({date})} - מאיזו שעה?`,[17,18,19].map(h=>({id:`tm:${h}`,title:`${h}:00`})));};
  const reask=async s=>{switch(s.step){case"avail_when":return list(AVAIL_ASK,WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));case"board_when":return list(BOARD_ASK,WHEN_OPTIONS.map((x,i)=>({id:`bwhen:${i}`,title:x})));case"when":case"edit_when":{const er=s.step==="edit_when"?await ownReq(s.editId):null;return{text:er?.recurring?SCHEDULE_ASK:whenAsk(er||s.draft)};};case"schedule":return{text:SCHEDULE_ASK};
    case"level":case"edit_level":return list(LEVEL_ASK,LEVEL_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"pc":return list(PC_ASK,PC_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"duration":case"edit_duration":return list(durAsk(s.draft),DURATION_ROWS());case"flex":case"edit_flex":return list(FLEX_ASK,FLEX_ROWS());case"edit_party":return list("כמה שחקנים אתם?",PARTY_ROWS());case"court":case"edit_court":return btn("כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);
-   case"mode":return btn(PLAYERS_MENU,PLAYERS_BTNS);case"time_ask":return timeAsk(s.tDate,null);case"nw_day":return s.nwDays?list("באיזה יום בשבוע הבא?",s.nwDays.map((d,i)=>({id:`nw:${i}`,title:d.label}))):null;case"leave_confirm":return btn(LEAVE_ASK,[{id:"leave_yes",title:"כן, להסיר"},{id:"leave_no",title:"לא"}]);case"name_confirm":return btn(`לשנות את השם ${fromName(s.oldName)} ${toName(s.newName)}?`,[{id:"name_yes",title:"כן, לשנות"},{id:"name_no",title:"לא"}]);default:return null;}};
+   case"mode":return btn(PLAYERS_MENU,PLAYERS_BTNS);case"time_ask":return timeAsk(s.tDate,null);case"nw_day":return s.nwDays?list("באיזה יום בשבוע הבא?",s.nwDays.map((d,i)=>({id:`nw:${i}`,title:d.label}))):null;case"leave_confirm":return btn(LEAVE_ASK,[{id:"leave_yes",title:"כן, למחוק"},{id:"leave_no",title:"לא"}]);case"name_confirm":return btn(`לשנות את השם ${fromName(s.oldName)} ${toName(s.newName)}?`,[{id:"name_yes",title:"כן, לשנות"},{id:"name_no",title:"לא"}]);default:return null;}};
  // Items 3 and 9: one routine decides the next missing field, so known answers are never asked again.
  const finish=async(st,d,prefix="")=>{if(!name)return askName({pending:"pfinish",resume:{...st,flow:"players",step:"ready",draft:d}},prefix);const request={...d,displayName,id:id(),userId,flexMinutes:d.flexMinutes??0,active:true,createdAt:now.toISOString()};
    if(!request.recurring&&!request.hasCourt){const availability=await availabilityFn({date:request.date,startMinute:request.startMinute,endMinute:request.endMinute,durationMinutes:request.durations?.[0]||60},{today:today()});if(!availability.slots?.length){await set({flow:"players",step:"when",draft:{...d,date:undefined,startMinute:undefined,endMinute:undefined}});return{text:"לא מצאתי מגרש פנוי שמתאים לחלון ולמשך שביקשתם. הבקשה לא פורסמה כדי שלא נחפש שחקנים למשחק שלא ניתן להזמין.",buttons:[{id:"retry_when",title:"לנסות זמן אחר"},{id:"availability",title:"בדיקת זמינות"}]};}request.courtSlot=availability.slots[0];}
@@ -200,8 +200,8 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  if(input==="retry_when"&&state.flow==="players"&&state.step==="when")return btn(WHEN_ASK,[MENU]);
  if(input==="club"||(!actionId&&/^(?:ל)?דבר(?:ו)? עם המועדון$/.test(text.trim())))return clubCard();
  if(input==="settings"||/הגדרות/.test(input))return btn("*ניהול הבקשות*",[{id:"my_requests",title:"הבקשות שלי"},LEAVE]);
- if(input==="leave"||(!actionId&&LEAVE_TEXT.test(text.trim()))){await set({step:"leave_confirm"});return btn(LEAVE_ASK,[{id:"leave_yes",title:"כן, להסיר"},{id:"leave_no",title:"לא"}]);}
- if(input==="leave_no"){await set({});return btn("בסדר, נשארתם ברשימה.",[MENU]);}
+ if(input==="leave"||(!actionId&&LEAVE_TEXT.test(text.trim()))){await set({step:"leave_confirm"});return btn(LEAVE_ASK,[{id:"leave_yes",title:"כן, למחוק"},{id:"leave_no",title:"לא"}]);}
+ if(input==="leave_no"){await set({});return btn("בסדר, לא מחקתי כלום.",[MENU]);}
  if(input==="leave_yes"){await set({});for(const r of await userActiveRequests(store,userId,now)){await store.set(`request/${r.id}`,{...r,active:false,removedAt:now.toISOString(),removedReason:"opt_out"});}
   const p=await store.get(`profile/${userId}`)||{userId};await store.set(`profile/${userId}`,{...p,optedOutAt:now.toISOString(),mutedUntil:null});await store.delete?.(`pending/${userId}`);return{text:LEAVE_DONE};}
  // Old mute buttons still sitting in chats (removed 23.9 14:13) lead to the leave option instead.

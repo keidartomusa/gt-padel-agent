@@ -61,3 +61,6 @@ test("demo restore brings back the opt-out-removed weekly request and the bug-me
  assert.equal((await s.get("request/w")).active,true);assert.equal((await s.get("request/w")).removedReason,undefined);assert.equal((await s.get("request/m")).active,true);assert.equal((await s.get("request/m")).mergedInto,undefined);
  assert.equal((await s.get("request/t")).active,false);assert.equal((await s.get("request/old")).active,false);assert.equal((await s.get("request/other")).active,false);
  assert.equal((await s.get(`profile/${T}`)).optedOutAt,undefined);assert.equal((await s.get(`profile/${T}`)).name,"תום");});
+test("demo stage clears a recent opt-out mark of the one real user, keeps the rest of the profile, never touches fictitious users",async()=>{const {demoStage}=await import("../src/demo.js");const s=memoryStore();
+ await s.set(`profile/${T}`,{userId:T,name:"תום",optedOutAt:now.toISOString()});await s.set("profile/972500000005",{userId:"972500000005",optedOutAt:now.toISOString()});
+ const r=await demoStage(s,{now:later});assert.equal(r.unmarked,1);assert.equal((await s.get(`profile/${T}`)).optedOutAt,undefined);assert.equal((await s.get(`profile/${T}`)).name,"תום");assert.ok((await s.get("profile/972500000005")).optedOutAt);});
