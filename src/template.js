@@ -27,7 +27,7 @@ export async function ensureTemplate({token,submit=true,fetchImpl=fetch,now=new 
  if(!token)return{...out,error:"not_configured"};const w=await findWaba(token,fetchImpl,{hint:wabaHint});out.canManage=w.canManage;out.wabaCount=w.wabaCount;out.wabaSource=w.source;out.diag=w.diag;if(!w.wabaId)return{...out,error:w.error||"no_waba",businessesError:w.businessesError||null};
  const before=await templateStatus(w.wabaId,token,fetchImpl);if(before.error)return{...out,error:before.error};out.before=before.templates;
  if(before.templates.length||!submit)return out;out.submit=await submitTemplate(w.wabaId,token,fetchImpl);
- const after=await templateStatus(w.wabaId,token,fetchImpl);out.after=after.templates||null;return out;}
+ const after=await templateStatus(w.wabaId,token,fetchImpl);out.after=after.templates||null;if(!out.submit.submitted)out.error=out.submit.error;return out;}
 // After a no_waba run, retry once as soon as a signed webhook has recorded the WABA id (so nobody has to redeploy).
 export const templateCurrent=last=>(last?.current||last?.after||last?.before||[])[0]?.status||null;
 export async function retryTemplateIfNeeded(store,{token,fetchImpl=fetch,now=new Date()}){const last=await store.get("meta/last-template");const hint=(await store.get("meta/waba-id"))?.id||null;
@@ -36,7 +36,8 @@ export async function retryTemplateIfNeeded(store,{token,fetchImpl=fetch,now=new
   if(r.error)return{retried:false,checked:true,error:r.error};const next={...last,current:r.before,checkedAt:r.at};await store.set("meta/last-template",next);return{retried:false,checked:true,status:templateCurrent(next)};}
  // 24.9 21:07: resubmit right after a delete fails with "...is being deleted. Try again in less than 1 minute" - retry the check-first submit.
  const deleting=last&&/being deleted/i.test(String(last.error||""))&&!(last.after||[]).length;
- if(!last||!(last.error==="no_waba"||deleting)||!hint)return{retried:false};const r=await ensureTemplate({token,fetchImpl,now,wabaHint:hint});await store.set("meta/last-template",r);return{retried:true,result:r};}
+ if(!last||!(last.error==="no_waba"||deleting)||!hint)return{retried:false};const attempts=(last.retryAttempts||0)+1;if(deleting&&attempts>36)return{retried:false,gaveUp:true};
+ const r=await ensureTemplate({token,fetchImpl,now,wabaHint:hint});r.retryAttempts=r.error?attempts:0;await store.set("meta/last-template",r);return{retried:true,result:r};}
 // Tom 24.9 21:04: delete the PENDING submission and resubmit with the current buttons. Never deletes an APPROVED template
 // (Meta then locks the name for 30 days); does nothing when the live buttons already match.
 export async function replaceTemplate({token,wabaHint=null,fetchImpl=fetch,now=new Date()}){const out={at:now.toISOString(),name:MATCH_TEMPLATE.name,op:"replace"};
