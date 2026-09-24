@@ -40,3 +40,14 @@ export async function demoInspect(store,{now=new Date(),hours=3}={}){const since
  const u=users[0],rows=(await vals(store,"request/")).filter(r=>r.userId===u.userId||(r.joined||[]).includes(u.userId)).sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""))
   .map(r=>({id:String(r.id).slice(0,8),title:reqTitle(r),party:r.partySize||1,court:Boolean(r.hasCourt),level:r.level||null,active:Boolean(r.active),own:r.userId===u.userId,removedReason:r.removedReason||null,removedAt:r.removedAt||null,closedReason:r.closedReason||null,createdAt:r.createdAt||null}));
  const out={status:"inspected",optedOutAt:u.optedOutAt,requests:rows,at:now.toISOString()};await store.set("meta/last-demo",{step:"inspect",...out});return out;}
+// Restore (pending Tom's OK): reactivate the opted-out user's requests removed by "הסרה מהרשימה" in the last hours and the
+// one the party-size bug merged into the demo request; the demo trio (one-off, party 3, 27.9) stays deleted. Clears the opt-out mark.
+export async function demoRestore(store,{now=new Date(),hours=6,keepDeleted=r=>!r.recurring&&r.date==="2026-09-27"}={}){const since=now-hours*3600000;
+ const users=(await vals(store,"profile/")).filter(p=>p.optedOutAt&&new Date(p.optedOutAt)>=since&&!String(p.userId).startsWith("9725000000"));
+ if(users.length!==1){const out={status:users.length?"ambiguous":"not_found",count:users.length,at:now.toISOString()};await store.set("meta/last-demo",{step:"restore",...out});return out;}
+ const u=users[0],restored=[];
+ for(const r of await vals(store,"request/")){if(r.userId!==u.userId||r.active||keepDeleted(r))continue;
+  const optOut=r.removedReason==="opt_out"&&r.removedAt===u.optedOutAt,merged=r.closedReason==="merged"&&new Date(r.closedAt)>=since;if(!optOut&&!merged)continue;
+  const {removedAt,removedReason,closedAt,closedReason,mergedInto,...rest}=r;await store.set(`request/${r.id}`,{...rest,active:true,restoredAt:now.toISOString()});restored.push(reqTitle(r));}
+ const {optedOutAt,...p}=u;await store.set(`profile/${u.userId}`,p);
+ const out={status:"restored",restored,at:now.toISOString()};await store.set("meta/last-demo",{step:"restore",...out});return out;}
