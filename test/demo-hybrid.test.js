@@ -50,3 +50,14 @@ test("demo inspect lists the opted-out user's requests without phone numbers and
  const before=JSON.stringify(await s.list("request/"));const r=await demoInspect(s,{now:later});
  assert.equal(r.status,"inspected");assert.equal(r.requests.length,1);assert.equal(r.requests[0].removedReason,"opt_out");assert.match(r.requests[0].title,/קבועה/);
  assert.doesNotMatch(JSON.stringify(r),new RegExp(T));assert.equal(JSON.stringify(await s.list("request/")),before);});
+test("demo restore brings back the opt-out-removed weekly request and the bug-merged one, keeps the demo trio deleted, clears opt-out",async()=>{const {demoRestore}=await import("../src/demo.js");const s=memoryStore(),at=later.toISOString();
+ await s.set(`profile/${T}`,{userId:T,name:"תום",optedOutAt:at});
+ await s.set("request/w",{id:"w",userId:T,recurring:true,weekdays:[5,6],startMinute:360,endMinute:540,partySize:3,active:false,removedReason:"opt_out",removedAt:at});
+ await s.set("request/m",{id:"m",userId:T,recurring:true,weekdays:[0],startMinute:480,endMinute:660,partySize:1,active:false,closedReason:"merged",closedAt:at,mergedInto:"d"});
+ await s.set("request/t",{id:"t",userId:T,recurring:false,date:"2026-09-27",startMinute:1140,endMinute:1380,partySize:3,active:false,removedReason:"opt_out",removedAt:at});
+ await s.set("request/old",{id:"old",userId:T,recurring:false,date:"2026-09-23",startMinute:1260,endMinute:1440,active:false,closedReason:"time_passed"});
+ await s.set("request/other",{id:"other",userId:"15550000091",recurring:true,weekdays:[1],startMinute:0,endMinute:60,active:false,removedReason:"opt_out",removedAt:at});
+ const r=await demoRestore(s,{now:later});assert.equal(r.status,"restored");assert.equal(r.restored.length,2);
+ assert.equal((await s.get("request/w")).active,true);assert.equal((await s.get("request/w")).removedReason,undefined);assert.equal((await s.get("request/m")).active,true);assert.equal((await s.get("request/m")).mergedInto,undefined);
+ assert.equal((await s.get("request/t")).active,false);assert.equal((await s.get("request/old")).active,false);assert.equal((await s.get("request/other")).active,false);
+ assert.equal((await s.get(`profile/${T}`)).optedOutAt,undefined);assert.equal((await s.get(`profile/${T}`)).name,"תום");});
