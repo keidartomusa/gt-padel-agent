@@ -2,9 +2,10 @@
 // Read/submit through the Graph API with the existing WhatsApp token. No token or number is ever stored or logged.
 import{MATCH_TEMPLATE}from"./notify.js";
 const G="https://graph.facebook.com/v25.0";
-// Quick-reply labels. Order matches MATCH_TEMPLATE.payloads (pending_yes, pending_no); "כן, שלחו פרטים" is already recognised as typed text by the webhook.
-export const TEMPLATE_BUTTONS=["כן, שלחו פרטים","לא, תודה"];
+// Quick-reply labels. Order matches MATCH_TEMPLATE.payloads (pending_yes, pending_no). Tom 24.9 21:04: exactly "כן" / "לא, תודה".
+export const TEMPLATE_BUTTONS=["כן","לא, תודה"];
 export const templateDefinition=()=>({name:MATCH_TEMPLATE.name,language:MATCH_TEMPLATE.language,category:"UTILITY",components:[{type:"BODY",text:MATCH_TEMPLATE.body},{type:"BUTTONS",buttons:TEMPLATE_BUTTONS.map(text=>({type:"QUICK_REPLY",text}))}]});
+const buttonsOf=t=>(t?.components||[]).find(c=>c.type==="BUTTONS")?.buttons?.map(b=>b.text)||[];
 async function j(res){let b=null;try{b=await res.json();}catch{}return{ok:res.ok,status:res.status,body:b};}
 // WABA lookup, in order: token debug scopes -> businesses the token can see -> the WABA id recorded from signed webhooks (entry.id).
 // System-user tokens with all-asset access return no target_ids, so the fallbacks matter (24.9: first run returned no_waba).
@@ -17,8 +18,8 @@ export async function findWaba(token,fetchImpl=fetch,{hint=null}={}){const r=awa
  if(bids.length===1)return{wabaId:bids[0],wabaCount:1,canManage,source:"businesses",diag,error:null};
  if(hint)return{wabaId:hint,wabaCount:1,canManage,source:"webhook",diag,error:null};
  return{wabaId:null,wabaCount:bids.length,canManage,source:null,diag,error:bids.length>1?"multiple_waba":(r.ok?null:(r.body?.error?.message||`http_${r.status}`)),businessesError:b.ok?null:(b.body?.error?.message||`http_${b.status}`)};}
-export async function templateStatus(wabaId,token,fetchImpl=fetch){const r=await j(await fetchImpl(`${G}/${wabaId}/message_templates?name=${MATCH_TEMPLATE.name}&fields=name,status,category,language,rejected_reason`,{headers:{Authorization:`Bearer ${token}`}}));
- if(!r.ok)return{error:r.body?.error?.message||`http_${r.status}`};return{templates:(r.body?.data||[]).filter(t=>t.name===MATCH_TEMPLATE.name).map(t=>({name:t.name,status:t.status,category:t.category,language:t.language,rejected_reason:t.rejected_reason||null}))};}
+export async function templateStatus(wabaId,token,fetchImpl=fetch){const r=await j(await fetchImpl(`${G}/${wabaId}/message_templates?name=${MATCH_TEMPLATE.name}&fields=id,name,status,category,language,rejected_reason,components`,{headers:{Authorization:`Bearer ${token}`}}));
+ if(!r.ok)return{error:r.body?.error?.message||`http_${r.status}`};return{templates:(r.body?.data||[]).filter(t=>t.name===MATCH_TEMPLATE.name).map(t=>({id:t.id||null,buttons:buttonsOf(t),name:t.name,status:t.status,category:t.category,language:t.language,rejected_reason:t.rejected_reason||null}))};}
 export async function submitTemplate(wabaId,token,fetchImpl=fetch){const r=await j(await fetchImpl(`${G}/${wabaId}/message_templates`,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(templateDefinition())}));
  return r.ok?{submitted:true,id:r.body?.id||null,status:r.body?.status||null,category:r.body?.category||null}:{submitted:false,error:r.body?.error?.error_user_msg||r.body?.error?.message||`http_${r.status}`};}
 // Check first; submit only when the template does not exist yet (never re-submits an existing one).
@@ -34,3 +35,13 @@ export async function retryTemplateIfNeeded(store,{token,fetchImpl=fetch,now=new
  if(last&&!last.error&&hint&&["PENDING","IN_APPEAL"].includes(templateCurrent(last))){const r=await ensureTemplate({token,fetchImpl,now,wabaHint:hint,submit:false});
   if(r.error)return{retried:false,checked:true,error:r.error};const next={...last,current:r.before,checkedAt:r.at};await store.set("meta/last-template",next);return{retried:false,checked:true,status:templateCurrent(next)};}
  if(!last||last.error!=="no_waba"||!hint)return{retried:false};const r=await ensureTemplate({token,fetchImpl,now,wabaHint:hint});await store.set("meta/last-template",r);return{retried:true,result:r};}
+// Tom 24.9 21:04: delete the PENDING submission and resubmit with the current buttons. Never deletes an APPROVED template
+// (Meta then locks the name for 30 days); does nothing when the live buttons already match.
+export async function replaceTemplate({token,wabaHint=null,fetchImpl=fetch,now=new Date()}){const out={at:now.toISOString(),name:MATCH_TEMPLATE.name,op:"replace"};
+ if(!token)return{...out,error:"not_configured"};const w=await findWaba(token,fetchImpl,{hint:wabaHint});out.wabaSource=w.source;if(!w.wabaId)return{...out,error:w.error||"no_waba"};
+ const before=await templateStatus(w.wabaId,token,fetchImpl);if(before.error)return{...out,error:before.error};out.before=before.templates;const cur=before.templates[0];
+ if(cur&&JSON.stringify(cur.buttons)===JSON.stringify(TEMPLATE_BUTTONS))return{...out,skipped:"buttons_already_match",current:before.templates};
+ if(cur){if(!["PENDING","REJECTED"].includes(cur.status))return{...out,error:`refuse_delete_${cur.status}`};
+  const d=await j(await fetchImpl(`${G}/${w.wabaId}/message_templates?name=${MATCH_TEMPLATE.name}${cur.id?`&hsm_id=${cur.id}`:""}`,{method:"DELETE",headers:{Authorization:`Bearer ${token}`}}));
+  out.deleted=d.ok&&d.body?.success!==false;if(!out.deleted)return{...out,error:d.body?.error?.error_user_msg||d.body?.error?.message||`delete_http_${d.status}`};}
+ out.submit=await submitTemplate(w.wabaId,token,fetchImpl);const after=await templateStatus(w.wabaId,token,fetchImpl);out.after=after.templates||null;if(!out.submit.submitted)out.error=out.submit.error;return out;}
