@@ -101,7 +101,8 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  // Tom 23.9: flow questions first; the name is asked only where it is needed (publishing a request / connecting).
  if(!name&&input.startsWith("connect:"))return askName({pending:input});
  // Item 18: the full greeting once; later a short menu.
- const menuFor=async()=>{const p=await store.get(profileKey)||{userId},w=welcome(name),buttons=[...w.buttons,CLUB_BTN];if(p.welcomedAt)return{text:name?`${name}, מה תרצו לעשות?`:"מה תרצו לעשות?",buttons};await store.set(profileKey,{...p,welcomedAt:now.toISOString()});return{...w,buttons};};
+ // Tom 24.9 07:47 (option A): a greeting (היי/הי/שלום) always gets the full welcome; "תפריט" stays short after the first time.
+ const menuFor=async(full=false)=>{const p=await store.get(profileKey)||{userId},w=welcome(name),buttons=[...w.buttons,CLUB_BTN];if(p.welcomedAt&&!full)return{text:name?`${name}, מה תרצו לעשות?`:"מה תרצו לעשות?",buttons};await store.set(profileKey,{...p,welcomedAt:now.toISOString()});return{...w,buttons};};
  const timeAsk=async(date,resume)=>{if(resume!==null)await set({step:"time_ask",tResume:resume,tDate:date});return btn(`${dayLabel({date})} - מאיזו שעה?`,[17,18,19].map(h=>({id:`tm:${h}`,title:`${h}:00`})));};
  const reask=async s=>{switch(s.step){case"avail_when":return list(AVAIL_ASK,WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));case"board_when":return list(BOARD_ASK,WHEN_OPTIONS.map((x,i)=>({id:`bwhen:${i}`,title:x})));case"when":case"edit_when":{const er=s.step==="edit_when"?await ownReq(s.editId):null;return{text:er?.recurring?SCHEDULE_ASK:whenAsk(er||s.draft)};};case"schedule":return{text:SCHEDULE_ASK};
    case"level":case"edit_level":return list(LEVEL_ASK,LEVEL_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"pc":return list(PC_ASK,PC_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"duration":case"edit_duration":return list(durAsk(s.draft),DURATION_ROWS());case"flex":case"edit_flex":return list(FLEX_ASK,FLEX_ROWS());case"edit_party":return list("כמה שחקנים אתם?",PARTY_ROWS());case"court":case"edit_court":return btn("כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);
@@ -136,7 +137,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
    return finish(st,d,prefix);};
  // Tom 23.9 14:58: while a question is waiting, a greeting is not a reason to drop it - ask the same question again. "תפריט" still exits.
  if(!actionId&&state.step&&/^(היי|הי|שלום|start)[.!]?$/i.test(input)){const r=await reask(state);if(r)return r;}
- if(/^(היי|הי|שלום|תפריט|menu|start)$/i.test(input)||input==="menu"){if(state.step)await set({});return withMyRequests(await menuFor());}
+ if(/^(היי|הי|שלום|תפריט|menu|start)$/i.test(input)||input==="menu"){if(state.step)await set({});return withMyRequests(await menuFor(/^(היי|הי|שלום|start)$/i.test(input)));}
  // Item 10: the day was understood but not the hour - ask only the hour.
  if(state.step==="time_ask"&&/^tm:\d{1,2}$/.test(input)&&state.tDate){const[,m,dd]=state.tDate.split("-");await set(state.tResume||{});return handleConversation({userId,displayName,text:`${Number(dd)}.${Number(m)} אחרי ${input.slice(3)}:00`,store,now,availabilityFn});}
  // Tom 23.9 hour rule: 8, 9, 10 with no morning/evening cue -> ask, never guess.
