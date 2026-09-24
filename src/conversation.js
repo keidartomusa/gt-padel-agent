@@ -218,10 +218,11 @@ return{text:`*הבקשות שלי* (${rows.length})\n\n${rows.map((r,i)=>`${i+1}
 
  if(input.startsWith("connect:")){const request=await store.get(`request/${input.slice(8)}`);if(!request||!request.active)return{text:"הבקשה כבר לא פעילה."};if(request.userId===userId)return{text:"זו הבקשה שלכם."};
    // Tom 23.9 15:36: no connecting into a group that would pass 4, and no second pending request to the same game.
-   const mine=request.date?(await userActiveRequests(store,userId,now)).find(x=>appliesOn(x,request.date)&&timesCompatible(x,request)):null;
+   // Tom 24.9 09:46: with several compatible requests the party that connects is the newest one (the request just opened), not the oldest; it is pinned on the connection.
+   const mine=request.date?(await userActiveRequests(store,userId,now)).filter(x=>appliesOn(x,request.date)&&timesCompatible(x,request)).pop()||null:null;
    if(partyOf(request)+(mine?partyOf(mine):1)>4)return btn(`במשחק של ${request.displayName} כבר אין מספיק מקום בשבילכם. אמשיך לחפש לכם התאמות.`,[MENU]);
    if((await store.list("connection/")).some(c=>c.value?.status==="pending"&&c.value.fromUserId===userId&&c.value.requestId===request.id))return btn(`כבר שלחתי בקשת חיבור ל${request.displayName}. אעדכן כשתגיע תשובה.`,[MENU]);
-   const connectionId=id();await store.set(`connection/${connectionId}`,{id:connectionId,fromUserId:userId,fromDisplayName:displayName,toUserId:request.userId,requestId:request.id,members:[request.userId,...(request.joined||[])],status:"pending",createdAt:now.toISOString()});// Tom 23.9 16:28: a connected group gets the join request together - any one of them can answer.
+   const connectionId=id();await store.set(`connection/${connectionId}`,{id:connectionId,fromUserId:userId,fromDisplayName:displayName,toUserId:request.userId,requestId:request.id,fromRequestId:mine?.id||null,members:[request.userId,...(request.joined||[])],status:"pending",createdAt:now.toISOString()});// Tom 23.9 16:28: a connected group gets the join request together - any one of them can answer.
    const members=[request.userId,...(request.joined||[])],isGroup=members.length>1,ask=btn(isGroup?`${displayName} רוצה להצטרף אליכם (${groupLabel(request)}): ${whenOf(request)} · רמה ${request.level}. לחבר? מספיק שאחד מכם יאשר.`:`${displayName} רוצה להתחבר לבקשה שלכם: ${whenOf(request)} · רמה ${request.level}. לחבר ביניכם?`,[{id:`accept:${connectionId}`,title:"כן, לחבר"},{id:`decline:${connectionId}`,title:"לא מתאים"}]);
    const sentText=isGroup?`שלחתי בקשת הצטרפות לקבוצה של ${groupLabel(request)}. אעדכן כשתגיע תשובה.`:`שלחתי בקשת חיבור ל${request.displayName}. אעדכן כשתגיע תשובה.`,notes=members.map(to=>({to,response:ask}));
    // Live 23.9 18:25: picking someone also registers the picker as an open seeker (until a connection is approved or the window closes).
@@ -250,7 +251,7 @@ return{text:`*הבקשות שלי* (${rows.length})\n\n${rows.map((r,i)=>`${i+1}
    const R=await store.get(`request/${connection.requestId}`);let group="",openReq=null;const fullNotes=[];
    // Tom 23.9 15:36: the game already filled (or was closed) -> no connection; the other side hears it kindly.
    if(connection.status==="accepted"&&(!R||!R.active)){connection.status="closed";await store.set(`connection/${connection.id}`,connection);return{text:"הבקשה הזאת כבר סגורה, אז לא חיברתי.",notifications:[{to:connection.fromUserId,response:{text:"המשחק שביקשתם להצטרף אליו כבר התמלא. אמשיך לחפש לכם התאמות."}}]};}
-   if(R&&R.active){const FR=(await userActiveRequests(store,connection.fromUserId,now)).find(x=>R.date&&appliesOn(x,R.date)&&timesCompatible(x,R))||null,sum=partyOf(R)+(FR?partyOf(FR):1),at=now.toISOString();
+   if(R&&R.active){const FRs=(await userActiveRequests(store,connection.fromUserId,now)).filter(x=>R.date&&appliesOn(x,R.date)&&timesCompatible(x,R)),FR=FRs.find(x=>x.id===connection.fromRequestId)||FRs.pop()||null,sum=partyOf(R)+(FR?partyOf(FR):1),at=now.toISOString();
      if(sum>4){connection.status="closed";await store.set(`connection/${connection.id}`,connection);return{text:`אין מספיק מקום: יחד הייתם ${sum}. לא חיברתי.`,notifications:[{to:connection.fromUserId,response:{text:`במשחק של ${R.displayName} כבר אין מספיק מקום בשבילכם. אמשיך לחפש לכם התאמות.`}}]};}
      connection.joinParty=FR?partyOf(FR):1;connection.groupSize=sum;await store.set(`connection/${connection.id}`,connection);// for the dashboard "חיבורים" tab
      if(FR)await store.set(`request/${FR.id}`,{...FR,active:false,closedAt:at,closedReason:"merged",mergedInto:R.id});
