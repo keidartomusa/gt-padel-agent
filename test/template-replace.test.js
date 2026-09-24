@@ -21,3 +21,7 @@ test("after a replace blocked by 'being deleted', the retry job resubmits once t
  const gone={calls:[],fetch:async(url,opt={})=>{if((opt.method||"GET")==="GET"&&url.includes("/message_templates")&&!gone.posted)return res({data:[]});if(opt.method==="POST")gone.posted=true;return g.fetch(url,opt);}};
  const r=await retryTemplateIfNeeded(s,{token:"T",fetchImpl:gone.fetch});assert.equal(r.retried,true);assert.equal(r.result.submit.submitted,true);
  assert.equal((await retryTemplateIfNeeded(s,{token:"T",fetchImpl:gone.fetch})).retried,false);});
+test("a failed submit surfaces as top-level error so the retry job keeps trying, capped at 36 attempts",async()=>{const s=memoryStore();await s.set("meta/waba-id",{id:"9001"});
+ const blocked=async(url,opt={})=>{if(url.includes("/debug_token"))return res({data:{granular_scopes:[{scope:"whatsapp_business_management",target_ids:["9001"]}]}});if(opt.method==="POST")return res({error:{message:"content is being deleted. Try again"}},false,400);return res({data:[]});};
+ await s.set("meta/last-template",{error:"x is being deleted",after:[]});let n=0;for(let i=0;i<40;i++){const r=await retryTemplateIfNeeded(s,{token:"T",fetchImpl:blocked});if(r.retried)n++;}
+ assert.equal(n,36);assert.match((await s.get("meta/last-template")).error,/being deleted/);});
