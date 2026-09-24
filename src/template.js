@@ -27,3 +27,6 @@ export async function ensureTemplate({token,submit=true,fetchImpl=fetch,now=new 
  const before=await templateStatus(w.wabaId,token,fetchImpl);if(before.error)return{...out,error:before.error};out.before=before.templates;
  if(before.templates.length||!submit)return out;out.submit=await submitTemplate(w.wabaId,token,fetchImpl);
  const after=await templateStatus(w.wabaId,token,fetchImpl);out.after=after.templates||null;return out;}
+// After a no_waba run, retry once as soon as a signed webhook has recorded the WABA id (so nobody has to redeploy).
+export async function retryTemplateIfNeeded(store,{token,fetchImpl=fetch,now=new Date()}){const last=await store.get("meta/last-template");const hint=(await store.get("meta/waba-id"))?.id||null;
+ if(!last||last.error!=="no_waba"||!hint)return{retried:false};const r=await ensureTemplate({token,fetchImpl,now,wabaHint:hint});await store.set("meta/last-template",r);return{retried:true,result:r};}
