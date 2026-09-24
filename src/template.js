@@ -34,7 +34,9 @@ export async function retryTemplateIfNeeded(store,{token,fetchImpl=fetch,now=new
  // While Meta is reviewing, refresh the status read-only (never posts) so /health shows APPROVED/REJECTED without a redeploy.
  if(last&&!last.error&&hint&&["PENDING","IN_APPEAL"].includes(templateCurrent(last))){const r=await ensureTemplate({token,fetchImpl,now,wabaHint:hint,submit:false});
   if(r.error)return{retried:false,checked:true,error:r.error};const next={...last,current:r.before,checkedAt:r.at};await store.set("meta/last-template",next);return{retried:false,checked:true,status:templateCurrent(next)};}
- if(!last||last.error!=="no_waba"||!hint)return{retried:false};const r=await ensureTemplate({token,fetchImpl,now,wabaHint:hint});await store.set("meta/last-template",r);return{retried:true,result:r};}
+ // 24.9 21:07: resubmit right after a delete fails with "...is being deleted. Try again in less than 1 minute" - retry the check-first submit.
+ const deleting=last&&/being deleted/i.test(String(last.error||""))&&!(last.after||[]).length;
+ if(!last||!(last.error==="no_waba"||deleting)||!hint)return{retried:false};const r=await ensureTemplate({token,fetchImpl,now,wabaHint:hint});await store.set("meta/last-template",r);return{retried:true,result:r};}
 // Tom 24.9 21:04: delete the PENDING submission and resubmit with the current buttons. Never deletes an APPROVED template
 // (Meta then locks the name for 30 days); does nothing when the live buttons already match.
 export async function replaceTemplate({token,wabaHint=null,fetchImpl=fetch,now=new Date()}){const out={at:now.toISOString(),name:MATCH_TEMPLATE.name,op:"replace"};
