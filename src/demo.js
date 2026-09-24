@@ -25,3 +25,10 @@ export async function demoCleanup(store,{now=new Date(),to=DEMO_USER}={}){let n=
  for(const c of await vals(store,"connection/"))if(c.toUserId===to||c.fromUserId===to||(c.members||[]).includes(to)){await store.delete(`connection/${c.id}`);n++;}
  for(const k of[`profile/${to}`,`state/${to}`,`pending/${to}`,`seen/${to}`])if(await store.get(k)){await store.delete(k);n++;}
  const out={status:"cleaned",removed:n,at:now.toISOString()};await store.set("meta/last-demo",{step:"cleanup",...out});return out;}
+// Re-stage (Tom 24.9 09:54, re-shoot after the party-size fix): wipe the demo records, then recreate דנה's solo
+// request exactly as recorded in step 1 (Sunday 27.9 after 21:00, 3-3.5, solo, no court, fully flexible).
+export const DEMO_REQUEST={recurring:false,level:"3–3.5",partySize:1,hasCourt:false,date:"2026-09-27",startMinute:1260,endMinute:1440,durations:[90],flexMinutes:1440};
+export async function demoStage(store,{now=new Date(),to=DEMO_USER,name=DEMO_NAME}={}){const c=await demoCleanup(store,{now,to});
+ const id=`demo${now.getTime().toString(36)}`,r={...DEMO_REQUEST,displayName:name,id,userId:to,active:true,demo:true,createdAt:now.toISOString()};
+ await store.set(`request/${id}`,r);await store.set(`profile/${to}`,{userId:to,name,demo:true,lastInboundAt:now.toISOString()});await store.set(`state/${to}`,{});
+ const out={status:"staged",requestId:id,removed:c.removed,at:now.toISOString()};await store.set("meta/last-demo",{step:"stage",...out});return out;}

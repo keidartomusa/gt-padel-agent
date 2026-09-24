@@ -36,3 +36,11 @@ test("demo move ignores stale requests (older than 1 hour)",async()=>{const s=me
 test("deploy-succeeded maps demo tags; health exposes lastDemo",async()=>{const fs=await import("node:fs");
  const d=fs.readFileSync("netlify/functions/deploy-succeeded.js","utf8");for(const t of["move","approve","cleanup"])assert.match(d,new RegExp(`\\["demo-${t}","demo-${t}-background"\\]`));
  assert.match(fs.readFileSync("netlify/functions/health.js","utf8"),/lastDemo/);});
+test("demo stage wipes old demo records and recreates דנה's solo Sunday request; a trio then connects and the approval says 4/4",async()=>{const {demoStage}=await import("../src/demo.js");const s=memoryStore();
+ await s.set("request/stale",{id:"stale",userId:DEMO_USER,active:true,partySize:2,full:true});await s.set("connection/x",{id:"x",toUserId:DEMO_USER,status:"accepted"});
+ const st=await demoStage(s,{now:later});assert.equal(st.status,"staged");assert.equal(await s.get("request/stale"),null);assert.equal(await s.get("connection/x"),null);
+ const d=await s.get(`request/${st.requestId}`);assert.equal(d.displayName,"דנה");assert.equal(d.partySize,1);assert.equal(d.date,"2026-09-27");assert.equal(d.startMinute,1260);
+ await s.set(`profile/${T}`,{userId:T,name:"תום"});const at=new Date("2026-09-24T09:40:00+03:00"),t=(o)=>routeIncoming({userId:T,displayName:"תום",store:s,now:at,availabilityFn:available,...o});
+ for(const o of [{text:"היי"},{text:"מציאת שחקנים"},{actionId:"oneoff"},{actionId:"level:3"},{actionId:"pc:3:yes"},{text:"ראשון הקרוב בערב"},{actionId:`connect:${st.requestId}`}])await t(o);
+ const sent=[];const a=await demoApprove(s,{now:at,deliverFn:async(to,resp)=>{sent.push({to,resp});return{sent:true};}});
+ assert.equal(a.status,"accepted");assert.equal(sent.length,1);assert.equal(sent[0].to,T);assert.match(sent[0].resp.text,/החיבור עם דנה אושר/);assert.match(sent[0].resp.text,/יחד אתם 4 - רביעייה מלאה/);});
