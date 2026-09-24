@@ -21,9 +21,9 @@ export async function demoApprove(store,{now=new Date(),to=DEMO_USER,deliverFn=a
  const after=await store.get(`connection/${c.id}`),out={status:after?.status==="accepted"?"accepted":"failed",connectionId:c.id,notified:sent.length,delivered:sent.filter(Boolean).length,at:now.toISOString()};
  await store.set("meta/last-demo",{step:"approve",...out});return out;}
 export async function demoCleanup(store,{now=new Date(),to=DEMO_USER}={}){let n=0;
- for(const r of await vals(store,"request/"))if(r.userId===to){await store.delete(`request/${r.id}`);n++;}
- for(const c of await vals(store,"connection/"))if(c.toUserId===to||c.fromUserId===to||(c.members||[]).includes(to)){await store.delete(`connection/${c.id}`);n++;}
- for(const k of[`profile/${to}`,`state/${to}`,`pending/${to}`,`seen/${to}`])if(await store.get(k)){await store.delete(k);n++;}
+ for(const r of await vals(store,"request/"))if(r.userId===to||r.userId==="972500000078"||r.demo){await store.delete(`request/${r.id}`);n++;}
+ for(const c of await vals(store,"connection/"))if([to,"972500000078"].some(u=>c.toUserId===u||c.fromUserId===u||(c.members||[]).includes(u))){await store.delete(`connection/${c.id}`);n++;}
+ for(const k of[`profile/${to}`,`state/${to}`,`pending/${to}`,`seen/${to}`,"profile/972500000078","state/972500000078","pending/972500000078","seen/972500000078"])if(await store.get(k)){await store.delete(k);n++;}
  const out={status:"cleaned",removed:n,at:now.toISOString()};await store.set("meta/last-demo",{step:"cleanup",...out});return out;}
 // Re-stage (Tom 24.9 09:54, re-shoot after the party-size fix): wipe the demo records, then recreate דנה's solo
 // request exactly as recorded in step 1 (Sunday 27.9 after 21:00, 3-3.5, solo, no court, fully flexible).
@@ -54,3 +54,19 @@ export async function demoRestore(store,{now=new Date(),hours=6,keepDeleted=r=>!
   const {removedAt,removedReason,closedAt,closedReason,mergedInto,...rest}=r;await store.set(`request/${r.id}`,{...rest,active:true,restoredAt:now.toISOString()});restored.push(reqTitle(r));}
  const {optedOutAt,...p}=u;await store.set(`profile/${u.userId}`,p);
  const out={status:"restored",restored,at:now.toISOString()};await store.set("meta/last-demo",{step:"restore",...out});return out;}
+// Invite (proposed 24.9 for דנה's side of the story; runs only with Tom's OK): roles swap on Tom's own phone. His number gets a solo request shown as
+// "דנה"; a fictitious trio named "תום" connects to it through the real flow, so Tom's phone receives the real request message
+// and he taps "כן, לחבר" live. Tom's number is found as the requester of the latest accepted connection to the demo user.
+export const DEMO_TRIO="972500000078";
+export async function demoInvite(store,{now=new Date(),deliverFn=async()=>({sent:false})}={}){
+ const acc=(await vals(store,"connection/")).filter(c=>c.status==="accepted"&&c.toUserId===DEMO_USER&&!String(c.fromUserId).startsWith("9725000000")).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+ const owners=[...new Set(acc.map(c=>c.fromUserId))];
+ if(owners.length!==1){const out={status:owners.length?"ambiguous":"not_found",count:owners.length,at:now.toISOString()};await store.set("meta/last-demo",{step:"invite",...out});return out;}
+ const tom=owners[0],t36=now.getTime().toString(36);
+ for(const r of await vals(store,"request/"))if(r.userId===DEMO_TRIO||(r.userId===tom&&r.demo)){await store.delete(`request/${r.id}`);}
+ const solo={...DEMO_REQUEST,displayName:DEMO_NAME,id:`demoinv${t36}`,userId:tom,active:true,demo:true,createdAt:now.toISOString()};
+ const trio={recurring:false,level:"3–3.5",partySize:3,hasCourt:true,date:"2026-09-27",startMinute:1140,endMinute:1380,flexMinutes:0,displayName:"תום",id:`demotrio${t36}`,userId:DEMO_TRIO,active:true,demo:true,createdAt:now.toISOString()};
+ await store.set(`request/${solo.id}`,solo);await store.set(`request/${trio.id}`,trio);await store.set(`profile/${DEMO_TRIO}`,{userId:DEMO_TRIO,name:"תום",demo:true,lastInboundAt:now.toISOString()});await store.set(`state/${DEMO_TRIO}`,{});
+ const res=await handleConversation({userId:DEMO_TRIO,displayName:"תום",actionId:`connect:${solo.id}`,store,now});
+ const sent=[];for(const n of res.notifications||[]){if(n.to!==tom)continue;const d=await deliverFn(n.to,n.response);sent.push(Boolean(d?.sent));}
+ const out={status:sent.length?"invited":"no_notification",requestId:solo.id,notified:sent.length,delivered:sent.filter(Boolean).length,at:now.toISOString()};await store.set("meta/last-demo",{step:"invite",...out});return out;}

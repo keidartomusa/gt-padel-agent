@@ -64,3 +64,13 @@ test("demo restore brings back the opt-out-removed weekly request and the bug-me
 test("demo stage clears a recent opt-out mark of the one real user, keeps the rest of the profile, never touches fictitious users",async()=>{const {demoStage}=await import("../src/demo.js");const s=memoryStore();
  await s.set(`profile/${T}`,{userId:T,name:"תום",optedOutAt:now.toISOString()});await s.set("profile/972500000005",{userId:"972500000005",optedOutAt:now.toISOString()});
  const r=await demoStage(s,{now:later});assert.equal(r.unmarked,1);assert.equal((await s.get(`profile/${T}`)).optedOutAt,undefined);assert.equal((await s.get(`profile/${T}`)).name,"תום");assert.ok((await s.get("profile/972500000005")).optedOutAt);});
+test("demo invite: Tom's phone gets the real 'תום רוצה להתחבר' request as דנה, taps כן, לחבר, sees 4/4; cleanup removes it all",async()=>{const {demoInvite,demoCleanup:clean}=await import("../src/demo.js");const s=memoryStore(),at=new Date("2026-09-24T10:30:00+03:00");
+ await s.set(`profile/${T}`,{userId:T,name:"תום",lastInboundAt:at.toISOString()});
+ await s.set("request/real",{id:"real",userId:T,recurring:true,weekdays:[5],startMinute:360,endMinute:540,partySize:3,level:"3–3.5",active:true,createdAt:now.toISOString()});
+ await s.set("connection/old",{id:"old",status:"accepted",toUserId:DEMO_USER,fromUserId:T,createdAt:now.toISOString()});
+ const sent=[];const r=await demoInvite(s,{now:at,deliverFn:async(to,resp)=>{sent.push({to,resp});return{sent:true};}});
+ assert.equal(r.status,"invited",JSON.stringify(r));assert.equal(sent.length,1);assert.equal(sent[0].to,T);
+ assert.equal(sent[0].resp.text,"תום רוצה להתחבר לבקשה שלכם: ראשון 27.9 · אחרי 21:00 · רמה 3–3.5. לחבר ביניכם?");
+ const yes=sent[0].resp.buttons.find(b=>b.title==="כן, לחבר");const a=await routeIncoming({userId:T,displayName:"דנה",store:s,now:at,availabilityFn:available,actionId:yes.id});
+ assert.match(a.text,/^חיברתי ביניכם! אפשר לשלוח הודעה לתום בלחיצה/);assert.match(a.text,/יחד אתם 4 - רביעייה מלאה/);
+ await clean(s,{now:at});const left=(await s.list("request/")).map(x=>x.value);assert.deepEqual(left.map(x=>x.id),["real"],"only Tom's real request survives");assert.equal(await s.get("profile/972500000078"),null);});
