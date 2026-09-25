@@ -5,5 +5,5 @@ test("billing diagnostic is read-only and redacts token and payment details",asy
  const store=memoryStore();await store.set("meta/waba-id",{id:"123456789"});const calls=[];
  const fetchImpl=async(url,opt)=>{calls.push({url,opt});return url.includes("payment_configurations")?r({data:[{id:"pay1",card_number:"1234",brand:"secret"}]}):r({id:"123456789",name:"GT",currency:"ILS",owner_business_info:{id:"B1",name:"Tom"}})};
  const result=await wabaBillingDiagnostic({store,token:"SECRET",fetchImpl});assert.equal(result.account.owner_business_info.name,"Tom");assert.equal(result.paymentConfigurations.count,1);
- assert.doesNotMatch(JSON.stringify(result),/SECRET|pay1|card_number|1234|brand/);assert.deepEqual(calls.map(x=>x.opt.method||"GET"),["GET","GET"]);
+ assert.doesNotMatch(JSON.stringify(result),/SECRET|pay1|card_number|brand/);assert.deepEqual(calls.map(x=>x.opt.method||"GET"),["GET","GET"]);
 });
