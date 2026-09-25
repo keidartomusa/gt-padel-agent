@@ -28,3 +28,5 @@ export async function sendResponse(to,response0,phoneNumberId,fetchImpl=fetch){
 }
 // Approved template for users outside the 24h customer-service window. Quick-reply payloads route back into the bot.
 export const sendTemplate=(to,name,language,payloads=[],phoneNumberId,fetchImpl=fetch)=>post(to,{type:"template",template:{name,language:{code:language},components:payloads.map((payload,i)=>({type:"button",sub_type:"quick_reply",index:String(i),parameters:[{type:"payload",payload}]}))}},phoneNumberId,fetchImpl);
+// Body variables only. The template name and language must already be approved by Meta.
+export const sendParameterizedTemplate=(to,name,language,values,phoneNumberId,fetchImpl=fetch)=>post(to,{type:"template",template:{name,language:{code:language},components:[{type:"body",parameters:values.map(text=>({type:"text",text:String(text)}))}]}},phoneNumberId,fetchImpl);
