@@ -15,3 +15,10 @@ test("check first, submit exact reviewed payload once, never leak token or WABA"
  assert.deepEqual(posts,[releaseTemplateDefinition()]);assert.doesNotMatch(JSON.stringify(first),/SECRET|123456789/);
  const next=await submitCourtTemplate({store:s,token:"SECRET",fetchImpl});assert.equal(next.existing[0].status,"PENDING");assert.equal(posts.length,1);
 });
+test("read-only status refresh observes Meta category and approval without resubmitting",async()=>{
+ const {refreshCourtTemplate}=await import("../netlify/functions/court-template-submit-background.js");
+ const s=memoryStore();await s.set("meta/waba-id",{id:"123456789"});await s.set("meta/court-template",{name:"gt_court_release_v1",status:"PENDING"});
+ let calls=[];const fetchImpl=async(url,opt)=>{calls.push({url,method:opt.method||"GET"});return response({data:[{id:"T1",name:"gt_court_release_v1",status:"APPROVED",category:"MARKETING",language:"he"}]})};
+ const r=await refreshCourtTemplate({store:s,token:"SECRET",fetchImpl});assert.equal(r.current.status,"APPROVED");assert.equal(r.current.category,"MARKETING");assert.deepEqual(calls.map(x=>x.method),["GET"]);assert.doesNotMatch(JSON.stringify(await s.get("meta/court-template")),/SECRET|123456789/);
+ const next=await refreshCourtTemplate({store:s,token:"SECRET",fetchImpl});assert.equal(next.checked,false);assert.equal(calls.length,1);
+});

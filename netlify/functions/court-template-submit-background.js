@@ -23,6 +23,19 @@ export async function submitCourtTemplate({store,token,fetchImpl=fetch,now=new D
  if(!submission.ok)return{...out,error:`submit_http_${submission.status}`,code:submission.data?.error?.code||null};
  return{...out,submitted:true,id:submission.data?.id||null,status:submission.data?.status||null,category:submission.data?.category||null};
 }
+export async function refreshCourtTemplate({store,token,fetchImpl=fetch,now=new Date()}){
+ const last=await store.get("meta/court-template");
+ if(!last||!["PENDING","IN_APPEAL"].includes(last.current?.status||last.status||last.existing?.[0]?.status))return{checked:false};
+ const hint=(await store.get("meta/waba-id"))?.id;
+ if(!token||!/^\d{5,}$/.test(String(hint||"")))return{checked:false,error:"not_configured"};
+ const result=await json(await fetchImpl(`${G}/${hint}/message_templates?name=${RELEASE_TEMPLATE.name}&fields=id,name,status,category,language,rejected_reason`,{headers:{Authorization:`Bearer ${token}`}}));
+ if(!result.ok)return{checked:false,error:`list_http_${result.status}`};
+ const current=(result.data?.data||[]).find(t=>t.name===RELEASE_TEMPLATE.name);
+ if(!current)return{checked:false,error:"template_missing"};
+ const safe={id:current.id,name:current.name,status:current.status,category:current.category,language:current.language,rejected_reason:current.rejected_reason||null};
+ await store.set("meta/court-template",{...last,current:safe,checkedAt:now.toISOString()});
+ return{checked:true,current:safe};
+}
 export default async req=>{
  if((req.headers.get("authorization")||"")!==`Bearer ${internalToken()}`)return new Response("unauthorized",{status:401});
  const store=netlifyStore(getStore({name:"gt-padel-matching",consistency:"strong"}));
