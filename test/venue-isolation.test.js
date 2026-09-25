@@ -18,3 +18,9 @@ test("signed webhook requires destination check before any outbound response",()
  assert.ok(source.indexOf('routes.some(route=>!route.venue)')<source.indexOf('sendTyping(msg.id'),"unknown destination must fail before outbound");
  assert.ok(source.indexOf('assertVenueResponse(venue,response)')<source.indexOf('sendResponse(msg.from,response,phoneId)'));
 });
+test("venue booking target guard rejects lookalike paths and other clubs",async()=>{
+ const {bookingTargetAllowed}=await import("../src/venues.js");
+ assert.equal(bookingTargetAllowed(GT_VENUE,"https://matchpointer.app/he/clubs/gt-padel/book?date=2026-09-26"),true);
+ for(const url of ["https://matchpointer.app/he/clubs/other/book?date=2026-09-26","https://matchpointer.app/he/clubs/gt-padel/book-evil?date=2026-09-26","https://evil.example/he/clubs/gt-padel/book","https://matchpointer.app.evil.example/he/clubs/gt-padel/book"])
+  assert.equal(bookingTargetAllowed(GT_VENUE,url),false,url);
+});
