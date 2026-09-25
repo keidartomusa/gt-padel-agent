@@ -24,3 +24,14 @@ test("venue booking target guard rejects lookalike paths and other clubs",async(
  for(const url of ["https://matchpointer.app/he/clubs/other/book?date=2026-09-26","https://matchpointer.app/he/clubs/gt-padel/book-evil?date=2026-09-26","https://evil.example/he/clubs/gt-padel/book","https://matchpointer.app.evil.example/he/clubs/gt-padel/book"])
   assert.equal(bookingTargetAllowed(GT_VENUE,url),false,url);
 });
+test("parameterized API supports four courts and late closing hours without changing GT",async()=>{
+ const {findAvailability}=await import("../src/availability.js");const {clearCache}=await import("../src/matchpointer.js");
+ const venue={...GT_VENUE,venueId:"saar-test",venueSlug:"saar-test",name:"Saar",staticTtlMs:0};
+ const v={id:venue.venueId,name:"Saar",opening_hours:[{day:"Saturday",isOpen:true,openTime:"07:00",closeTime:"27:00"}],advance_booking_days:25,allow_unbookable_time:true};
+ const courts=[1,2,3,4].map(i=>({id:`s${i}`,name:`Court ${i}`,sport:"padel",is_active:true}));
+ const rules=[{court_id:null,day_of_week:6,start_time:"20:00:00",end_time:"28:00:00",price:200,price_90:300}];
+ const fetchImpl=async url=>({ok:true,json:async()=>url.includes("/venues?")?[v]:url.includes("/courts?")?courts:url.includes("pricing_rules?")?rules:[]});clearCache();
+ const r=await findAvailability({date:"2026-09-26",startMinute:24*60,endMinute:27*60,durationMinutes:90},{today:"2026-09-26",fetchImpl,venue});
+ assert.equal(r.slots.length,16);assert.equal(r.slots[0].start,"00:00");assert.equal(r.slots[0].price,300);
+ assert.equal(r.slots[0].courtName,"Court 1");assert.equal(r.slots[0].end,"01:30");clearCache();
+});
