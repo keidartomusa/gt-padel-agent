@@ -1,5 +1,5 @@
 // Window-aware delivery (WhatsApp 24h customer-service window).
-// Inside the window: normal free-form message. Outside: the approved template "gt_match_found_v2" (renamed 24.9 22:06: Meta kept blocking resubmission under the deleted name)
+// Inside the window: normal free-form message. Outside: the approved template "gt_match_found_v2".
 // (no names, no numbers), and the full notification waits until the user taps "כן, שלחו פרטים" or writes again.
 import{logOutbound,logTemplate}from"./messagelog.js";
 export const WINDOW_MS=24*60*60*1000;
