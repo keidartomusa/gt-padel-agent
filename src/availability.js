@@ -1,4 +1,3 @@
-import { CONFIG } from "./config.js";
 import {GT_VENUE} from "./venues.js";
 import { staticData, occupied } from "./matchpointer.js";
 import { addDays, hhmm, min, rangesFor, weekdayIndex } from "./time.js";

@@ -14,9 +14,13 @@ export function assertVenueContent(venue,text){if(!ACTIVE_VENUES.includes(venue)
  for(const other of ACTIVE_VENUES)if(other!==venue&&text.toLocaleLowerCase("he-IL").includes(other.name.toLocaleLowerCase("he-IL")))throw Error("Cross-venue output blocked");
  return text;
 }
+export function bookingTargetAllowed(venue,target){
+ if(!ACTIVE_VENUES.includes(venue))return false;
+ try{const u=new URL(target);return u.origin===venue.siteOrigin&&u.pathname===`/he/clubs/${venue.venueSlug}/book`;}catch{return false;}
+}
 export function assertVenueResponse(venue,response){
  const check=x=>{if(typeof x==="string")assertVenueContent(venue,x);else if(Array.isArray(x))x.forEach(check);else if(x&&typeof x==="object")Object.entries(x).forEach(([k,v])=>{if(k==="url"||k==="target"){
-  const u=new URL(v,venue.publicSiteUrl);if(u.origin===venue.publicSiteUrl){if(u.pathname!=="/go/book"||!u.searchParams.get("target"))throw Error("Cross-venue URL blocked");const target=new URL(u.searchParams.get("target"));if(target.origin!==venue.siteOrigin||target.pathname!==`/he/clubs/${venue.venueSlug}/book`)throw Error("Cross-venue URL blocked");}
-  else if(u.origin!==venue.siteOrigin||u.pathname!==`/he/clubs/${venue.venueSlug}/book`)throw Error("Cross-venue URL blocked");
+  const u=new URL(v,venue.publicSiteUrl);if(u.origin===venue.publicSiteUrl){if(u.pathname!=="/go/book"||!bookingTargetAllowed(venue,u.searchParams.get("target")))throw Error("Cross-venue URL blocked");}
+  else if(!bookingTargetAllowed(venue,v))throw Error("Cross-venue URL blocked");
  }else check(v)});};check(response);return response;
 }
