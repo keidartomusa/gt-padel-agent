@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
 import {memoryStore} from "../src/store.js";
 import {CONFIG} from "../src/config.js";
 import {courtSnapshot,freedWindows,releaseVariables,RELEASE_TEMPLATE,releaseTemplateDefinition,scanCourtReleases} from "../src/court-release.js";
@@ -42,4 +41,10 @@ test("template proposal has club, date, start and end variables; send payload ma
  try{let payload;const r=await sendParameterizedTemplate("972500000131",RELEASE_TEMPLATE.name,"he",["GT PADEL","25.9.2026","17:00","18:30"],"123456789",async(url,opt)=>{payload=JSON.parse(opt.body);return{ok:true,json:async()=>({messages:[{id:"accepted"}]})}});
   assert.equal(r.sent,true);assert.deepEqual(payload.template.components[0].parameters.map(x=>x.text),["GT PADEL","25.9.2026","17:00","18:30"]);
  }finally{for(const [key,value] of [["DISABLE_OUTBOUND",previous.disable],["WHATSAPP_ACCESS_TOKEN",previous.token]]){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
+});
+
+test("a released isolated 30-minute cell is not advertised as a bookable court",()=>{
+ const before={venueId:"v",cells:[{date:"2026-09-26",courtId:"c",courtName:"Court",minute:600,occupied:true}]};
+ const after={venueId:"v",venueName:"Club",cells:[{...before.cells[0],occupied:false}]};
+ assert.deepEqual(freedWindows(before,after),[]);
 });

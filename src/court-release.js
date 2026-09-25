@@ -41,7 +41,7 @@ export function freedWindows(before,after){if(!before||before.venueId!==after.ve
  released.sort((a,b)=>a.date.localeCompare(b.date)||a.courtId.localeCompare(b.courtId)||a.minute-b.minute);
  const windows=[];for(const c of released){const last=windows.at(-1);if(last&&last.date===c.date&&last.courtId===c.courtId&&last.endMinute===c.minute)last.endMinute+=30;
  else windows.push({venueId:after.venueId,venueName:after.venueName,courtId:c.courtId,courtName:c.courtName,date:c.date,startMinute:c.minute,endMinute:c.minute+30});}
- return windows;}
+ return windows.filter(w=>w.endMinute-w.startMinute>=60);}
 export const releaseVariables=w=>[w.venueName,dateLabel(w.date),clock(w.startMinute),clock(w.endMinute)];
 export async function scanCourtReleases(store,{now=new Date(),fetchSnapshot=courtSnapshot,notify=async()=>({sent:false,reason:"not_configured"})}={}){
  const snapshot=await fetchSnapshot({now});const key=`court-release/snapshot/${snapshot.venueId}`;
