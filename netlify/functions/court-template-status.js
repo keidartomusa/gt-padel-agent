@@ -8,4 +8,4 @@ export default async()=>{
   return Response.json({ok:!result.error,checked:result.checked,status:result.current?.status||null,error:result.error||null});}
  catch(error){console.error(JSON.stringify({event:"court_template_status",error:String(error.message||error)}));return Response.json({ok:false,error:"status_failed"},{status:503});}
 };
-export const config={schedule:"*/10 * * * *"};
+export const config={schedule:"7 * * * *"};
