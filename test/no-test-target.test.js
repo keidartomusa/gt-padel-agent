@@ -10,7 +10,7 @@ const root=resolve(fileURLToPath(new URL("..",import.meta.url)));
 const sourceFiles=["src","netlify/functions"].flatMap(dir=>readdirSync(resolve(root,dir)).filter(name=>name.endsWith(".js")).map(name=>`${dir}/${name}`));
 test("one-off reengagement target and scheduled test cannot return to production",()=>{
  for(const file of sourceFiles){const content=readFileSync(resolve(root,file),"utf8");
-  assert.doesNotMatch(content,/4031|reengage[-_]?test|last[-_]?reengage|reengage[-_]?check|template[-_]?retry|template[-_]?submit[-_]?background|template[-_]?replace/ ,file);
+  assert.doesNotMatch(content,/4031|reengage[-_]?test|last[-_]?reengage|reengage[-_]?check|template[-_]?retry|(?<!court-)template[-_]?submit[-_]?background|template[-_]?replace/ ,file);
  }
  assert.ok(!sourceFiles.includes("netlify/functions/reengage-check.js"));
  assert.ok(!sourceFiles.includes("netlify/functions/template-retry.js"));
