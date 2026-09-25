@@ -3,7 +3,6 @@
 import {getStore} from "@netlify/blobs";
 import {netlifyStore} from "../../src/store.js";
 import {internalToken} from "./parser-eval-background.js";
-import {CONFIG} from "../../src/config.js";
 import {RELEASE_TEMPLATE,releaseTemplateDefinition} from "../../src/court-release.js";
 const G="https://graph.facebook.com/v25.0";
 async function json(response){let data={};try{data=await response.json()}catch{}return{ok:response.ok,status:response.status,data};}
