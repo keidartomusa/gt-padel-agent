@@ -43,13 +43,14 @@ export function freedWindows(before,after){if(!before||before.venueId!==after.ve
  else windows.push({venueId:after.venueId,venueName:after.venueName,courtId:c.courtId,courtName:c.courtName,date:c.date,startMinute:c.minute,endMinute:c.minute+30});}
  return windows.filter(w=>w.endMinute-w.startMinute>=60);}
 export const releaseVariables=w=>[w.venueName,dateLabel(w.date),clock(w.startMinute),clock(w.endMinute)];
-export async function scanCourtReleases(store,{now=new Date(),fetchSnapshot=courtSnapshot,notify=async()=>({sent:false,reason:"not_configured"})}={}){
+export async function scanCourtReleases(store,{now=new Date(),fetchSnapshot=courtSnapshot,notify=async()=>({sent:false,reason:"not_configured"}),scanOnly=false}={}){
  const snapshot=await fetchSnapshot({now});const key=`court-release/snapshot/${snapshot.venueId}`;
  const previous=await store.get(key);const windows=freedWindows(previous,snapshot);
  // Persist alerts before advancing the snapshot, so a retry sees any failed sends.
  for(const w of windows){const id=`court-release/outbox/${w.venueId}/${w.date}/${w.courtId}/${w.startMinute}-${w.endMinute}`;
-  if(!await store.get(id))await store.set(id,{window:w,status:"pending"});}
+  if(!await store.get(id))await store.set(id,{window:w,status:scanOnly?"recorded":"pending",detectedAt:now.toISOString()});}
  await store.set(key,snapshot);
+ if(scanOnly)return{status:previous?"scanned":"primed",mode:"scan_only",venue:snapshot.venueName,at:snapshot.at,windows:windows.length,sent:0,failed:0};
  let sent=0,failed=0;
  for(const item of await store.list(`court-release/outbox/${snapshot.venueId}/`)){
   if(item.value.status!=="pending")continue;

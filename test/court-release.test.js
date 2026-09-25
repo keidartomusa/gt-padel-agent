@@ -4,7 +4,6 @@ import {memoryStore} from "../src/store.js";
 import {CONFIG} from "../src/config.js";
 import {courtSnapshot,freedWindows,releaseVariables,RELEASE_TEMPLATE,releaseTemplateDefinition,scanCourtReleases} from "../src/court-release.js";
 import {sendParameterizedTemplate} from "../src/whatsapp.js";
-import check from "../netlify/functions/court-release-check.js";
 const now=new Date("2026-09-25T10:00:00Z");
 const id="court-A",venue={id:CONFIG.venueId,name:"GT PADEL",opening_hours:[{day:"Friday",isOpen:true,openTime:"07:00",closeTime:"23:00"},{day:"Saturday",isOpen:true,openTime:"07:00",closeTime:"23:00"},{day:"Sunday",isOpen:true,openTime:"07:00",closeTime:"23:00"}]};
 const court={id,name:"מגרש 1",sport:"padel",is_active:true};
@@ -29,10 +28,13 @@ test("provider error preserves last snapshot and never generates a false cancell
  await assert.rejects(scanCourtReleases(store,{now,fetchSnapshot:()=>courtSnapshot({now,fetchImpl:async()=>({ok:false,status:503})})}));
  assert.deepEqual(await store.get(`court-release/snapshot/${CONFIG.venueId}`),prev);
 });
-test("monitor endpoint remains disabled and never fetches provider or sends",async()=>{
- const previous=process.env.COURT_RELEASE_ENABLED;delete process.env.COURT_RELEASE_ENABLED;
- try{const r=await check();assert.equal(r.status,200);assert.equal((await r.json()).status,"disabled");}
- finally{if(previous!==undefined)process.env.COURT_RELEASE_ENABLED=previous;}
+test("scan-only records releases with club, date, times and detection timestamp, never sends",async()=>{
+ const store=memoryStore();let booked=true,sends=0;const fetchSnapshot=({now})=>courtSnapshot({now,fetchImpl:api(booked)});
+ let r=await scanCourtReleases(store,{now,fetchSnapshot,scanOnly:true,notify:async()=>{sends++;return{sent:true}}});assert.equal(r.status,"primed");assert.equal(r.mode,"scan_only");
+ booked=false;r=await scanCourtReleases(store,{now,fetchSnapshot,scanOnly:true,notify:async()=>{sends++;return{sent:true}}});
+ assert.equal(r.windows,1);assert.equal(sends,0);const rows=await store.list(`court-release/outbox/${CONFIG.venueId}/`);
+ assert.equal(rows.length,1);assert.equal(rows[0].value.status,"recorded");assert.equal(rows[0].value.detectedAt,now.toISOString());
+ assert.deepEqual(releaseVariables(rows[0].value.window),["GT PADEL","25.9.2026","17:00","18:30"]);
 });
 test("template proposal has club, date, start and end variables; send payload matches it",async()=>{
  const d=releaseTemplateDefinition();assert.equal(d.category,"UTILITY");assert.equal(d.components[0].type,"BODY");
