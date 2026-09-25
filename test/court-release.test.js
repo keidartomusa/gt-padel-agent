@@ -48,3 +48,12 @@ test("a released isolated 30-minute cell is not advertised as a bookable court",
  const after={venueId:"v",venueName:"Club",cells:[{...before.cells[0],occupied:false}]};
  assert.deepEqual(freedWindows(before,after),[]);
 });
+
+test("a failed alert is retired rather than sent after the slot becomes occupied again",async()=>{
+ const store=memoryStore();let booked=true,sends=0;const snapshot=({now})=>courtSnapshot({now,fetchImpl:api(booked)});
+ await scanCourtReleases(store,{now,fetchSnapshot:snapshot});booked=false;
+ await scanCourtReleases(store,{now,fetchSnapshot:snapshot,notify:async()=>({sent:false})});
+ booked=true;const r=await scanCourtReleases(store,{now,fetchSnapshot:snapshot,notify:async()=>{sends++;return{sent:true}}});
+ assert.equal(r.sent,0);assert.equal(sends,0);
+ const items=await store.list(`court-release/outbox/${CONFIG.venueId}/`);assert.equal(items[0].value.status,"stale");
+});

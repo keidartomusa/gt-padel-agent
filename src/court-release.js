@@ -53,7 +53,13 @@ export async function scanCourtReleases(store,{now=new Date(),fetchSnapshot=cour
  let sent=0,failed=0;
  for(const item of await store.list(`court-release/outbox/${snapshot.venueId}/`)){
   if(item.value.status!=="pending")continue;
-  const result=await notify(item.value.window);
+  const w=item.value.window;
+  // A failed alert may be retried later; never describe a slot that is occupied again.
+  const cells=snapshot.cells.filter(c=>c.date===w.date&&c.courtId===w.courtId&&c.minute>=w.startMinute&&c.minute<w.endMinute);
+  if(cells.length!==(w.endMinute-w.startMinute)/30||cells.some(c=>c.occupied)){
+   await store.set(item.key,{...item.value,status:"stale",at:now.toISOString()});continue;
+  }
+  const result=await notify(w);
   if(result.sent){await store.set(item.key,{...item.value,status:"accepted",at:now.toISOString()});sent++;}
   else failed++;
  }
