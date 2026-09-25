@@ -1,5 +1,5 @@
 import {CONFIG} from "./config.js";
-import {addDays,localDateParts,min,rangesFor} from "./time.js";
+import {addDays,localDateParts,min,rangesFor,zonedMs} from "./time.js";
 
 // The monitor is deliberately single-venue today. The venue name is data in every alert
 // so notifications can later be routed by club without changing the template body.
@@ -29,11 +29,7 @@ export async function courtSnapshot({fetchImpl=fetch,now=new Date()}={}){
  for(const date of [from,addDays(from,1),to])for(const court of courts)for(const range of rangesFor(venue,date)){
   const open=min(range.openTime),close=min(range.closeTime);
   for(let minute=Math.ceil(open/30)*30;minute+30<=close;minute+=30){
-   const dateTime=new Date(`${date}T00:00:00Z`).getTime()+minute*60000;
-   // Compare against Israel's actual local offset, including DST changes.
-   const offset=new Intl.DateTimeFormat("en-US",{timeZone:CONFIG.timezone,timeZoneName:"longOffset"}).formatToParts(new Date(dateTime)).find(x=>x.type==="timeZoneName")?.value;
-   const match=/GMT([+-])(\d{2}):(\d{2})/.exec(offset||"");const off=match?(match[1]==="-"?-1:1)*(Number(match[2])*60+Number(match[3])):0;
-   const wallMs=dateTime-off*60000;if(wallMs<startMs||wallMs>=endMs)continue;
+   const wallMs=zonedMs(date,minute);if(wallMs<startMs||wallMs>=endMs)continue;
    cells.push({date,courtId:court.id,courtName:court.name,minute,occupied:occupied.has(keyOf(date,court.id,minute))});
   }
  }
@@ -48,12 +44,18 @@ export function freedWindows(before,after){if(!before||before.venueId!==after.ve
  return windows;}
 export const releaseVariables=w=>[w.venueName,dateLabel(w.date),clock(w.startMinute),clock(w.endMinute)];
 export async function scanCourtReleases(store,{now=new Date(),fetchSnapshot=courtSnapshot,notify=async()=>({sent:false,reason:"not_configured"})}={}){
- // The caller supplies a send gate. A disabled scan never touches the provider or store.
  const snapshot=await fetchSnapshot({now});const key=`court-release/snapshot/${snapshot.venueId}`;
  const previous=await store.get(key);const windows=freedWindows(previous,snapshot);
- // Save a complete scan only after all provider reads succeeded; a failed read cannot create false releases.
+ // Persist alerts before advancing the snapshot, so a retry sees any failed sends.
+ for(const w of windows){const id=`court-release/outbox/${w.venueId}/${w.date}/${w.courtId}/${w.startMinute}-${w.endMinute}`;
+  if(!await store.get(id))await store.set(id,{window:w,status:"pending"});}
  await store.set(key,snapshot);
  let sent=0,failed=0;
- for(const w of windows){const result=await notify(w);if(result.sent)sent++;else failed++;}
+ for(const item of await store.list(`court-release/outbox/${snapshot.venueId}/`)){
+  if(item.value.status!=="pending")continue;
+  const result=await notify(item.value.window);
+  if(result.sent){await store.set(item.key,{...item.value,status:"accepted",at:now.toISOString()});sent++;}
+  else failed++;
+ }
  return {status:previous?"scanned":"primed",venue:snapshot.venueName,at:snapshot.at,windows:windows.length,sent,failed};
 }
