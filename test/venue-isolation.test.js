@@ -35,3 +35,8 @@ test("parameterized API supports four courts and late closing hours without chan
  assert.equal(r.slots.length,16);assert.equal(r.slots[0].start,"00:00");assert.equal(r.slots[0].price,300);
  assert.equal(r.slots[0].courtName,"Court 1");assert.equal(r.slots[0].end,"01:30");clearCache();
 });
+
+test("GT accepted-match contact CTA remains allowed after output guard",()=>{
+ assert.doesNotThrow(()=>assertVenueResponse(GT_VENUE,{text:"חיברתי ביניכם",ctaUrl:{url:"https://wa.me/972500000131",displayText:"שלח הודעה"}}));
+ assert.throws(()=>assertVenueResponse(GT_VENUE,{text:"bad",ctaUrl:{url:"https://wa.me.evil.example/972500000131"}}),/Cross-venue URL/);
+});

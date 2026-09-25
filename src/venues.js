@@ -20,7 +20,8 @@ export function bookingTargetAllowed(venue,target){
 }
 export function assertVenueResponse(venue,response){
  const check=x=>{if(typeof x==="string")assertVenueContent(venue,x);else if(Array.isArray(x))x.forEach(check);else if(x&&typeof x==="object")Object.entries(x).forEach(([k,v])=>{if(k==="url"||k==="target"){
-  const u=new URL(v,venue.publicSiteUrl);if(u.origin===venue.publicSiteUrl){if(u.pathname!=="/go/book"||!bookingTargetAllowed(venue,u.searchParams.get("target")))throw Error("Cross-venue URL blocked");}
+  const u=new URL(v,venue.publicSiteUrl);if(u.origin==="https://wa.me"&&/^\/\d{8,15}$/.test(u.pathname))return;
+  if(u.origin===venue.publicSiteUrl){if(u.pathname!=="/go/book"||!bookingTargetAllowed(venue,u.searchParams.get("target")))throw Error("Cross-venue URL blocked");}
   else if(!bookingTargetAllowed(venue,v))throw Error("Cross-venue URL blocked");
  }else check(v)});};check(response);return response;
 }
