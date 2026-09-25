@@ -36,4 +36,4 @@ export function groupedSlots(slots){return grouped(slots);}
 
 
 export function nearestGroups(result,intent,count=3){const lo=intent.startMinute??0,hi=intent.endMinute??1440,dist=g=>{const a=min(g.start),b=min(g.end);return a>=lo&&b<=hi?0:a<lo?lo-a:a-hi;};return grouped(result.slots).map(g=>({g,d:dist(g)})).sort((x,y)=>x.d-y.d||x.g.start.localeCompare(y.g.start)).slice(0,count).map(x=>x.g).sort((a,b)=>a.start.localeCompare(b.start));}
-export function formatNearest(result,groups){const label=heDate(result.date,venue);return `אין מגרש פנוי ב${label} בטווח שביקשת. השעות הכי קרובות באותו יום:\n${groups.map(g=>`• ${g.start}–${g.end} · ${courtsLabel(g)}${g.price!=null?` · ₪${g.price}`:""}`).join("\n")}`;}
+export function formatNearest(result,groups,venue=GT_VENUE){const label=heDate(result.date,venue);return `אין מגרש פנוי ב${label} בטווח שביקשת. השעות הכי קרובות באותו יום:\n${groups.map(g=>`• ${g.start}–${g.end} · ${courtsLabel(g)}${g.price!=null?` · ₪${g.price}`:""}`).join("\n")}`;}

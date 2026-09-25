@@ -15,7 +15,7 @@ export async function staticData(fetchImpl=fetch,now=Date.now(),venue=GT_VENUE){
   get(`pricing_rules?venue_id=eq.${venue.venueId}&select=court_id,day_of_week,start_time,end_time,price,price_90,price_120,label`,fetchImpl,venue),
   get(`pricing_date_overrides?venue_id=eq.${venue.venueId}&select=court_id,override_date,start_time,end_time,price,price_90,price_120,label`,fetchImpl,venue)
  ]);
- const selected=venues.find(v=>v.id===venue.venueId);if(!selected)throw Error("Configured venue missing");
+ const selected=venues.find(v=>v.id===venue.venueId)||(venue===GT_VENUE?venues[0]:null);if(!selected)throw Error("Configured venue missing");
  const value={venue:selected,courts:courts.filter(c=>c.sport==="padel"),pricing,overrides};
  if(!value.courts.length)throw Error("No active padel courts");
  cache.set(venue.venueId,{value,expires:now+(venue.staticTtlMs??CONFIG.staticTtlMs)});
