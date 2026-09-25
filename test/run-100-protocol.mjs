@@ -6,6 +6,7 @@ import { provider, makeUser, turn, turnAll as turnAll0, options, rng, pick, view
 const turnAll = (u, s) => s?.actionId?.startsWith("duration:") ? Promise.resolve([]) : turnAll0(u, s);
 const out = [], rand = rng(20260923);
 const TERMINAL = [
+  ["outside_window", t => /אפשר לבדוק זמינות עד \d+ ימים קדימה/.test(t.response.text || "")],
   ["cta", t => t.response.ctaUrl?.url?.includes("/go/book?")],
   ["request_saved", t => /הבקשה נשמרה|נשמרו \d+ בקשות/.test(t.response.text || "")],
   ["not_published", t => /לא פורסמה/.test(t.response.text || "")],
@@ -82,7 +83,7 @@ for (const x of out) {
     if (/https?:\/\//.test(t.response.text || "")) problems.push(`raw link in text: ${x.title}`);
     if (!t.outbound.length) problems.push(`no outbound payload: ${x.title}`);
   }
-  if (/\?\s*$/.test(last?.response.text || "") && term !== "cta") problems.push(`dangling question: ${x.title}`);
+  if (/\?\s*$/.test(last?.response.text || "") && !["cta","outside_window"].includes(term)) problems.push(`dangling question: ${x.title}`);
 }
 const snapshot = { capturedAt: provider.startedAt, finishedAt: new Date().toISOString(), source: "https://api.matchpointer.app/rest/v1 (live, recorded during this run)", requests: provider.requests };
 fs.writeFileSync("/tmp/gt-live-provider-snapshot.json", JSON.stringify(snapshot));

@@ -3,6 +3,7 @@
 // with Meta calls captured instead of sent, and Matchpointer called live and recorded.
 import { deliver } from "../src/notify.js";
 import { routeIncoming } from "../src/webhook.js";
+import {GT_VENUE,assertVenueResponse} from "../src/venues.js";
 import { logInbound, logOutbound } from "../src/messagelog.js";
 import { memoryStore } from "../src/store.js";
 import { sendTyping, sendResponse, sendTemplate, plainDashes } from "../src/whatsapp.js";
@@ -27,10 +28,11 @@ export async function turn(user, step, { now = new Date() } = {}) {
   const input = step.actionId ? { actionId: step.actionId, text: step.title || "" } : { text: step.text || "" };
   const typing = await sendTyping(msgId, undefined, capture);
   await logInbound(user.store, user.userId, { id: msgId, type: step.actionId ? "interactive" : "text" }, input, now);
-  const response = await routeIncoming({ userId: user.userId, displayName: user.displayName, ...input, store: user.store, now });
+  const response = await routeIncoming({ userId: user.userId, displayName: user.displayName, ...input, store: user.store, now, venue:GT_VENUE });
+  assertVenueResponse(GT_VENUE,response);
   const sentMain = await sendResponse(user.userId, response, undefined, capture);
   await logOutbound(user.store, user.userId, response, sentMain, now);
-  for (const n of response.notifications || []) await deliver(user.store, n.to, n.response, { now, send: (to, r) => sendResponse(to, r, undefined, capture), sendTemplate: (to, t) => sendTemplate(to, t.name, t.language, t.payloads, undefined, capture) });
+  for (const n of response.notifications || []) {assertVenueResponse(GT_VENUE,n.response);await deliver(user.store, n.to, n.response, { now, send: (to, r) => sendResponse(to, r, undefined, capture), sendTemplate: (to, t) => sendTemplate(to, t.name, t.language, t.payloads, undefined, capture) });}
   return { msgId, input: step.actionId ? { actionId: step.actionId, title: step.title } : { text: step.text }, reaction: calls.some(c => c.type === "reaction") ? "sent" : null, typing: typing.sent && calls[0]?.typing_indicator?.type === "text", response, outbound: calls.slice(1) };
 }
 export const options = r => [...(r.buttons || []).map(b => ({ id: b.id, title: b.title })), ...(r.list?.sections || []).flatMap(s => s.rows.map(x => ({ id: x.id, title: x.title, description: x.description })))];
