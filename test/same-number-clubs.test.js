@@ -39,7 +39,7 @@ test('selected club uses club-specific welcome, profile, contact and available s
   const store=memoryStore();const contact=memoryStore();
   assert.equal(await clubContact(venue,contact),`https://wa.me/${DEFAULT_CONTACT}`);
   const hello=await routeIncoming({userId:'972500000001',text:'היי',store,venue});
-  assert.match(hello.text,new RegExp(venue.name));assertVenueResponse(venue,hello);
+  assert.ok(hello.text.includes(venue.name));assertVenueResponse(venue,hello);
   const c=await routeIncoming({userId:'972500000001',actionId:'club',store,venue,contactUrl:await clubContact(venue,contact)});
   assert.equal(c.ctaUrl.url,`https://wa.me/${DEFAULT_CONTACT}`);
   const result=await routeIncoming({userId:'972500000001',text:'יש מגרש מחר אחרי 17:00?',store,venue,availabilityFn:async i=>({kind:'availability',date:i.date,slots:[{courtId:'test',courtName:'3',start:'17:30',end:'19:00',durationMinutes:90,price:300}]})});
