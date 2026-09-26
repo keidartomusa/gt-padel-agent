@@ -151,12 +151,14 @@ export const html = '<!doctype html><html dir="rtl" lang="he"><meta charset="utf
 export async function renderAdmin(req,forcedVenue){
  const venue=forcedVenue||dashboardVenue(req?.url||'https://gtpadel.netlify.app/admin');
  if(!venue)return new Response('not found',{status:404});
- const title=venue.key==='gt'?'GT PADEL - מערכת ניהול':`${venue.name} - מערכת ניהול`;
+ const title=venue.key==='gt'?'GT PADEL - מערכת ניהול':`${venue.dashboardName||venue.name} - מערכת ניהול`;
  const page=html.replaceAll('GT PADEL - מערכת ניהול',title).replace('var D=null,TOKEN=null,',`var VENUE='${venue.key}',D=null,TOKEN=null,`)
   .replace("'/.netlify/functions/admin-data'+(q||'')", "'/.netlify/functions/admin-data?venue='+VENUE+(q?'&'+q.slice(1):'')")
   .replace("sessionStorage.setItem('gt-admin-token',token)","sessionStorage.setItem('gt-admin-token-'+VENUE,token)")
   .replaceAll("sessionStorage.removeItem('gt-admin-token')","sessionStorage.removeItem('gt-admin-token-'+VENUE)")
-  .replaceAll("sessionStorage.getItem('gt-admin-token')","sessionStorage.getItem('gt-admin-token-'+VENUE)");
+  .replaceAll("sessionStorage.getItem('gt-admin-token')","sessionStorage.getItem('gt-admin-token-'+VENUE)")
+  .replaceAll('gt-admin-token-', 'club-admin-token-')
+  .replaceAll('gt-admin-token', 'club-admin-token');
  const secure=page.replace('<button data-v="clicks">הזמנות</button>', '<button data-v="clicks">הזמנות</button><button data-v="contact">מספר קשר</button>')
  .replace("if(VIEW==='chats')a.innerHTML=chatsView();", "if(VIEW==='contact')a.innerHTML=contactView();else if(VIEW==='chats')a.innerHTML=chatsView();")
  .replace('function chatsView(){', `function contactView(){return '<div class="page">'+head('מספר קשר','המספר שאליו מוביל כפתור דבר עם המועדון')+'<div class="card"><label for="contact-number">מספר וואטסאפ בפורמט בינלאומי</label><input id="contact-number" inputmode="tel" placeholder="9725..."><button id="save-contact" class="btn">שמירה</button><p id="contact-status"></p></div></div>'}

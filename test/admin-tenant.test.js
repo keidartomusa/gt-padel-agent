@@ -13,12 +13,13 @@ test('separate club homes show only that club and use isolated browser sessions 
   const req=new Request('https://gtpadel.netlify.app'+route);
   assert.equal(dashboardVenue(req.url),venue);
   const handler=venue===SAAR_VENUE?saarAdmin:venue===SMASH_VENUE?smashAdmin:admin;const html=await(await handler(req)).text();
-  assert.match(html,new RegExp(venue.name));
+  assert.ok(html.includes(venue.dashboardName||venue.name));
   assert.match(html,new RegExp(`var VENUE='${venue.key}'`));
   assert.match(html,/fetch\('\/.netlify\/functions\/admin-data\?venue='\+VENUE/);
   assert.match(html,/q\.slice\(1\)/);
-  assert.match(html,/sessionStorage\.getItem\('gt-admin-token-'\+VENUE\)/);
+  assert.match(html,/sessionStorage\.getItem\('club-admin-token-'\+VENUE\)/);
   assert.doesNotMatch(html,/saar-secret|smash-secret|gt-secret/);
+  if(venue!==GT_VENUE)assert.doesNotMatch(html,/GT PADEL|gt-admin-token|GT Padel/);
   const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];for(const m of scripts)assert.doesNotThrow(()=>new Function(m[1]));
  }
  assert.equal(dashboardVenue('https://gtpadel.netlify.app/admin/other'),null);
