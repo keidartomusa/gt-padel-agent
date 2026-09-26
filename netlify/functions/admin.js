@@ -1,3 +1,4 @@
+import {dashboardVenue} from "../../src/admin-tenant.js";
 // Admin dashboard (Tom 23.9 15:32 redesign): overview, WhatsApp-style conversations with quick switching, booking clicks.
 // Client JS avoids template-literal syntax so the page can live inside one template string.
 const CSS = `
@@ -147,4 +148,22 @@ export const html = '<!doctype html><html dir="rtl" lang="he"><meta charset="utf
  + '<script>try{if(sessionStorage.getItem("gt-admin-token"))document.documentElement.classList.add("authing")}catch(e){}</script>'
  + '<div id="login" class="login"><h2>כניסה</h2><label for="password">סיסמת ניהול</label><input id="password" type="password" autocomplete="current-password"><button id="enter" class="btn">כניסה</button><div id="error" class="err"></div></div><main id="app" hidden></main>'
  + '<script>' + JS + '</script></html>';
-export default async () => new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+export default async req => {
+ const venue=dashboardVenue(req?.url||'https://gtpadel.netlify.app/admin');
+ if(!venue)return new Response('not found',{status:404});
+ const title=venue.key==='gt'?'GT PADEL - מערכת ניהול':`${venue.name} - מערכת ניהול`;
+ const page=html.replaceAll('GT PADEL - מערכת ניהול',title).replace('var D=null,TOKEN=null,',`var VENUE='${venue.key}',D=null,TOKEN=null,`)
+  .replace("'/.netlify/functions/admin-data'+(q||'')", "'/.netlify/functions/admin-data?venue='+VENUE+(q?'&'+q.slice(1):'')")
+  .replace("sessionStorage.setItem('gt-admin-token',token)","sessionStorage.setItem('gt-admin-token-'+VENUE,token)")
+  .replaceAll("sessionStorage.removeItem('gt-admin-token')","sessionStorage.removeItem('gt-admin-token-'+VENUE)")
+  .replaceAll("sessionStorage.getItem('gt-admin-token')","sessionStorage.getItem('gt-admin-token-'+VENUE)");
+ const secure=page.replace('<button data-v="clicks">הזמנות</button>', '<button data-v="clicks">הזמנות</button><button data-v="contact">מספר קשר</button>')
+ .replace("if(VIEW==='chats')a.innerHTML=chatsView();", "if(VIEW==='contact')a.innerHTML=contactView();else if(VIEW==='chats')a.innerHTML=chatsView();")
+ .replace('function chatsView(){', `function contactView(){return '<div class="page">'+head('מספר קשר','המספר שאליו מוביל כפתור דבר עם המועדון')+'<div class="card"><label for="contact-number">מספר וואטסאפ בפורמט בינלאומי</label><input id="contact-number" inputmode="tel" placeholder="9725..."><button id="save-contact" class="btn">שמירה</button><p id="contact-status"></p></div></div>'}
+async function loadContact(){var r=await fetch('/.netlify/functions/club-contact?venue='+VENUE,{headers:{authorization:'Bearer '+TOKEN}});if(!r.ok)throw Error('לא ניתן לטעון את המספר');var d=await r.json();$('#contact-number').value=new URL(d.url).pathname.slice(1)}
+async function saveContact(){var n=$('#contact-number').value.trim(),s=$('#contact-status');if(!/^972[0-9]{8,9}$/.test(n)){s.textContent='הזינו מספר ישראלי בפורמט 972...';return}var r=await fetch('/.netlify/functions/club-contact?venue='+VENUE,{method:'PUT',headers:{authorization:'Bearer '+TOKEN,'content-type':'application/json'},body:JSON.stringify({number:n})});s.textContent=r.ok?'המספר נשמר למועדון הזה בלבד.':'השמירה נכשלה.'}
+function chatsView(){`)
+ .replace("if(VIEW!=='chats'&&CUR===null)", "if(VIEW==='contact')loadContact().catch(e=>$('#contact-status').textContent=e.message);if(VIEW!=='chats'&&CUR===null)")
+ .replace("document.addEventListener('click',async function(e){", "document.addEventListener('click',async function(e){if(e.target.id==='save-contact')return saveContact();");
+ return new Response(secure, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+};

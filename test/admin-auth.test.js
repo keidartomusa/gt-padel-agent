@@ -14,7 +14,7 @@ test("the admin endpoints gate refuses 'Bearer undefined' when the secret is not
   const { authGate } = await import("../src/auth.js"), { memoryStore } = await import("../src/store.js");
   const saved = process.env.ADMIN_DASHBOARD_TOKEN; delete process.env.ADMIN_DASHBOARD_TOKEN;
   try { assert.equal((await authGate(req("Bearer undefined"), memoryStore())).status, 401); } finally { if (saved !== undefined) process.env.ADMIN_DASHBOARD_TOKEN = saved; }
-  for (const f of ["admin-data.js", "booking-confirm.js"]) { const src = (await import("node:fs")).readFileSync(new URL(`../netlify/functions/${f}`, import.meta.url), "utf8"); assert.match(src, /authGate\(req,/); assert.doesNotMatch(src, /!==`Bearer \$\{process\.env/); }
+  for (const f of ["admin-data.js", "booking-confirm.js", "club-contact.js"]) { const src = (await import("node:fs")).readFileSync(new URL(`../netlify/functions/${f}`, import.meta.url), "utf8"); assert.match(src, /dashboardGate\(req,/); assert.doesNotMatch(src, /!==`Bearer \$\{process\.env/); }
 });
 test("the admin page never embeds the secret and hides the login before first paint when a session exists", () => {
   assert.ok(!/ADMIN_DASHBOARD_TOKEN|process\.env/.test(html));
