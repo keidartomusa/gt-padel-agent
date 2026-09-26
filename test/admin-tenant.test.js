@@ -23,6 +23,9 @@ test('separate club homes show only that club and use isolated browser sessions 
   const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];for(const m of scripts)assert.doesNotThrow(()=>new Function(m[1]));
  }
  assert.equal(dashboardVenue('https://gtpadel.netlify.app/admin/other'),null);
+ const gtWithContext=await(await admin(new Request('https://gtpadel.netlify.app/.netlify/functions/admin'),{geo:{city:'somewhere'}})).text();
+ assert.match(gtWithContext,/<title>GT PADEL - מערכת ניהול<\/title>/);
+ assert.match(gtWithContext,/var VENUE='gt'/);
  for(const [handler,key] of [[saarAdmin,'saar'],[smashAdmin,'smash']]){const h=await(await handler(new Request('https://gtpadel.netlify.app/.netlify/functions/admin-'+key))).text();assert.match(h,new RegExp(`var VENUE='${key}'`));}
 });
 test('wrong club password never unlocks another club, and missing password fails closed',async()=>{
