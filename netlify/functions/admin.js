@@ -170,4 +170,4 @@ function chatsView(){`)
  return new Response(secure, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 };
 
-export default renderAdmin;
+export default req=>renderAdmin(req);
