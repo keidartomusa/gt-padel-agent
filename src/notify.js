@@ -1,14 +1,16 @@
 // Window-aware delivery (WhatsApp 24h customer-service window).
 // Inside the window: normal free-form message. Outside: the approved template "gt_match_found_v2".
 // (no names, no numbers), and the full notification waits until the user taps "כן, שלחו פרטים" or writes again.
+import{GT_VENUE}from"./venues.js";
 import{logOutbound,logTemplate}from"./messagelog.js";
 export const WINDOW_MS=24*60*60*1000;
 export const MATCH_TEMPLATE={name:"gt_match_found_v2",language:"he",payloads:["pending_yes","pending_no"],body:"נמצאה לך התאמה למשחק פאדל ב-GT PADEL. רוצה לקבל את הפרטים?"};
 export async function recordInbound(store,userId,now=new Date()){const p=await store.get(`profile/${userId}`)||{userId};p.lastInboundAt=now.toISOString();await store.set(`profile/${userId}`,p);}
 export function windowOpen(profile,now=new Date()){if(!profile?.lastInboundAt)return false;return now.getTime()-new Date(profile.lastInboundAt).getTime()<WINDOW_MS;}
-export async function deliver(store,to,response,{now=new Date(),send,sendTemplate}){
+export async function deliver(store,to,response,{now=new Date(),send,sendTemplate,venue=GT_VENUE}){
  const profile=await store.get(`profile/${to}`);
  if(windowOpen(profile,now)){const r=await send(to,response);await logOutbound(store,to,response,r,now);return{mode:"freeform",...r};}
+ if(venue!==GT_VENUE){const key=`pending/${to}`,prior=await store.get(key)||{items:[],templateSentAt:null};await store.set(key,{...prior,items:[...prior.items,{response,at:now.toISOString()}].slice(-5)});return{mode:"pending",sent:false,reason:"venue_template_not_approved"};}
  const key=`pending/${to}`,pending=await store.get(key)||{items:[],templateSentAt:null};
  pending.items=[...pending.items,{response,at:now.toISOString()}].slice(-5);
  let result={sent:false,reason:"template_already_sent"};
