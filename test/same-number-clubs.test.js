@@ -12,11 +12,12 @@ const stores={selector:memoryStore(),gt:memoryStore(),saar:memoryStore(),smash:m
 test('one shared number opens picker only for new users, preserves existing GT users',async()=>{
  const selector=memoryStore(),gt=memoryStore();
  assert.deepEqual((await selectVenue({store:selector,userId:'new',input:{text:'היי'},legacyStore:gt})).response,PICKER);
+ assert.deepEqual(PICKER.buttons.map(b=>b.title),['גני תקווה','קיבוץ סער','סמאש ראשל״צ']);
  await gt.set('seen/old',{at:'2026-09-25'});
  assert.equal((await selectVenue({store:selector,userId:'old',input:{text:'היי'},legacyStore:gt})).venue,GT_VENUE);
  assert.equal((await selectVenue({store:selector,userId:'new',input:{actionId:'venue:saar'},legacyStore:gt})).venue,SAAR_VENUE);
  assert.equal((await selectVenue({store:selector,userId:'new',input:{text:'תפריט'},legacyStore:gt})).venue,SAAR_VENUE);
- assert.deepEqual((await selectVenue({store:selector,userId:'new',input:{text:'החלפת מועדון'},legacyStore:gt})).response,PICKER);
+ for(const text of ['עבור מועדון','לעבור מועדון','מעבר למועדון','החלפת מועדון','עבור מועדון.'])assert.deepEqual((await selectVenue({store:selector,userId:'new',input:{text},legacyStore:gt})).response,PICKER);
  assert.equal((await selectVenue({store:selector,userId:'new',input:{actionId:'venue:smash'},legacyStore:gt})).venue,SMASH_VENUE);
  assert.equal((await selectVenue({store:selector,userId:'new',input:{actionId:'venue:evil'},legacyStore:gt})).response,PICKER);
  assert.equal(await gt.get('seen/new'),null);
@@ -75,8 +76,10 @@ test('provider booking action for a foreign court fails closed',async()=>{
 
 test('GT menu keeps its prior welcome and offers a club-change command',async()=>{
  const store=memoryStore();const reply=await routeIncoming({userId:'972500000001',text:'היי',store,venue:GT_VENUE});
- assert.match(reply.text,/GT PADEL/);assert.match(reply.text,/לבחירת מועדון כתבו: בחירת מועדון/);
+ assert.match(reply.text,/גני תקווה/);assert.match(reply.text,/למעבר למועדון אחר כתבו: עבור מועדון/);
  assert.deepEqual(reply.buttons.map(x=>x.id),['availability','players','club']);
+ const again=await routeIncoming({userId:'972500000001',text:'תפריט',store,venue:GT_VENUE});assert.match(again.text,/למעבר למועדון אחר כתבו: עבור מועדון/);
+ assert.doesNotMatch(again.text,/לבחירת מועדון/);
 });
 test('selected club state never borrows another club profile or request',async()=>{
  const a=memoryStore(),b=memoryStore(),userId='972500000004';
