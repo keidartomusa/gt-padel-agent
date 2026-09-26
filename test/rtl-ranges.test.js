@@ -44,5 +44,5 @@ test("outbound text uses a regular hyphen, never en/em dashes", async () => {
 });
 test("dashboard has the new title, no long dashes and no revenue line on login", async () => {
   const src = (await import("node:fs")).readFileSync(new URL("../netlify/functions/admin.js", import.meta.url), "utf8");
-  assert.match(src, /<h1>GT PADEL - מערכת ניהול<\/h1>/); assert.match(src, /<title>GT PADEL - מערכת ניהול<\/title>/); assert.doesNotMatch(src, /[—]|ניהול התאמות|הזמנה מאומתת בלבד נספרת/);
+  assert.match(src, /<h1>גני תקווה - מערכת ניהול<\/h1>/); assert.match(src, /<title>גני תקווה - מערכת ניהול<\/title>/); assert.doesNotMatch(src, /[—]|ניהול התאמות|הזמנה מאומתת בלבד נספרת/);
 });

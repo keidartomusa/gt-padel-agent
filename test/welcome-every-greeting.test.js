@@ -5,7 +5,7 @@ import { routeIncoming } from "../src/webhook.js"; import { memoryStore } from "
 const now = new Date("2026-09-24T04:42:00Z");
 test("every greeting gets the full welcome, תפריט stays short", async () => {
   const s = memoryStore(), u = "972500000091";
-  for (const t of ["היי", "היי", "שלום", "הי"]) { const r = await routeIncoming({ userId: u, text: t, store: s, now }); assert.match(r.text, /ברוכים הבאים ל־GT PADEL/, t); assert.ok(r.buttons.some(b => b.id === "players"), t); }
+  for (const t of ["היי", "היי", "שלום", "הי"]) { const r = await routeIncoming({ userId: u, text: t, store: s, now }); assert.match(r.text, /ברוכים הבאים ל־גני תקווה/, t); assert.ok(r.buttons.some(b => b.id === "players"), t); }
   const m = await routeIncoming({ userId: u, text: "תפריט", store: s, now }); assert.match(m.text, /^(\S+, )?מה תרצו לעשות\?/); assert.doesNotMatch(m.text, /ברוכים הבאים/);
   const again = await routeIncoming({ userId: u, text: "היי", store: s, now }); assert.match(again.text, /ברוכים הבאים/);
 });

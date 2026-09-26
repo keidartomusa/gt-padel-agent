@@ -7,7 +7,7 @@ export const SELECTOR_STORE='gt-padel-club-selection';
 export const selectorStore=()=>netlifyStore(getStore({name:SELECTOR_STORE,consistency:'strong'}));
 export const selectionKey=userId=>`selection/${userId}`;
 export const mentionedVenue=text=>ACTIVE_VENUES.find(v=>[v.name,v.label,...v.aliases].some(alias=>String(text||'').toLocaleLowerCase('he-IL').includes(alias.toLocaleLowerCase('he-IL'))))||null;
-export const isPickerRequest=({actionId,text=''})=>actionId==='select_venue'||(!actionId&&/^(?:בחירת|להחליף|שינוי|החלפת) מועדון$/.test(text.trim()));
+export const isPickerRequest=({actionId,text=''})=>actionId==='select_venue'||(!actionId&&/^(?:(?:עבור|לעבור|עברו|מעבר|החלף|להחליף|שינוי|החלפת|בחירת)\s+(?:ל)?מועדון(?:\s+אחר)?|(?:אני\s+רוצה\s+)?לעבור\s+למועדון\s+אחר)(?:[.!?])?$/i.test(text.trim()));
 export async function selectVenue({store,userId,input,legacyStore}){
  const key=selectionKey(userId),saved=await store.get(key),current=venueByKey(saved?.venueKey);
  const mentioned=!input.actionId&&mentionedVenue(input.text);
@@ -17,7 +17,7 @@ export async function selectVenue({store,userId,input,legacyStore}){
   const target=venueByKey(input.actionId.slice(6));
   if(!target)return{response:PICKER};
   await store.set(key,{venueKey:target.key,selectedAt:new Date().toISOString()});
-  return{venue:target,response:assertVenueResponse(target,{text:`בחרתם ${target.name}. מה תרצו לעשות?`,buttons:[{id:'availability',title:'מגרש פנוי'},{id:'players',title:'מציאת שחקנים'},{id:'select_venue',title:'בחירת מועדון'}]})};
+  return{venue:target,response:assertVenueResponse(target,{text:`בחרתם ${target.name}. מה תרצו לעשות?`,buttons:[{id:'availability',title:'מגרש פנוי'},{id:'players',title:'מציאת שחקנים'},{id:'select_venue',title:'עבור מועדון'}]})};
  }
  if(current)return{venue:current};
  // Existing GT users stay in GT, rather than silently losing their active requests on rollout.

@@ -11,7 +11,7 @@ const reservation={id:"R1",court_id:id,date:"2026-09-25",start_time:"17:00:00",e
 const api=(booked)=>async url=>({ok:true,json:async()=>url.includes("/venues?")?[venue]:url.includes("/courts?")?[court]:url.includes("/reservation_slots?")?booked?[reservation]:[]:[]});
 test("live-shaped snapshot compares occupied half-hours within 48 hours",async()=>{
  const before=await courtSnapshot({fetchImpl:api(true),now});const after=await courtSnapshot({fetchImpl:api(false),now});
- const freed=freedWindows(before,after);assert.equal(freed.length,1);assert.deepEqual(freed.map(releaseVariables),[["GT PADEL","25.9.2026","17:00","18:30"]]);
+ const freed=freedWindows(before,after);assert.equal(freed.length,1);assert.deepEqual(freed.map(releaseVariables),[["גני תקווה","25.9.2026","17:00","18:30"]]);
  assert.equal(freed[0].courtName,"מגרש 1");assert.deepEqual(freedWindows(after,before),[]);
 });
 test("first scan primes, failed notification retries once, accepted notification does not repeat",async()=>{
@@ -34,7 +34,7 @@ test("scan-only records releases with club, date, times and detection timestamp,
  booked=false;r=await scanCourtReleases(store,{now,fetchSnapshot,scanOnly:true,notify:async()=>{sends++;return{sent:true}}});
  assert.equal(r.windows,1);assert.equal(sends,0);const rows=await store.list(`court-release/outbox/${CONFIG.venueId}/`);
  assert.equal(rows.length,1);assert.equal(rows[0].value.status,"recorded");assert.equal(rows[0].value.detectedAt,now.toISOString());
- assert.deepEqual(releaseVariables(rows[0].value.window),["GT PADEL","25.9.2026","17:00","18:30"]);
+ assert.deepEqual(releaseVariables(rows[0].value.window),["גני תקווה","25.9.2026","17:00","18:30"]);
 });
 test("template proposal has club, date, start and end variables; send payload matches it",async()=>{
  const d=releaseTemplateDefinition();assert.equal(d.category,"UTILITY");assert.equal(d.components[0].type,"BODY");

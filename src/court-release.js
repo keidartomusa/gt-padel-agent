@@ -1,10 +1,11 @@
 import {CONFIG} from "./config.js";
+import {GT_VENUE} from "./venues.js";
 import {addDays,localDateParts,min,rangesFor,zonedMs} from "./time.js";
 
 // The monitor is deliberately single-venue today. The venue name is data in every alert
 // so notifications can later be routed by club without changing the template body.
 export const RELEASE_TEMPLATE={name:"gt_court_release_v1",language:"he",category:"UTILITY",body:"עדכון למעקב זמינות שביקשת: במועדון {{1}} התפנו שעות למגרש בתאריך {{2}}, בין {{3}} ל-{{4}}. בדוק זמינות עדכנית לפני הזמנה."};
-export const releaseTemplateDefinition=()=>({name:RELEASE_TEMPLATE.name,language:RELEASE_TEMPLATE.language,category:RELEASE_TEMPLATE.category,components:[{type:"BODY",text:RELEASE_TEMPLATE.body,example:{body_text:[["GT PADEL","26.9.2026","18:00","19:30"]]}}]});
+export const releaseTemplateDefinition=()=>({name:RELEASE_TEMPLATE.name,language:RELEASE_TEMPLATE.language,category:RELEASE_TEMPLATE.category,components:[{type:"BODY",text:RELEASE_TEMPLATE.body,example:{body_text:[["גני תקווה","26.9.2026","18:00","19:30"]]}}]});
 const headers={apikey:CONFIG.anonKey,Authorization:`Bearer ${CONFIG.anonKey}`,Origin:CONFIG.siteOrigin,Referer:`${CONFIG.siteOrigin}/`};
 async function page(path,fetchImpl){const response=await fetchImpl(`${CONFIG.apiBase}/${path}`,{headers});if(!response.ok)throw Error(`Matchpointer ${response.status}`);const rows=await response.json();if(!Array.isArray(rows))throw Error("Matchpointer response is not an array");return rows;}
 async function all(path,fetchImpl){const rows=[];for(let offset=0;offset<=10000;offset+=500){const batch=await page(`${path}&limit=500&offset=${offset}`,fetchImpl);rows.push(...batch);if(batch.length<500)return rows;}throw Error("Matchpointer pagination limit reached");}
@@ -33,7 +34,7 @@ export async function courtSnapshot({fetchImpl=fetch,now=new Date()}={}){
    cells.push({date,courtId:court.id,courtName:court.name,minute,occupied:occupied.has(keyOf(date,court.id,minute))});
   }
  }
- return {venueId:venue.id,venueName:venue.name,from,to,at:now.toISOString(),cells};
+ return {venueId:venue.id,venueName:GT_VENUE.name,from,to,at:now.toISOString(),cells};
 }
 export function freedWindows(before,after){if(!before||before.venueId!==after.venueId)return [];
  const old=new Map(before.cells.map(c=>[keyOf(c.date,c.courtId,c.minute),c]));
@@ -42,7 +43,7 @@ export function freedWindows(before,after){if(!before||before.venueId!==after.ve
  const windows=[];for(const c of released){const last=windows.at(-1);if(last&&last.date===c.date&&last.courtId===c.courtId&&last.endMinute===c.minute)last.endMinute+=30;
  else windows.push({venueId:after.venueId,venueName:after.venueName,courtId:c.courtId,courtName:c.courtName,date:c.date,startMinute:c.minute,endMinute:c.minute+30});}
  return windows.filter(w=>w.endMinute-w.startMinute>=60);}
-export const releaseVariables=w=>[w.venueName,dateLabel(w.date),clock(w.startMinute),clock(w.endMinute)];
+export const releaseVariables=w=>[w.venueId===GT_VENUE.venueId?GT_VENUE.name:w.venueName,dateLabel(w.date),clock(w.startMinute),clock(w.endMinute)];
 export async function scanCourtReleases(store,{now=new Date(),fetchSnapshot=courtSnapshot,notify=async()=>({sent:false,reason:"not_configured"}),scanOnly=false}={}){
  const snapshot=await fetchSnapshot({now});const key=`court-release/snapshot/${snapshot.venueId}`;
  const previous=await store.get(key);const windows=freedWindows(previous,snapshot);
