@@ -148,8 +148,8 @@ export const html = '<!doctype html><html dir="rtl" lang="he"><meta charset="utf
  + '<script>try{if(sessionStorage.getItem("gt-admin-token"))document.documentElement.classList.add("authing")}catch(e){}</script>'
  + '<div id="login" class="login"><h2>כניסה</h2><label for="password">סיסמת ניהול</label><input id="password" type="password" autocomplete="current-password"><button id="enter" class="btn">כניסה</button><div id="error" class="err"></div></div><main id="app" hidden></main>'
  + '<script>' + JS + '</script></html>';
-export default async req => {
- const venue=dashboardVenue(req?.url||'https://gtpadel.netlify.app/admin');
+export async function renderAdmin(req,forcedVenue){
+ const venue=forcedVenue||dashboardVenue(req?.url||'https://gtpadel.netlify.app/admin');
  if(!venue)return new Response('not found',{status:404});
  const title=venue.key==='gt'?'GT PADEL - מערכת ניהול':`${venue.name} - מערכת ניהול`;
  const page=html.replaceAll('GT PADEL - מערכת ניהול',title).replace('var D=null,TOKEN=null,',`var VENUE='${venue.key}',D=null,TOKEN=null,`)
@@ -167,3 +167,5 @@ function chatsView(){`)
  .replace("document.addEventListener('click',async function(e){", "document.addEventListener('click',async function(e){if(e.target.id==='save-contact')return saveContact();");
  return new Response(secure, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 };
+
+export default renderAdmin;

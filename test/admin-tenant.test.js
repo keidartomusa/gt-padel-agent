@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import admin from '../netlify/functions/admin.js';
+import saarAdmin from '../netlify/functions/admin-saar.js';
+import smashAdmin from '../netlify/functions/admin-smash.js';
 import {dashboardVenue,dashboardSecret,dashboardGate} from '../src/admin-tenant.js';
 import {GT_VENUE,SAAR_VENUE,SMASH_VENUE} from '../src/venues.js';
 import {memoryStore} from '../src/store.js';
@@ -10,7 +12,7 @@ test('separate club homes show only that club and use isolated browser sessions 
  for(const [route,venue] of [['/admin',GT_VENUE],['/admin/saar',SAAR_VENUE],['/admin/smash',SMASH_VENUE]]){
   const req=new Request('https://gtpadel.netlify.app'+route);
   assert.equal(dashboardVenue(req.url),venue);
-  const html=await(await admin(req)).text();
+  const handler=venue===SAAR_VENUE?saarAdmin:venue===SMASH_VENUE?smashAdmin:admin;const html=await(await handler(req)).text();
   assert.match(html,new RegExp(venue.name));
   assert.match(html,new RegExp(`var VENUE='${venue.key}'`));
   assert.match(html,/fetch\('\/.netlify\/functions\/admin-data\?venue='\+VENUE/);
@@ -20,6 +22,7 @@ test('separate club homes show only that club and use isolated browser sessions 
   const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];for(const m of scripts)assert.doesNotThrow(()=>new Function(m[1]));
  }
  assert.equal(dashboardVenue('https://gtpadel.netlify.app/admin/other'),null);
+ for(const [handler,key] of [[saarAdmin,'saar'],[smashAdmin,'smash']]){const h=await(await handler(new Request('https://gtpadel.netlify.app/.netlify/functions/admin-'+key))).text();assert.match(h,new RegExp(`var VENUE='${key}'`));}
 });
 test('wrong club password never unlocks another club, and missing password fails closed',async()=>{
  const store=memoryStore();for(const venue of [GT_VENUE,SAAR_VENUE,SMASH_VENUE]){

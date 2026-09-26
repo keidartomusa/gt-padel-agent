@@ -24,9 +24,9 @@
 
 [[redirects]]
   from = "/admin/saar"
-  to = "/.netlify/functions/admin"
+  to = "/.netlify/functions/admin-saar"
   status = 200
 [[redirects]]
   from = "/admin/smash"
-  to = "/.netlify/functions/admin"
+  to = "/.netlify/functions/admin-smash"
   status = 200
