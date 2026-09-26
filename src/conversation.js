@@ -5,6 +5,7 @@ import { addDays } from "./time.js";
 import { parseIntentLocal } from "./intent.js";
 import { parseWhen, whenLabel as whenEcho } from "./when.js";
 import { findAvailability } from "./availability.js";
+import {GT_VENUE} from "./venues.js";
 
 import { activeRequests, DURATIONS, findMatches, formatBoard, LEVELS, levelTitle, levelNote, flexMinutesFor, publicBoard, welcome, formatPhone, clockLabel, appliesOn, timesCompatible, skipKey, matchAlert, partyOf, pairKey, allowAlert, groupNames, groupLabel, groupShort, isMine } from "./matching.js";
 import { slotActionId } from "./availability.js";
@@ -50,7 +51,7 @@ const CANCEL_ROW={id:"cancel_req",title:"ביטול"};
 export const CLUB_URL="https://wa.me/972544819860";
 // No raw links in message text (links only behind buttons). The club button is the third menu button; when that slot holds "הבקשות שלי", the menu names the typed phrase instead.
 const CLUB_BTN={id:"club",title:"דבר עם המועדון"}, CLUB_HINT="\n\nלשאלות על המועדון כתבו: דבר עם המועדון";
-const clubCard=()=>({text:"אפשר לכתוב למועדון ישירות בוואטסאפ.",ctaUrl:{displayText:"דבר עם המועדון",url:CLUB_URL}});
+const clubCard=(url=CLUB_URL)=>({text:"אפשר לכתוב למועדון ישירות בוואטסאפ.",ctaUrl:{displayText:"דבר עם המועדון",url}});
 // Item 20: "לשנות את השם מתום לאבי?" - Hebrew names take the prefix directly, others with a hyphen.
 const heName=n=>/^[\u0590-\u05FF]/.test(n), fromName=n=>heName(n)?`מ${n}`:`מ-${n}`, toName=n=>heName(n)?`ל${n}`:`ל-${n}`;
 const partyText=n=>Number(n)===1?"שחקן אחד":`${n} שחקנים`;
@@ -77,7 +78,7 @@ const HE_DAYS=["ראשון","שני","שלישי","רביעי","חמישי","ש�
 export function nextWeekDays(now){const t=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jerusalem"}).format(now),base=new Date(`${t}T12:00:00Z`),dow=base.getUTCDay(),out=[];for(let i=0;i<7;i++){const d=new Date(base.getTime()+((7-dow)+i)*86400000);out.push({date:d.toISOString().slice(0,10),ddmm:`${d.getUTCDate()}.${d.getUTCMonth()+1}`,label:`${HE_DAYS[d.getUTCDay()]} ${d.getUTCDate()}.${d.getUTCMonth()+1}`});}return out;}
 const WD=new Map([["ראשון",0],["שני",1],["שלישי",2],["רביעי",3],["חמישי",4],["שישי",5],["שבת",6]]);
 const recurringDays=text=>[...WD].filter(([name])=>text.includes(name)).map(([,n])=>n);
-export async function handleConversation({userId,displayName="שחקן/ית",text="",actionId,store,now=new Date(),availabilityFn=findAvailability}){
+export async function handleConversation({userId,displayName="שחקן/ית",text="",actionId,store,now=new Date(),availabilityFn=findAvailability,venue=GT_VENUE,contactUrl=CLUB_URL}){
  const input=(actionId||text).trim(),state=await store.get(`state/${userId}`)||{}; const set=async s=>store.set(`state/${userId}`,s);
  const withMyRequests=async r=>(await userActiveRequests(store,userId,now)).length?{...r,text:r.buttons?.some(b=>b.id==="club")?r.text+CLUB_HINT:r.text,buttons:[...(r.buttons||[]).slice(0,2),MY_REQ]}:r;
  const allApproved=async r=>(await store.list("connection/")).map(x=>x.value).filter(c=>c?.status==="accepted"&&c.requestId===r.id).every(c=>(c.members||[r.userId]).every(m=>(c.approvals||[c.answeredBy]).includes(m)));
@@ -92,7 +93,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  const askConfirm=async n=>{await set({step:"name_confirm",oldName:name,newName:n});return btn(`לשנות את השם ${fromName(name)} ${toName(n)}?`,[{id:"name_yes",title:"כן, לשנות"},{id:"name_no",title:"לא"}]);};
  // Item 19: offer the WhatsApp profile name first (one tap instead of typing).
  const askName=async(s,prefix="")=>{if(profileName){await set({...s,step:"name",waName:profileName});return btn(`${prefix}להופיע בלוח המשחקים בתור ${profileName}?`,[{id:"name_wa",title:"כן"},{id:"name_other",title:"שם אחר"}]);}await set({...s,step:"name"});return{text:prefix+NAME_ASK};};
- const nameGiven=async n=>{if(state.change&&name){if(n===name){await set({});return{text:`השם כבר ${name}.`};}return askConfirm(n);}await saveName(n);await set(state.resume||{});const pending=state.pending;if(pending)return handleConversation({userId,displayName:n,actionId:pending,store,now,availabilityFn});return btn(`נעים להכיר, ${n}!`,[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"}]);};
+ const nameGiven=async n=>{if(state.change&&name){if(n===name){await set({});return{text:`השם כבר ${name}.`};}return askConfirm(n);}await saveName(n);await set(state.resume||{});const pending=state.pending;if(pending)return handleConversation({userId,displayName:n,actionId:pending,store,now,availabilityFn,venue,contactUrl});return btn(`נעים להכיר, ${n}!`,[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"}]);};
  if(state.step==="name"&&input==="name_wa"&&state.waName)return nameGiven(state.waName);
  if(state.step==="name"&&input==="name_other"){await set({...state,waName:undefined});return{text:NAME_ASK};}
  if(state.step==="name"&&text&&!actionId&&/^ביטול$/.test(text.trim())){await set({});return btn(state.change?"בסדר, השם לא השתנה.":"בסדר, לא שמרתי את הבקשה.",[MENU]);}
@@ -102,7 +103,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  if(!name&&input.startsWith("connect:"))return askName({pending:input});
  // Item 18: the full greeting once; later a short menu.
  // Tom 24.9 07:47 (option A): a greeting (היי/הי/שלום) always gets the full welcome; "תפריט" stays short after the first time.
- const menuFor=async(full=false)=>{const p=await store.get(profileKey)||{userId},w=welcome(name),buttons=[...w.buttons,CLUB_BTN];if(p.welcomedAt&&!full)return{text:name?`${name}, מה תרצו לעשות?`:"מה תרצו לעשות?",buttons};await store.set(profileKey,{...p,welcomedAt:now.toISOString()});return{...w,buttons};};
+ const menuFor=async(full=false)=>{const p=await store.get(profileKey)||{userId},w=welcome(name,venue.name),buttons=[...w.buttons,CLUB_BTN];if(p.welcomedAt&&!full)return{text:(name?`${name}, מה תרצו לעשות?`:"מה תרצו לעשות?")+"\nלבחירת מועדון כתבו: בחירת מועדון",buttons};await store.set(profileKey,{...p,welcomedAt:now.toISOString()});return{...w,text:w.text+"\nלבחירת מועדון כתבו: בחירת מועדון",buttons};};
  const timeAsk=async(date,resume)=>{if(resume!==null)await set({step:"time_ask",tResume:resume,tDate:date});return btn(`${dayLabel({date})} - מאיזו שעה?`,[17,18,19].map(h=>({id:`tm:${h}`,title:`${h}:00`})));};
  const reask=async s=>{switch(s.step){case"avail_when":return list(AVAIL_ASK,WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));case"board_when":return list(BOARD_ASK,WHEN_OPTIONS.map((x,i)=>({id:`bwhen:${i}`,title:x})));case"when":case"edit_when":{const er=s.step==="edit_when"?await ownReq(s.editId):null;return{text:er?.recurring?SCHEDULE_ASK:whenAsk(er||s.draft)};};case"schedule":return{text:SCHEDULE_ASK};
    case"level":case"edit_level":return list(LEVEL_ASK,LEVEL_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"pc":return list(PC_ASK,PC_ROWS().concat(s.autoOpen?[CANCEL_ROW]:[]));case"duration":case"edit_duration":return list(durAsk(s.draft),DURATION_ROWS());case"flex":case"edit_flex":return list(FLEX_ASK,FLEX_ROWS());case"edit_party":return list("כמה שחקנים אתם?",PARTY_ROWS());case"court":case"edit_court":return btn("כבר יש לכם מגרש?",[{id:"court:yes",title:"כן"},{id:"court:no",title:"לא"}]);
@@ -139,9 +140,9 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  if(!actionId&&state.step&&/^(היי|הי|שלום|start)[.!]?$/i.test(input)){const r=await reask(state);if(r)return r;}
  if(/^(היי|הי|שלום|תפריט|menu|start)$/i.test(input)||input==="menu"){if(state.step)await set({});return withMyRequests(await menuFor(/^(היי|הי|שלום|start)$/i.test(input)));}
  // Item 10: the day was understood but not the hour - ask only the hour.
- if(state.step==="time_ask"&&/^tm:\d{1,2}$/.test(input)&&state.tDate){const[,m,dd]=state.tDate.split("-");await set(state.tResume||{});return handleConversation({userId,displayName,text:`${Number(dd)}.${Number(m)} אחרי ${input.slice(3)}:00`,store,now,availabilityFn});}
+ if(state.step==="time_ask"&&/^tm:\d{1,2}$/.test(input)&&state.tDate){const[,m,dd]=state.tDate.split("-");await set(state.tResume||{});return handleConversation({userId,displayName,text:`${Number(dd)}.${Number(m)} אחרי ${input.slice(3)}:00`,store,now,availabilityFn,venue,contactUrl});}
  // Tom 23.9 hour rule: 8, 9, 10 with no morning/evening cue -> ask, never guess.
- if(state.step==="ampm"&&(input==="ampm:am"||input==="ampm:pm")){await set(state.apResume||{});return handleConversation({userId,displayName,text:`${state.apText} ${input==="ampm:am"?"בבוקר":"בערב"}`,store,now,availabilityFn});}
+ if(state.step==="ampm"&&(input==="ampm:am"||input==="ampm:pm")){await set(state.apResume||{});return handleConversation({userId,displayName,text:`${state.apText} ${input==="ampm:am"?"בבוקר":"בערב"}`,store,now,availabilityFn,venue,contactUrl});}
  // Request management (Tom 23.9 13:18): view / edit one field / delete. Editing never notifies an already-connected player.
  // Tom 23.9 19:13: any member of a connected group can remove a player (e.g. someone cancelled); the seat opens again for matching.
  const memberReq=async rid=>{const r=await store.get(`request/${rid}`);return r&&r.active&&isMine(r,userId)?r:null;};
@@ -190,7 +191,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  if(text&&!actionId&&(state.step?["avail_when","board_when","when"].includes(state.step):true)){const p=parseIntentLocal(text,now),h=p.ambiguousHour;if(h&&(state.step||p.dateExplicit)){await set({step:"ampm",apResume:state,apText:text});return btn(`התכוונתם ל-${h} בבוקר או ל-${h} בערב?`,[{id:"ampm:am",title:`${h} בבוקר`},{id:"ampm:pm",title:`${h} בערב`}]);}}
  // Tom 23.9 10:36: "בשבוע הבא אחרי 18:00" got "לא הבנתי". "Next week" is a week, not a day: ask which day (dates listed), keep the time part, then continue the same step.
  if(text&&!actionId&&NEXT_WEEK.test(text)&&!recurringDays(text.replace(NEXT_WEEK,"")).length&&(!state.step||["avail_when","board_when","when"].includes(state.step)||(state.flow==="players"&&["level","pc","court","duration","flex"].includes(state.step)))){const days=nextWeekDays(now);await set({step:"nw_day",nwResume:state,nwRest:text.replace(NEXT_WEEK,"").replace(/\s+/g," ").trim(),nwDays:days});return list("באיזה יום בשבוע הבא?",days.map((d,i)=>({id:`nw:${i}`,title:d.label})));}
- if(state.step==="nw_day"&&input.startsWith("nw:")){const d=state.nwDays?.[Number(input.slice(3))];if(d){await set(state.nwResume||{});return handleConversation({userId,displayName,text:`${d.ddmm} ${state.nwRest}`.trim(),store,now,availabilityFn});}}
+ if(state.step==="nw_day"&&input.startsWith("nw:")){const d=state.nwDays?.[Number(input.slice(3))];if(d){await set(state.nwResume||{});return handleConversation({userId,displayName,text:`${d.ddmm} ${state.nwRest}`.trim(),store,now,availabilityFn,venue,contactUrl});}}
  if(input==="availability"){await set({flow:"availability",step:"avail_when"});return list(AVAIL_ASK,WHEN_OPTIONS.map((x,i)=>({id:`when:${i}`,title:x})));}
  if(input.startsWith("when:")){await set({});return{mode:"availability",query:whenLabel(input.slice(5))};}
  if(state.step==="avail_when"&&text&&!actionId){if(DAY_WORD.test(text)){const p=await parseWhen(text,now);if(p.needsClarification==="unclear"&&p.dateExplicit&&p.startMinute==null)return timeAsk(p.date,{flow:"availability",step:"avail_when"});}await set({});return{mode:"availability",query:text};}
@@ -198,7 +199,7 @@ export async function handleConversation({userId,displayName="שחקן/ית",tex
  if(input==="players"||/מציאת שחקנים/.test(input)){await set({flow:"players",step:"mode"});return btn(PLAYERS_MENU,PLAYERS_BTNS);}
  // QA 23.9: "לנסות זמן אחר" keeps level/party/court and asks only for a new time.
  if(input==="retry_when"&&state.flow==="players"&&state.step==="when")return btn(WHEN_ASK,[MENU]);
- if(input==="club"||(!actionId&&/^(?:ל)?דבר(?:ו)? עם המועדון$/.test(text.trim())))return clubCard();
+ if(input==="club"||(!actionId&&/^(?:ל)?דבר(?:ו)? עם המועדון$/.test(text.trim())))return clubCard(contactUrl);
  if(input==="settings"||/הגדרות/.test(input))return btn("*ניהול הבקשות*",[{id:"my_requests",title:"הבקשות שלי"},LEAVE]);
  if(input==="leave"||(!actionId&&LEAVE_TEXT.test(text.trim()))){await set({step:"leave_confirm"});return btn(LEAVE_ASK,[{id:"leave_yes",title:"כן, למחוק"},{id:"leave_no",title:"לא"}]);}
  if(input==="leave_no"){await set({});return btn("בסדר, לא מחקתי כלום.",[MENU]);}
