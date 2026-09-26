@@ -7,6 +7,8 @@ import {routeIncoming} from '../src/webhook.js';
 import {bookingUrl} from '../src/availability.js';
 import {clubContact,DEFAULT_CONTACT} from '../src/club-contact.js';
 import {deliver} from '../src/notify.js';
+import {messageInput} from '../netlify/functions/whatsapp.js';
+import {bidiResponse} from '../src/whatsapp.js';
 
 const stores={selector:memoryStore(),gt:memoryStore(),saar:memoryStore(),smash:memoryStore()};
 test('one shared number opens picker only for new users, preserves existing GT users',async()=>{
@@ -17,7 +19,7 @@ test('one shared number opens picker only for new users, preserves existing GT u
  assert.equal((await selectVenue({store:selector,userId:'old',input:{text:'היי'},legacyStore:gt})).venue,GT_VENUE);
  assert.equal((await selectVenue({store:selector,userId:'new',input:{actionId:'venue:saar'},legacyStore:gt})).venue,SAAR_VENUE);
  assert.equal((await selectVenue({store:selector,userId:'new',input:{text:'תפריט'},legacyStore:gt})).venue,SAAR_VENUE);
- for(const text of ['עבור מועדון','לעבור מועדון','מעבר למועדון','החלפת מועדון','עבור מועדון.'])assert.deepEqual((await selectVenue({store:selector,userId:'new',input:{text},legacyStore:gt})).response,PICKER);
+ for(const text of ['עבור מועדון','לעבור מועדון','מעבר למועדון','החלפת מועדון','עבור מועדון.','עבור למועדון אחר','אני רוצה לעבור למועדון אחר','עבור מועדון?'])assert.deepEqual((await selectVenue({store:selector,userId:'new',input:{text},legacyStore:gt})).response,PICKER);
  assert.equal((await selectVenue({store:selector,userId:'new',input:{actionId:'venue:smash'},legacyStore:gt})).venue,SMASH_VENUE);
  assert.equal((await selectVenue({store:selector,userId:'new',input:{actionId:'venue:evil'},legacyStore:gt})).response,PICKER);
  assert.equal(await gt.get('seen/new'),null);
@@ -86,4 +88,18 @@ test('selected club state never borrows another club profile or request',async()
  await a.set(`profile/${userId}`,{userId,name:'שם מסער'});await a.set('request/test',{id:'test',userId,active:true,date:'2026-09-27',startMinute:1080,endMinute:1140,displayName:'שם מסער'});
  const r=await routeIncoming({userId,text:'תפריט',store:b,venue:SMASH_VENUE});
  assert.doesNotMatch(r.text,/שם מסער|פאדלס/);assert.equal(await b.get('request/test'),null);
+});
+
+test('production webhook input path recognizes club-switch text and sends picker with current labels',async()=>{
+ const selector=memoryStore(),legacy=memoryStore(),userId='972500000030';
+ await selector.set(`selection/${userId}`,{venueKey:'gt'});
+ const input=messageInput({type:'text',text:{body:'עבור מועדון'}});
+ const choice=await selectVenue({store:selector,userId,input,legacyStore:legacy});
+ const wire=bidiResponse(choice.response);
+ assert.deepEqual(wire.buttons.map(b=>b.title),['גני תקווה','קיבוץ סער','סמאש ראשל״צ']);
+ assert.equal(choice.venue,undefined);
+ assert.equal((await selector.get(`selection/${userId}`)).venueKey,'gt');
+ const selected=await selectVenue({store:selector,userId,input:messageInput({type:'interactive',interactive:{button_reply:{id:'venue:saar',title:'קיבוץ סער'}}}),legacyStore:legacy});
+ assert.equal(selected.venue,SAAR_VENUE);
+ assert.equal((await selector.get(`selection/${userId}`)).venueKey,'saar');
 });

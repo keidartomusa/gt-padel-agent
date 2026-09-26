@@ -7,7 +7,7 @@ export const SELECTOR_STORE='gt-padel-club-selection';
 export const selectorStore=()=>netlifyStore(getStore({name:SELECTOR_STORE,consistency:'strong'}));
 export const selectionKey=userId=>`selection/${userId}`;
 export const mentionedVenue=text=>ACTIVE_VENUES.find(v=>[v.name,v.label,...v.aliases].some(alias=>String(text||'').toLocaleLowerCase('he-IL').includes(alias.toLocaleLowerCase('he-IL'))))||null;
-export const isPickerRequest=({actionId,text=''})=>actionId==='select_venue'||(!actionId&&/^(?:(?:עבור|לעבור|עברו|מעבר|החלף|להחליף|שינוי|החלפת|בחירת)\s+(?:ל)?מועדון)(?:[.!])?$/i.test(text.trim()));
+export const isPickerRequest=({actionId,text=''})=>actionId==='select_venue'||(!actionId&&/^(?:(?:עבור|לעבור|עברו|מעבר|החלף|להחליף|שינוי|החלפת|בחירת)\s+(?:ל)?מועדון(?:\s+אחר)?|(?:אני\s+רוצה\s+)?לעבור\s+למועדון\s+אחר)(?:[.!?])?$/i.test(text.trim()));
 export async function selectVenue({store,userId,input,legacyStore}){
  const key=selectionKey(userId),saved=await store.get(key),current=venueByKey(saved?.venueKey);
  const mentioned=!input.actionId&&mentionedVenue(input.text);
