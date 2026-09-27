@@ -66,7 +66,7 @@ test('no-availability copy and menu offer use Tom\'s alert wording, without hidi
   assert(r.list.sections[0].rows.some(x=>x.id==='menu'));
   assert.equal((await store.list('court-alert/subscription/')).length,0);
   const r2=await routeIncoming({userId:'972500000004',text:'מגרש מחר ב20:00 ל90 דקות',store:memoryStore(),venue,now,availabilityFn:available});
-  assert.equal(r2.list?.button,'לבחירת שעה');
+  assert.equal(r2.list?.button,'בחר');
   assert(r2.list.sections[0].rows.some(x=>x.id==='court_alert_offer'&&x.title==='הפעל התראות'));
   assert(r2.list.sections[0].rows.some(x=>x.id==='menu'));
   assert(r2.list.sections[0].rows.length<=10);
