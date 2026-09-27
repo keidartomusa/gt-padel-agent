@@ -1,10 +1,14 @@
 import {CONFIG} from "./config.js";
 import {GT_VENUE} from "./venues.js";
+import {createReleaseBookingToken} from "./release-booking.js";
 import {addDays,localDateParts,min,rangesFor,zonedMs} from "./time.js";
 
 // The monitor is deliberately single-venue today. The venue name is data in every alert
 // so notifications can later be routed by club without changing the template body.
 export const RELEASE_TEMPLATE={name:"gt_court_release_v1",language:"he",category:"UTILITY",body:"עדכון למעקב זמינות שביקשת: במועדון {{1}} התפנו שעות למגרש בתאריך {{2}}, בין {{3}} ל-{{4}}. בדוק זמינות עדכנית לפני הזמנה."};
+// Separate template: the approved v1 stays unchanged while this URL-button version is reviewed.
+export const RELEASE_BOOKING_TEMPLATE={name:"gt_court_release_book_v1",language:"he",category:"UTILITY",body:"עדכון למעקב זמינות שביקשת: במועדון {{1}} התפנו שעות למגרש בתאריך {{2}}, בין {{3}} ל-{{4}}. הזמינות עשויה להשתנות - בדקו אותה לפני הזמנה."};
+export const releaseBookingTemplateDefinition=()=>({name:RELEASE_BOOKING_TEMPLATE.name,language:RELEASE_BOOKING_TEMPLATE.language,category:RELEASE_BOOKING_TEMPLATE.category,components:[{type:"BODY",text:RELEASE_BOOKING_TEMPLATE.body,example:{body_text:[["גני תקווה","27.9.2026","18:00","19:30"]]}},{type:"BUTTONS",buttons:[{type:"URL",text:"להזמנת מגרש",url:"https://gtpadel.netlify.app/go/release?token={{1}}",example:["00000000-0000-4000-8000-000000000000"]}]}]});
 export const releaseTemplateDefinition=()=>({name:RELEASE_TEMPLATE.name,language:RELEASE_TEMPLATE.language,category:RELEASE_TEMPLATE.category,components:[{type:"BODY",text:RELEASE_TEMPLATE.body,example:{body_text:[["גני תקווה","26.9.2026","18:00","19:30"]]}}]});
 const headers={apikey:CONFIG.anonKey,Authorization:`Bearer ${CONFIG.anonKey}`,Origin:CONFIG.siteOrigin,Referer:`${CONFIG.siteOrigin}/`};
 async function page(path,fetchImpl){const response=await fetchImpl(`${CONFIG.apiBase}/${path}`,{headers});if(!response.ok)throw Error(`Matchpointer ${response.status}`);const rows=await response.json();if(!Array.isArray(rows))throw Error("Matchpointer response is not an array");return rows;}
@@ -49,7 +53,7 @@ export async function scanCourtReleases(store,{now=new Date(),fetchSnapshot=cour
  const previous=await store.get(key);const windows=freedWindows(previous,snapshot);
  // Persist alerts before advancing the snapshot, so a retry sees any failed sends.
  for(const w of windows){const id=`court-release/outbox/${w.venueId}/${w.date}/${w.courtId}/${w.startMinute}-${w.endMinute}`;
-  if(!await store.get(id))await store.set(id,{window:w,status:scanOnly?"recorded":"pending",detectedAt:now.toISOString()});}
+  if(!await store.get(id)){const bookingToken=[60,90,120].includes(w.endMinute-w.startMinute)?await createReleaseBookingToken(store,w,{now}):null;await store.set(id,{window:w,status:scanOnly?"recorded":"pending",detectedAt:now.toISOString(),bookingToken});}}
  await store.set(key,snapshot);
  if(scanOnly)return{status:previous?"scanned":"primed",mode:"scan_only",venue:snapshot.venueName,at:snapshot.at,windows:windows.length,sent:0,failed:0};
  let sent=0,failed=0;

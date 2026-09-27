@@ -30,3 +30,8 @@
   from = "/admin/smash"
   to = "/.netlify/functions/admin-smash"
   status = 200
+
+[[redirects]]
+  from = "/go/release"
+  to = "/.netlify/functions/release-booking"
+  status = 200
