@@ -56,3 +56,38 @@ test('provider snapshots for each club reject a mismatched venue ID',async()=>{
   await assert.rejects(scanCourtReleases(memoryStore(),{club,now,scanOnly:true,fetchSnapshot:async()=>({...snapshot,venueId:'foreign'})}),/Cross-venue snapshot/);
  }
 });
+test('no-availability copy and menu offer use Tom\'s alert wording, without hiding nearby slots',async()=>{
+ for(const venue of clubs){
+  const store=memoryStore(),userId='972500000003';
+  const r=await routeIncoming({userId,text:'מגרש מחר ב20:00 ל90 דקות',store,venue,now,availabilityFn:none});
+  assert.match(r.text,/אפשר להירשם לקבל התראה אם מגרש יתפנה בשעות שביקשתם\./);
+  assert.equal(r.list?.button,'הפעל התראות');
+  assert(r.list.sections[0].rows.some(x=>x.id==='court_alert_offer'&&x.title==='הפעל התראות'));
+  assert(r.list.sections[0].rows.some(x=>x.id==='menu'));
+  assert.equal((await store.list('court-alert/subscription/')).length,0);
+  const r2=await routeIncoming({userId:'972500000004',text:'מגרש מחר ב20:00 ל90 דקות',store:memoryStore(),venue,now,availabilityFn:available});
+  assert.equal(r2.list?.button,'לבחירת שעה');
+  assert(r2.list.sections[0].rows.some(x=>x.id==='court_alert_offer'&&x.title==='הפעל התראות'));
+  assert(r2.list.sections[0].rows.some(x=>x.id==='menu'));
+  assert(r2.list.sections[0].rows.length<=10);
+ }
+});
+test('vague evening alert offers broad times and durations, then edit before opt-in, at every club',async()=>{
+ for(const venue of clubs){
+  const store=memoryStore(),userId='972500000005';
+  const r=await routeIncoming({userId,text:'מחר בערב',store,venue,now,availabilityFn:none});
+  assert.equal(r.list?.button,'הפעל התראות');
+  const draft=await store.get(`court-alert/draft/${userId}`);
+  assert.deepEqual(draft.starts,[1140,1170,1200,1230,1260,1290,1320]);
+  assert.deepEqual(draft.durations,[60,90,120]);
+  const offer=await routeIncoming({userId,actionId:'court_alert_offer',store,venue,now,availabilityFn:none});
+  assert.match(offer.text,/19:00-22:00/);assert.match(offer.text,/לפחות 60 דקות/);
+  assert.match(offer.text,/אפשר לשנות את השעות ואת משך המשחק/);
+  assert(offer.buttons.some(x=>x.id==='court_alert_edit'));
+  const edit=await routeIncoming({userId,actionId:'court_alert_edit',store,venue,now,availabilityFn:none});
+  assert.match(edit.text,/בדיוק 90 דקות/);
+  const specific=await routeIncoming({userId,text:'בדיוק 90 דקות',store,venue,now,availabilityFn:none});
+  assert.match(specific.text,/בדיוק 90 דקות/);
+  assert.equal((await store.list('court-alert/subscription/')).length,0);
+ }
+});
