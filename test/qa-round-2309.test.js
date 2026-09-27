@@ -18,7 +18,7 @@ const quiet = async f => { const o = console.log; console.log = () => {}; try { 
 async function create(s, u, name, { when = "מחר אחרי 19:00", level = "level:3", court = "yes", party = "party:1" } = {}) {
   await named(s, u, name); const h = H(s, u, name);
   for (const o of [{ actionId: "oneoff" }, { actionId: level }, { text: when }, { actionId: "duration:90" }, { actionId: party }]) await quiet(() => h(o));
-  let r = await quiet(() => h({ actionId: `court:${court}` })); if (court === "no") r = await quiet(() => h({ actionId: "flex:60" })); return r;
+  let r = await quiet(() => h({ actionId: `court:${court}` })); if (court === "no") r = await quiet(() => h({ actionId: "flex:60" })); if(r.buttons?.some(b=>b.id==="court_consent:yes"))r=await quiet(()=>h({actionId:"court_consent:no"})); return r;
 }
 const noKey = async f => { const k = process.env.OPENAI_API_KEY; delete process.env.OPENAI_API_KEY; try { return await quiet(f); } finally { if (k) process.env.OPENAI_API_KEY = k; } };
 
@@ -118,18 +118,11 @@ test("every request-saved path offers the menu, never mute (Tom 13:15 + 13:47)",
   paths.push(await quiet(() => h2({ text: "הדס" })));
   for (const p of paths) { assert.match(p.text, /הבקשה נשמרה|נשמרו \d+ בקשות/); assert.ok(!ids(withMenu(p)).some(x => /^mute/.test(x.id)), JSON.stringify(ids(p))); assert.ok(ids(withMenu(p)).some(x => x.id === "menu")); }
 });
-test("'לנסות זמן אחר' after a no-court request keeps the answers and asks only for a new time", async () => {
-  const none = async i => ({ kind: "availability", date: i.date, slots: [] });
-  const s = memoryStore(); await named(s, "a", "הילה");
-  let fn = none; const h = o => handleConversation({ userId: "a", displayName: "הילה", store: s, now, availabilityFn: (...x) => fn(...x), ...o });
-  for (const o of [{ actionId: "oneoff" }, { actionId: "level:3" }, { text: "מחר בערב" }, { actionId: "duration:90" }, { actionId: "party:1" }, { actionId: "court:no" }]) await quiet(() => h(o));
-  const no = await quiet(() => h({ actionId: "flex:60" }));
-  assert.match(no.text, /הבקשה לא פורסמה/); assert.ok(ids(no).some(x => x.id === "retry_when" && x.title === "לנסות זמן אחר"));
-  const ask = await h({ actionId: "retry_when" }); assert.match(ask.text, /^מתי תרצו לשחק\?/);
-  fn = available; let r = await quiet(() => h({ text: "ראשון אחרי 19:00" }));
-  for (let i = 0; i < 6 && !/הבקשה נשמרה|נשמרו \d+ בקשות/.test(r.text); i++) { const b = ids(r).find(x => /^(duration:90|party:1|court:no|flex:60)$/.test(x.id)); assert.ok(b, r.text); r = await quiet(() => h({ actionId: b.id })); }
-  assert.match(r.text, /הבקשה נשמרה|נשמרו \d+ בקשות/);
-  const req = (await s.list("request/")).map(x => x.value).find(x => x.active); assert.equal(req.level, "3–3.5"); assert.equal(req.date, "2026-09-27");
+test("no-court request keeps the original answers and offers an alert choice", async () => {
+ const none=async i=>({kind:"availability",date:i.date,slots:[]}),s=memoryStore();await named(s,"a","הילה");const h=o=>handleConversation({userId:"a",displayName:"הילה",store:s,now,availabilityFn:none,...o});
+ for(const o of [{actionId:"oneoff"},{actionId:"level:3"},{text:"מחר בערב"},{actionId:"pc:1:no"},{actionId:"flex:60"}]) var r=await quiet(()=>h(o));
+ assert.match(r.text,/התראה אחת/);assert.equal((await s.list("request/")).length,0);
+ r=await h({actionId:"court_consent:yes"});assert.match(r.text,/הבקשה נשמרה/);const req=(await s.list("request/"))[0].value;assert.equal(req.noCourtAvailable,true);assert.equal(req.courtAlertConsent,true);
 });
 test("edit confirmation shows party size and court, so a party/court edit is visible", async () => {
   const s = memoryStore(); await create(s, "a", "אלון"); const req = (await s.list("request/"))[0].value, h = H(s, "a", "אלון");

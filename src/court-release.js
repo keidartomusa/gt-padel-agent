@@ -1,31 +1,31 @@
-import {CONFIG} from "./config.js";
-import {GT_VENUE} from "./venues.js";
+import {GT_VENUE,ACTIVE_VENUES} from "./venues.js";
+import {recordAlertCandidates} from "./court-alerts.js";
 import {createReleaseBookingToken} from "./release-booking.js";
 import {addDays,localDateParts,min,rangesFor,zonedMs} from "./time.js";
 
-// The monitor is deliberately single-venue today. The venue name is data in every alert
-// so notifications can later be routed by club without changing the template body.
+// Scans each club independently; sending remains disabled for the added clubs.
 export const RELEASE_TEMPLATE={name:"gt_court_release_v1",language:"he",category:"UTILITY",body:"עדכון למעקב זמינות שביקשת: במועדון {{1}} התפנו שעות למגרש בתאריך {{2}}, בין {{3}} ל-{{4}}. בדוק זמינות עדכנית לפני הזמנה."};
 // Separate template: the approved v1 stays unchanged while this URL-button version is reviewed.
 export const RELEASE_BOOKING_TEMPLATE={name:"gt_court_release_book_v1",language:"he",category:"UTILITY",body:"עדכון למעקב זמינות שביקשת: במועדון {{1}} התפנו שעות למגרש בתאריך {{2}}, בין {{3}} ל-{{4}}. הזמינות עשויה להשתנות - בדקו אותה לפני הזמנה."};
 export const releaseBookingTemplateDefinition=()=>({name:RELEASE_BOOKING_TEMPLATE.name,language:RELEASE_BOOKING_TEMPLATE.language,category:RELEASE_BOOKING_TEMPLATE.category,components:[{type:"BODY",text:RELEASE_BOOKING_TEMPLATE.body,example:{body_text:[["גני תקווה","27.9.2026","18:00","19:30"]]}},{type:"BUTTONS",buttons:[{type:"URL",text:"להזמנת מגרש",url:"https://gtpadel.netlify.app/go/release?token={{1}}",example:["00000000-0000-4000-8000-000000000000"]}]}]});
 export const releaseTemplateDefinition=()=>({name:RELEASE_TEMPLATE.name,language:RELEASE_TEMPLATE.language,category:RELEASE_TEMPLATE.category,components:[{type:"BODY",text:RELEASE_TEMPLATE.body,example:{body_text:[["גני תקווה","26.9.2026","18:00","19:30"]]}}]});
-const headers={apikey:CONFIG.anonKey,Authorization:`Bearer ${CONFIG.anonKey}`,Origin:CONFIG.siteOrigin,Referer:`${CONFIG.siteOrigin}/`};
-async function page(path,fetchImpl){const response=await fetchImpl(`${CONFIG.apiBase}/${path}`,{headers});if(!response.ok)throw Error(`Matchpointer ${response.status}`);const rows=await response.json();if(!Array.isArray(rows))throw Error("Matchpointer response is not an array");return rows;}
-async function all(path,fetchImpl){const rows=[];for(let offset=0;offset<=10000;offset+=500){const batch=await page(`${path}&limit=500&offset=${offset}`,fetchImpl);rows.push(...batch);if(batch.length<500)return rows;}throw Error("Matchpointer pagination limit reached");}
+const headersFor=club=>({apikey:club.anonKey,Authorization:`Bearer ${club.anonKey}`,Origin:club.siteOrigin,Referer:`${club.siteOrigin}/`});
+async function page(path,fetchImpl,club){const response=await fetchImpl(`${club.apiBase}/${path}`,{headers:headersFor(club)});if(!response.ok)throw Error(`Matchpointer ${response.status}`);const rows=await response.json();if(!Array.isArray(rows))throw Error("Matchpointer response is not an array");return rows;}
+async function all(path,fetchImpl,club){const rows=[];for(let offset=0;offset<=10000;offset+=500){const batch=await page(`${path}&limit=500&offset=${offset}`,fetchImpl,club);rows.push(...batch);if(batch.length<500)return rows;}throw Error("Matchpointer pagination limit reached");}
 const pad=n=>String(n).padStart(2,"0");
 const clock=m=>`${pad(Math.floor(m/60)%24)}:${pad(m%60)}`;
 const dateLabel=iso=>`${Number(iso.slice(8,10))}.${Number(iso.slice(5,7))}.${iso.slice(0,4)}`;
 const keyOf=(date,court,minute)=>`${date}|${court}|${minute}`;
 const validTime=t=>/^\d{1,2}:\d{2}/.test(String(t||""));
-export async function courtSnapshot({fetchImpl=fetch,now=new Date()}={}){
- const from=localDateParts(now).iso,to=addDays(from,2);
- const venues=await page(`venues?slug=eq.${CONFIG.venueSlug}&select=id,name,opening_hours,advance_booking_days`,fetchImpl);
- const venue=venues.find(v=>v.id===CONFIG.venueId);if(!venue)throw Error("Configured venue missing");
- const courts=await all(`courts?venue_id=eq.${CONFIG.venueId}&is_active=eq.true&sport=eq.padel&select=id,name,sport,is_active`,fetchImpl);
+export async function courtSnapshot({fetchImpl=fetch,now=new Date(),club=GT_VENUE}={}){
+ if(!ACTIVE_VENUES.includes(club))throw Error("Inactive venue");
+ const from=localDateParts(now,club.timezone).iso,to=addDays(from,2);
+ const venues=await page(`venues?slug=eq.${club.venueSlug}&select=id,name,opening_hours,advance_booking_days`,fetchImpl,club);
+ const venue=venues.find(v=>v.id===club.venueId);if(!venue)throw Error("Configured venue missing");
+ const courts=await all(`courts?venue_id=eq.${club.venueId}&is_active=eq.true&sport=eq.padel&select=id,name,sport,is_active`,fetchImpl,club);
  if(!courts.length)throw Error("No active padel courts");
  const courtIds=new Set(courts.map(c=>c.id));
- const reservations=await all(`reservation_slots?select=court_id,date,start_time,end_time,id,status&date=gte.${from}&date=lte.${to}&status=neq.cancelled`,fetchImpl);
+ const reservations=await all(`reservation_slots?select=court_id,date,start_time,end_time,id,status&date=gte.${from}&date=lte.${to}&status=neq.cancelled`,fetchImpl,club);
  const occupied=new Set(),startMs=now.getTime(),endMs=startMs+48*60*60*1000;
  for(const r of reservations){if(!courtIds.has(r.court_id)||!validTime(r.start_time)||!validTime(r.end_time))continue;
   const start=min(r.start_time),end=min(r.end_time);if(end<=start||start%30||end%30)continue;
@@ -34,11 +34,11 @@ export async function courtSnapshot({fetchImpl=fetch,now=new Date()}={}){
  for(const date of [from,addDays(from,1),to])for(const court of courts)for(const range of rangesFor(venue,date)){
   const open=min(range.openTime),close=min(range.closeTime);
   for(let minute=Math.ceil(open/30)*30;minute+30<=close;minute+=30){
-   const wallMs=zonedMs(date,minute);if(wallMs<startMs||wallMs>=endMs)continue;
+   const wallMs=zonedMs(date,minute,club.timezone);if(wallMs<startMs||wallMs>=endMs)continue;
    cells.push({date,courtId:court.id,courtName:court.name,minute,occupied:occupied.has(keyOf(date,court.id,minute))});
   }
  }
- return {venueId:venue.id,venueName:GT_VENUE.name,from,to,at:now.toISOString(),cells};
+ return {venueId:venue.id,venueName:club.name,from,to,at:now.toISOString(),cells};
 }
 export function freedWindows(before,after){if(!before||before.venueId!==after.venueId)return [];
  const old=new Map(before.cells.map(c=>[keyOf(c.date,c.courtId,c.minute),c]));
@@ -48,14 +48,15 @@ export function freedWindows(before,after){if(!before||before.venueId!==after.ve
  else windows.push({venueId:after.venueId,venueName:after.venueName,courtId:c.courtId,courtName:c.courtName,date:c.date,startMinute:c.minute,endMinute:c.minute+30});}
  return windows.filter(w=>w.endMinute-w.startMinute>=60);}
 export const releaseVariables=w=>[w.venueId===GT_VENUE.venueId?GT_VENUE.name:w.venueName,dateLabel(w.date),clock(w.startMinute),clock(w.endMinute)];
-export async function scanCourtReleases(store,{now=new Date(),fetchSnapshot=courtSnapshot,notify=async()=>({sent:false,reason:"not_configured"}),scanOnly=false}={}){
- const snapshot=await fetchSnapshot({now});const key=`court-release/snapshot/${snapshot.venueId}`;
+export async function scanCourtReleases(store,{now=new Date(),club=GT_VENUE,fetchSnapshot=courtSnapshot,notify=async()=>({sent:false,reason:"not_configured"}),scanOnly=false}={}){
+ if(!ACTIVE_VENUES.includes(club))throw Error("Inactive venue");
+ const snapshot=await fetchSnapshot({now,club});if(snapshot.venueId!==club.venueId)throw Error("Cross-venue snapshot");const key=`court-release/snapshot/${snapshot.venueId}`;
  const previous=await store.get(key);const windows=freedWindows(previous,snapshot);
  // Persist alerts before advancing the snapshot, so a retry sees any failed sends.
  for(const w of windows){const id=`court-release/outbox/${w.venueId}/${w.date}/${w.courtId}/${w.startMinute}-${w.endMinute}`;
   if(!await store.get(id)){const bookingToken=[60,90,120].includes(w.endMinute-w.startMinute)?await createReleaseBookingToken(store,w,{now}):null;await store.set(id,{window:w,status:scanOnly?"recorded":"pending",detectedAt:now.toISOString(),bookingToken});}}
  await store.set(key,snapshot);
- if(scanOnly)return{status:previous?"scanned":"primed",mode:"scan_only",venue:snapshot.venueName,at:snapshot.at,windows:windows.length,sent:0,failed:0};
+ if(scanOnly){await recordAlertCandidates(store,windows,club,{now});return{status:previous?"scanned":"primed",mode:"scan_only",venue:snapshot.venueName,at:snapshot.at,windows:windows.length,sent:0,failed:0};}
  let sent=0,failed=0;
  for(const item of await store.list(`court-release/outbox/${snapshot.venueId}/`)){
   if(item.value.status!=="pending")continue;

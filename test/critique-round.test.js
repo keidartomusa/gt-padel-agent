@@ -17,7 +17,7 @@ const rows = r => (r.list?.sections || []).flatMap(x => x.rows);
 async function create(s, u, name, { when = "מחר אחרי 19:00", pc = "pc:1:yes", level = "level:3" } = {}) {
   await named(s, u, name); const h = H(s, u, name);
   await h({ actionId: "oneoff" }); await h({ actionId: level }); await h({ actionId: pc }); await h({ text: when });
-  let r = await h({ actionId: "duration:90" }); if (/גמישים/.test(r.text)) r = await h({ actionId: "flex:60" }); return r;
+  let r = await h({ actionId: "duration:90" }); if (/גמישים/.test(r.text)) r = await h({ actionId: "flex:60" }); if(r.buttons?.some(b=>b.id==="court_consent:yes"))r=await h({actionId:"court_consent:no"}); return r;
 }
 const mine = async (s, u) => (await s.list("request/")).map(x => x.value).filter(x => x.userId === u);
 
@@ -52,7 +52,7 @@ for (const [label, steps, re] of [
 test("item 3: no court and nothing free -> said right after the time, before duration", async () => {
   const s = memoryStore(), h = H(s, "c", "דנה", none);
   for (const a of ["oneoff", "level:3", "pc:2:no"]) await h({ actionId: a });
-  const r = await h({ text: "מחר אחרי 19:00" }); assert.match(r.text, /^רשמתי: .*\n\nלא מצאתי מגרש פנוי בחלון הזה/); assert.deepEqual(r.buttons.map(b => b.id), ["retry_when", "availability"]);
+  const r = await h({ text: "מחר אחרי 19:00" }); assert.match(r.text, /^רשמתי: .*\n\nלא מצאתי מגרש פנוי בחלון הזה/); assert.deepEqual(r.buttons.map(b => b.id), ["no_court_continue", "retry_when", "availability"]);
   assert.equal((await s.get("state/c")).step, "when");
 });
 test("item 9: a duration in the time text skips the duration question; last request's level and duration are reused", async () => {

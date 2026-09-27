@@ -13,7 +13,7 @@ const ids = r => [...(r.buttons || []).map(b => b.id), ...(r.list?.sections || [
 async function create(s, u, { when = "מחר אחרי 19:00", level = "level:2", court = "yes", name = "דנה" } = {}) {
   await named(s, u, name); const h = H(s, u, name);
   await h({ actionId: "oneoff" }); await h({ actionId: level }); await h({ text: when }); await h({ actionId: "duration:90" }); await h({ actionId: "party:1" });
-  let r = await h({ actionId: `court:${court}` }); if (court === "no") r = await h({ actionId: "flex:60" }); return r;
+  let r = await h({ actionId: `court:${court}` }); if (court === "no") r = await h({ actionId: "flex:60" });if(r.buttons?.some(b=>b.id==="court_consent:yes"))r=await h({actionId:"court_consent:no"}); return r;
 }
 const mine = async (s, u) => (await s.list("request/")).map(x => x.value).filter(x => x.userId === u && x.active);
 

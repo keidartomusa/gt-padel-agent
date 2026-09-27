@@ -31,6 +31,7 @@ test("request-saved confirmation offers no mute", async () => {
     const s = memoryStore(), h = await upToCourt(s, "c" + court, "רון");
     let r = await h({ actionId: `court:${court}` });
     if (flex) r = await h({ actionId: `flex:${flex}` });
+    if(r.buttons?.some(b=>b.id==="court_consent:yes"))r=await h({actionId:"court_consent:no"});
     assert.match(r.text, /הבקשה נשמרה/);
     assert.ok(!ids(r).some(x => x.startsWith("mute")), JSON.stringify(ids(r)));
   }

@@ -7,7 +7,7 @@ const now=new Date("2026-09-23T08:00:00+03:00"),later=new Date(now.getTime()+20*
 const available=async i=>({kind:"availability",date:i.date,slots:[{courtId:"c3",courtName:"3",start:"19:00",end:"20:30",durationMinutes:i.durationMinutes,price:null}]});
 const T="15550000090"; // a non-fictitious-prefix id stands in for a real user (not a real number)
 const say=(s,o,at=now)=>routeIncoming({userId:T,displayName:"x",store:s,now:at,availabilityFn:available,...o});
-async function register(s,pc,name,at){let r;for(const o of [{actionId:"oneoff"},{actionId:"level:3–3.5"},{actionId:pc},{text:"מחר אחרי 19:00"},{actionId:"duration:90"},{actionId:"flex:0"},{text:name}]){r=await say(s,o,at);if(/נשמרה/.test(r.text||""))break;}assert.match(r.text,/נשמרה/,JSON.stringify(r));return r;}
+async function register(s,pc,name,at){let r;for(const o of [{actionId:"oneoff"},{actionId:"level:3–3.5"},{actionId:pc},{text:"מחר אחרי 19:00"},{actionId:"duration:90"},{actionId:"flex:0"},{actionId:"court_consent:no"},{text:name}]){r=await say(s,o,at);if(/נשמרה/.test(r.text||""))break;}assert.match(r.text,/נשמרה/,JSON.stringify(r));return r;}
 const reqs=async s=>(await s.list("request/")).map(x=>x.value);
 test("demo hybrid: move -> trio connects -> approve sends the real approval to Tom only",async()=>{const s=memoryStore();
  await register(s,"pc:1:no","דנה",now);const m=await demoMove(s,{now:later});assert.equal(m.status,"moved",JSON.stringify(m));
