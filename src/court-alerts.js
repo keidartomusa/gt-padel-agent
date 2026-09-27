@@ -6,10 +6,13 @@ const key=id=>`court-alert/subscription/${id}`;
 const clock=m=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
 const validMinutes=m=>Number.isInteger(m)&&m>=0&&m<=1410&&m%30===0;
 const ISO=/^\d{4}-\d{2}-\d{2}$/;
-export function proposedAlert(intent,venue,now=new Date()){
+export function proposedAlert(intent,venue,now=new Date(),query=''){
  if(!ACTIVE_VENUES.includes(venue)||!ISO.test(intent.date)||intent.date<localDateParts(now).iso||!validMinutes(intent.startMinute)||!Number.isInteger(intent.durationMinutes)||![60,90,120].includes(intent.durationMinutes))return null;
- const start=Math.max(0,intent.startMinute-60),end=Math.min(1410,intent.startMinute+60);
- return {venueKey:venue.key,date:intent.date,starts:Array.from({length:(end-start)/30+1},(_,i)=>start+i*30),durations:[intent.durationMinutes],origin:'search'};
+ const vagueTime=/^(?:היום|מחר|מחרתיים|ביום\s+\S+)?\s*(?:ב)?(?:ערב|בוקר|צהריים|לילה|אחה["״']?צ)\s*[?!.,]*$/u.test(String(query).trim());
+ const start=vagueTime?intent.startMinute:Math.max(0,intent.startMinute-60);
+ const end=vagueTime?Math.min(1320,intent.endMinute-60):Math.min(1410,intent.startMinute+60);
+ const durations=vagueTime?[60,90,120]:[intent.durationMinutes];
+ return {venueKey:venue.key,date:intent.date,starts:Array.from({length:Math.max(0,Math.floor((end-start)/30)+1)},(_,i)=>start+i*30),durations,origin:'search'};
 }
 export function alertSummary(spec,venue){return `התראה למועדון ${venue.name} ב-${spec.date}: תחילת משחק ${spec.starts.length===1?clock(spec.starts[0]):`${clock(spec.starts[0])}-${clock(spec.starts.at(-1))}`}, ${spec.durations.length===1?`בדיוק ${spec.durations[0]}`:`לפחות ${Math.min(...spec.durations)}`} דקות. אשלח הודעה בוואטסאפ אם תזוהה זמינות מתאימה. הזמינות יכולה להשתנות.`;}
 export function changeAlert(spec,text){const t=String(text).replace(/[–—]/g,'-').trim();let changed={...spec};
