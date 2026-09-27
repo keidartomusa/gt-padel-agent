@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {refreshReleaseBookingTemplate} from '../netlify/functions/court-booking-status.js';
+const entries=new Map([['meta/court-booking-template',{name:'gt_court_release_book_v1',status:'PENDING'}],['meta/waba-id',{id:'123456789'}]]);
+const store={get:async key=>entries.get(key),setJSON:async(key,v)=>entries.set(key,v)};
+test('read-only status refresh records approved status without a send',async()=>{const calls=[];const r=await refreshReleaseBookingTemplate({store,token:'test',fetchImpl:async(url,options)=>(calls.push(url),{ok:true,json:async()=>({data:[{id:'827820820416739',name:'gt_court_release_book_v1',language:'he',status:'APPROVED',category:'UTILITY'}]})})});assert.equal(r.current.status,'APPROVED');assert.equal(entries.get('meta/court-booking-template').current.status,'APPROVED');assert.equal(calls.length,1);assert.match(calls[0],/message_templates\?/);assert.equal((await refreshReleaseBookingTemplate({store,token:'test'})).checked,false);});
