@@ -91,3 +91,19 @@ test('vague evening alert offers broad times and durations, then edit before opt
   assert.equal((await store.list('court-alert/subscription/')).length,0);
  }
 });
+test('editing a court alert accepts the documented full sentence and keeps bad input inside edit flow',async()=>{
+ for(const venue of clubs){
+  const store=memoryStore(),userId='972500000006';
+  await routeIncoming({userId,text:'מחר בערב',store,venue,now,availabilityFn:none});
+  await routeIncoming({userId,actionId:'court_alert_offer',store,venue,now,availabilityFn:none});
+  await routeIncoming({userId,actionId:'court_alert_edit',store,venue,now,availabilityFn:none});
+  const invalid=await routeIncoming({userId,text:'משהו לא ברור בכלל',store,venue,now,availabilityFn:none});
+  assert.match(invalid.text,/לא הבנתי את שינוי השעות/);assert.doesNotMatch(invalid.text,/לא הבנתי. אפשר לבחור מה לעשות/);
+  assert((await store.get(`court-alert/edit/${userId}`)));
+  const changed=await routeIncoming({userId,text:'תחילת משחק בין 18:00 ל 22:00, לפחות 60 דקות',store,venue,now,availabilityFn:none});
+  assert.match(changed.text,/18:00-22:00/);assert.match(changed.text,/לפחות 60 דקות/);
+  assert.deepEqual((await store.get(`court-alert/draft/${userId}`)).starts,[1080,1110,1140,1170,1200,1230,1260,1290,1320]);
+  assert.equal(await store.get(`court-alert/edit/${userId}`),null);
+  assert.equal((await store.list('court-alert/subscription/')).length,0);
+ }
+});
