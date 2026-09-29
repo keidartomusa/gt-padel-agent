@@ -2,11 +2,12 @@ import {getStore,getDeployStore} from '@netlify/blobs';
 import {netlifyStore} from '../src/store.js';
 import {ACTIVE_VENUES} from '../src/venues.js';
 import {authGate} from '../src/auth.js';
+import {PREVIEW_BUILD} from '../src/preview-build.js';
 import {labelSecret,loadQueue,saveLabel,evaluateQueue} from '../src/routing-labels.js';
 const noCache={'cache-control':'no-store','content-type':'application/json; charset=utf-8','x-content-type-options':'nosniff','referrer-policy':'no-referrer'};
 const respond=(data,status=200)=>Response.json(data,{status,headers:noCache});
 const stores=()=>Object.fromEntries(ACTIVE_VENUES.map(v=>{const source=netlifyStore(getStore({name:v.storeName,consistency:'strong'}));return [v.key,Object.freeze({list:prefix=>source.list(prefix)})]}));
-const preview=()=>process.env.CONTEXT==='branch-deploy'&&process.env.BRANCH==='feat/routing-label-private-preview';
+const preview=()=>PREVIEW_BUILD;
 export async function routingLabelApi(req,context,{sources,labels,secret=labelSecret(),adminSecret=process.env.ADMIN_DASHBOARD_TOKEN}={}){
  if(!preview())return respond({error:'preview_only'},404);
  if(!['GET','POST'].includes(req.method))return respond({error:'method_not_allowed'},405);
