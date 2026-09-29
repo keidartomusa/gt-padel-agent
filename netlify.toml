@@ -1,5 +1,5 @@
 [build]
-  command = "printf 'export const BUILD = \"%s\";\\n' \"$COMMIT_REF\" > src/build-info.js"
+  command = "node scripts/stamp-preview.js"
   functions = "preview-functions"
 [functions]
   node_bundler = "esbuild"
