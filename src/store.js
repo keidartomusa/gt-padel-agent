@@ -9,8 +9,8 @@ export function netlifyStore(store){return{
  async get(key){return store.get(key,{type:"json"});},
  async set(key,value){await store.setJSON(key,value);},
  async list(prefix=""){
-  const out=await store.list({prefix}),rows=[];
-  for(const blob of out.blobs)rows.push({key:blob.key,value:await store.get(blob.key,{type:"json"})});
+  const rows=[];
+  for await(const page of store.list({prefix,paginate:true}))for(const blob of page.blobs)rows.push({key:blob.key,value:await store.get(blob.key,{type:"json"})});
   return rows;
  },
  async keys(prefix=""){return(await store.list({prefix})).blobs.map(b=>b.key);},
