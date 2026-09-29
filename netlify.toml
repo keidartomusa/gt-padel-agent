@@ -35,3 +35,8 @@
   from = "/go/release"
   to = "/.netlify/functions/release-booking"
   status = 200
+
+[[redirects]]
+  from = "/label-routing"
+  to = "/.netlify/functions/routing-label"
+  status = 200
