@@ -315,4 +315,4 @@ return{text:`*הבקשות שלי* (${rows.length})\n\n${rows.map((r,i)=>`${i+1}
  if(text.includes("?")){routeTrace?.("unknown","fallback");return btn("את זה אני עוד לא יודע לענות. אפשר לבדוק מגרש פנוי, למצוא שחקנים או לכתוב למועדון.",[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"},CLUB_BTN]);}
  if(seen){routeTrace?.("unknown","fallback");return btn("לא הבנתי. אפשר לבחור מה לעשות:",[{id:"availability",title:"מגרש פנוי"},{id:"players",title:"מציאת שחקנים"}]);}
  return withMyRequests(await menuFor());
-    }
+}
