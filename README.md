@@ -33,3 +33,5 @@ Outbound sending is fail-closed. If `DISABLE_OUTBOUND` is missing, the app behav
 - `WHATSAPP_VERIFY_TOKEN`
 
 After adding or changing a variable in Netlify, trigger a new production deploy. Test with `שלום`, then inspect `Logs & Metrics` > `Functions` > `whatsapp`. Each supported inbound message logs `whatsapp_inbound` with its message ID; the matching `whatsapp_outbound` entry records the reaction, typing, and final send outcome. A `reason` of `disable_outbound` or `not_configured` is a configuration blocker, not a successful reply.
+
+<!-- temporary branch deploy trigger; revert in next commit -->
