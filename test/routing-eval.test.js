@@ -38,3 +38,18 @@ test('label API rejects missing, unknown, and malformed labels without changing 
  const valid=await routingLabelApi(new Request('https://x/.netlify/functions/routing-label-api',{method:'POST',headers:{authorization:'Bearer pw','content-type':'application/json'},body:JSON.stringify({id,label:null,needsContext:true})}),{ip:'test'},opts);
  assert.equal(valid.status,200);const after=await (await get()).json();assert.equal(after.items[0].needsContext,true);assert.equal(after.score.pooled.n,0);assert.equal(after.score.pooled.accuracy,null);
 });
+test('pooled score counts each phrase once and optional club breakdown partitions the same denominator',async()=>{
+ const {loadQueue,evaluateQueue}=await import('../src/routing-labels.js');const gt=memoryStore(),saar=memoryStore(),labels=memoryStore();
+ await gt.set('msg/a/1',{direction:'in',kind:'user',type:'text',body:'יש מגרש מחר בערב?',at:'2026-09-29T18:00:00+03:00'});
+ await saar.set('msg/b/1',{direction:'in',kind:'user',type:'text',body:'יש מגרש מחר בערב?',at:'2026-09-29T17:00:00+03:00'});
+ const sources={gt,saar,smash:memoryStore()},first=await loadQueue(sources,labels,{secret:'test'});assert.equal(first.items[0].at,'2026-09-29T17:00:00+03:00');assert.equal(first.items[0].frequency,2);
+ await labels.set('routing-eval/labels-v1',{[first.items[0].id]:{label:'availability'}});
+ const queue=await loadQueue(sources,labels,{secret:'test'}),result=await evaluateQueue(queue);assert.equal(result.pooled.n,1);assert.equal(result.pooled.correct,1);
+ assert.equal(result.byClub.gt.n,1);assert.equal(result.byClub.saar.n,1);assert.equal(result.byClub.smash.n,0);
+ assert.equal(Object.values(result.byClub).reduce((n,c)=>n+c.n,0),2); // shared phrase appears in both club breakdowns, once in headline
+});
+test('candidate admits bounded times and dates, rejects serial-shaped numeric text',()=>{
+ assert.equal(safeCandidate('יש מגרש 19:30 מחר?'),'יש מגרש 19:30 מחר?');
+ assert.equal(safeCandidate('יש מגרש 12-34-56 מחר?'),null);
+ assert.equal(safeCandidate('יש מגרש 99:9999 מחר?'),null);
+});
