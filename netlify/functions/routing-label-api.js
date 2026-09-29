@@ -1,10 +1,9 @@
 import {getStore} from '@netlify/blobs';
 import {netlifyStore} from '../../src/store.js';
-import {ACTIVE_VENUES,GT_VENUE} from '../../src/venues.js';
-
+import {ACTIVE_VENUES} from '../../src/venues.js';
 import {authGate} from '../../src/auth.js';
 import {labelSecret,loadQueue,saveLabel,evaluateQueue} from '../../src/routing-labels.js';
-const noCache={'cache-control':'no-store','content-type':'application/json; charset=utf-8'};
+const noCache={'cache-control':'no-store','content-type':'application/json; charset=utf-8','x-content-type-options':'nosniff','referrer-policy':'no-referrer'};
 const respond=(data,status=200)=>Response.json(data,{status,headers:noCache});
 const stores=()=>Object.fromEntries(ACTIVE_VENUES.map(v=>[v.key,netlifyStore(getStore({name:v.storeName,consistency:'strong'}))]));
 export async function routingLabelApi(req,context,{sources,labels,secret=labelSecret(),adminSecret=process.env.ADMIN_DASHBOARD_TOKEN}={}){
