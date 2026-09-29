@@ -9,7 +9,7 @@ export function safeCandidate(body){
   if(SAFE_WORDS.has(word)||SAFE_WORDS.has(basic)||/^\d{1,2}(?:(?:[:./-]\d{1,4}){0,2})$/.test(word)||/^(?:am|pm|today|tomorrow)$/i.test(word))return word;
   hidden++;return '[פרט]';
  }).replace(/\[פרט\](?:\s*\[פרט\])+/g,'[פרט]');
- if(hidden>1||text.length>300)return null;
+ if(hidden>1||text.length>300||text.includes('[פרט]'))return null;
  return text;
 }
 export function candidateId(secret,text){if(typeof secret!=='string'||!secret)return null;return createHmac('sha256',secret).update(text.normalize('NFKC')).digest('hex').slice(0,32);}
