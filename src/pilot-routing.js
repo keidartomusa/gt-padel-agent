@@ -6,7 +6,7 @@ export function safeCandidate(body){
  const t=String(body||'').trim();if(!t||t.length>300||SENSITIVE.test(t)||/(?:\+?972|0)[\d\s().-]{7,}/.test(t)||/\d{6,}/.test(t)||/[\[\]{}<>`$\\]/.test(t))return null;
  let hidden=0;const text=t.replace(/[\p{L}\p{N}״׳'.:-]+/gu,word=>{
   const basic=word.replace(/^[בלמוהשכ]+(?=[\u0590-\u05ff]{3,})/u,'');
-  if(SAFE_WORDS.has(word)||SAFE_WORDS.has(basic)||/^\d{1,2}(?:(?:[:./-]\d{1,4}){0,2})$/.test(word)||/^(?:am|pm|today|tomorrow)$/i.test(word))return word;
+  if(SAFE_WORDS.has(word)||SAFE_WORDS.has(basic)||/^(?:[01]?\d|2[0-3]):[0-5]\d$/.test(word)||/^\d{1,2}[./]\d{1,2}$/.test(word)||/^(?:am|pm|today|tomorrow)$/i.test(word))return word;
   hidden++;return '[פרט]';
  }).replace(/\[פרט\](?:\s*\[פרט\])+/g,'[פרט]');
  if(hidden>1||text.length>300||text.includes('[פרט]')||/[^\p{L}\p{N}\s״׳'.:?!,/-]/u.test(text))return null;
@@ -18,7 +18,7 @@ export async function pilotCandidates(stores,{secret}={}){
   const store=stores[club];if(!store)continue;
   const rows=(await store.list('msg/')).map(x=>x.value).filter(v=>v?.direction==='in'&&v.kind==='user'&&v.type==='text');
   for(const row of rows){const text=safeCandidate(row.body);if(!text)continue;counts[club]++;const id=candidateId(secret,text);if(!id)continue;
-   if(!map.has(id))map.set(id,{id,text,clubs:[club],frequency:1,at:row.at});else{const item=map.get(id);item.frequency++;if(!item.clubs.includes(club))item.clubs.push(club);}
+   if(!map.has(id))map.set(id,{id,text,clubs:[club],frequency:1,at:row.at});else{const item=map.get(id);item.frequency++;if(!item.clubs.includes(club))item.clubs.push(club);if(String(row.at)<String(item.at))item.at=row.at;}
   }
  }
  return {eligible:map.size,sourceCounts:counts,items:[...map.values()].sort((a,b)=>String(a.at).localeCompare(String(b.at)))};
