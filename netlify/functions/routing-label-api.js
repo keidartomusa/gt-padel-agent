@@ -14,7 +14,8 @@ export async function routingLabelApi(req,context,{sources,labels,secret=labelSe
  try{const queue=await loadQueue(sources||stores(),labelStore,{secret});
   if(req.method==='GET')return respond({...queue,score:await evaluateQueue(queue)});
   let body;try{body=await req.json()}catch{return respond({error:'bad_json'},400)}
-  const saved=await saveLabel(labelStore,body,queue);return respond({saved});
+  if(!body||typeof body!=='object'||Array.isArray(body))return respond({error:'invalid_label'},400);
+  let saved;try{saved=await saveLabel(labelStore,body,queue)}catch(e){if(/^(Unknown example|Invalid label)$/.test(e?.message))return respond({error:'invalid_label'},400);throw e}return respond({saved});
  }catch(e){console.error(JSON.stringify({event:'routing_label_error',kind:e?.name||'Error'}));return respond({error:'unavailable'},503)}
 }
 export default routingLabelApi;
