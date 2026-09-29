@@ -1,4 +1,4 @@
-import {candidateId,pilotCandidates} from './pilot-routing.js';
+import {pilotCandidates} from './pilot-routing.js';
 import {LABELS} from './routing-eval.js';
 import {evaluateRouting} from './routing-eval-runner.js';
 export const LABEL_STORE_KEY='routing-eval/labels-v1';
@@ -12,16 +12,17 @@ export async function loadQueue(stores,labelStore,{secret=labelSecret(),limit=LA
 }
 export async function saveLabel(labelStore,{id,label,needsContext=false},queue){
  if(!/^[0-9a-f]{32}$/.test(String(id))||!queue.items.some(x=>x.id===id))throw Error('Unknown example');
- if(label!==null&&!LABELS.includes(label))throw Error('Invalid label');
+ if(label!==null&&!LABELS.includes(label)||typeof needsContext!=='boolean'||(needsContext&&label!==null))throw Error('Invalid label');
  const saved=await labelStore.get(LABEL_STORE_KEY)||{};
  if(label===null&&!needsContext)delete saved[id];else saved[id]={label,needsContext:Boolean(needsContext),updatedAt:new Date().toISOString()};
  await labelStore.set(LABEL_STORE_KEY,saved);return {id,label,needsContext:Boolean(needsContext)};
 }
 export async function evaluateQueue(queue,{availabilityFn}={}){
- const examples=queue.items.filter(x=>x.label&&!x.needsContext).flatMap(x=>x.clubs.map(club=>({club,label:x.label,text:x.text,at:x.at})));
- const result=await evaluateRouting(examples,{availabilityFn});
- // One scored unit per labeled phrase, even if the same phrase appeared in multiple clubs.
- const first=[];const seen=new Set();for(const e of examples){const id=candidateId('pooled',e.text);if(seen.has(id))continue;seen.add(id);first.push(e);}
- const pooled=(await evaluateRouting(first,{availabilityFn})).pooled;
- return {pooled,byClub:result.byClub,labeled:queue.done,scored:pooled.n,eligible:queue.eligible};
+ const labeled=queue.items.filter(x=>x.label&&!x.needsContext);
+ // A phrase is one unit in the headline, regardless of clubs or frequency.
+ const pooled=(await evaluateRouting(labeled.map(x=>({club:x.clubs[0],label:x.label,text:x.text,at:x.at})),{availabilityFn})).pooled;
+ // The optional breakdown includes a phrase in every club it came from; rows are not additive to the pooled denominator.
+ const clubExamples=labeled.flatMap(x=>x.clubs.map(club=>({club,label:x.label,text:x.text,at:x.at})));
+ const byClub=(await evaluateRouting(clubExamples,{availabilityFn})).byClub;
+ return {pooled,byClub,labeled:queue.done,scored:pooled.n,eligible:queue.eligible};
 }
