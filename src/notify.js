@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 // Window-aware delivery (WhatsApp 24h customer-service window).
 // Inside the window: normal free-form message. Outside: the approved template "gt_match_found_v2".
 // (no names, no numbers), and the full notification waits until the user taps "כן, שלחו פרטים" or writes again.
@@ -10,13 +11,16 @@ export function windowOpen(profile,now=new Date()){if(!profile?.lastInboundAt)re
 export async function deliver(store,to,response,{now=new Date(),send,sendTemplate,venue=GT_VENUE}){
  const profile=await store.get(`profile/${to}`);
  if(windowOpen(profile,now)){const r=await send(to,response);await logOutbound(store,to,response,r,now);return{mode:"freeform",...r};}
- if(venue!==GT_VENUE){const key=`pending/${to}`,prior=await store.get(key)||{items:[],templateSentAt:null};await store.set(key,{...prior,items:[...prior.items,{response,at:now.toISOString()}].slice(-5)});return{mode:"pending",sent:false,reason:"venue_template_not_approved"};}
+ if(venue!==GT_VENUE){const key=`pending/${to}`,prior=await store.get(key)||{items:[],templateSentAt:null};await store.set(key,{...prior,items:[...prior.items,{id:crypto.randomUUID(),response,at:now.toISOString()}]});return{mode:"pending",sent:false,reason:"venue_template_not_approved"};}
  const key=`pending/${to}`,pending=await store.get(key)||{items:[],templateSentAt:null};
- pending.items=[...pending.items,{response,at:now.toISOString()}].slice(-5);
+ pending.items=[...pending.items,{id:crypto.randomUUID(),response,at:now.toISOString()}];
  let result={sent:false,reason:"template_already_sent"};
  const recent=pending.templateSentAt&&now.getTime()-new Date(pending.templateSentAt).getTime()<WINDOW_MS;
  if(!recent){result=await sendTemplate(to,MATCH_TEMPLATE);await logTemplate(store,to,MATCH_TEMPLATE,MATCH_TEMPLATE.body,result,now);if(result.sent)pending.templateSentAt=now.toISOString();}
  await store.set(key,pending);return{mode:"template",...result};
 }
+export async function pendingFor(store,userId){const key=`pending/${userId}`,p=await store.get(key);if(!p?.items?.length)return[];if(p.items.some(x=>!x.id)){p.items=p.items.map(x=>x.id?x:{...x,id:crypto.randomUUID()});await store.set(key,p);}return p.items;}
+export async function pendingItem(store,userId,itemId){return(await pendingFor(store,userId)).find(x=>x.id===itemId)||null;}
+export async function takePendingItem(store,userId,itemId){const key=`pending/${userId}`,p=await store.get(key);const index=p?.items?.findIndex(x=>x.id===itemId);if(index==null||index<0)return null;const [item]=p.items.splice(index,1);if(p.items.length)await store.set(key,p);else await store.delete(key);return item;}
 export async function takePending(store,userId){const key=`pending/${userId}`,p=await store.get(key);await store.delete(key);return p?.items||[];}
 export async function hasPending(store,userId){return Boolean((await store.get(`pending/${userId}`))?.items?.length);}
